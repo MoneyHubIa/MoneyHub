@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.local
+.DS_Store
+npm-debug.log*
+.vite/
+cypress/videos/
+cypress/screenshots/
+.worktrees/
+worktrees/
+logs/
