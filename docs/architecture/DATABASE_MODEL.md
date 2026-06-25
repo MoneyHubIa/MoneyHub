@@ -4,17 +4,18 @@
 
 - Primary keys use UUID.
 - Tables include `created_at` and `updated_at`.
-- User-owned financial tables include `user_id`.
+- User-owned financial tables include `user_id`, storing the Firebase UID.
 - Soft-deletable domain tables include `deleted_at`.
 - Monetary values use decimal-compatible database types.
+- PostgreSQL runs on Google Cloud SQL.
 
 ## Initial Tables
 
 ### users
 
 - `id`
+- `firebase_uid`
 - `email`
-- `password_hash`
 - `email_verified_at`
 - `status`
 - `created_at`
@@ -29,17 +30,6 @@
 - `theme`
 - `created_at`
 - `updated_at`
-
-### sessions
-
-- `id`
-- `user_id`
-- `refresh_token_hash`
-- `user_agent`
-- `ip_address`
-- `expires_at`
-- `revoked_at`
-- `created_at`
 
 ### financial_categories
 

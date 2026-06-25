@@ -2,27 +2,28 @@
 
 ## Authentication
 
-- Access tokens use JWT with short expiration.
-- Refresh tokens are stored server-side as hashes.
-- Passwords are hashed with bcrypt.
-- Sessions can be revoked individually.
+- Firebase Auth is the source of identity for email/password and future provider sign-in.
+- The app obtains Firebase ID tokens and sends them to the backend as bearer tokens.
+- The backend verifies ID tokens with Firebase Admin before resolving authenticated GraphQL fields.
+- Password storage, refresh token rotation, and session revocation are delegated to Firebase Auth.
+- Custom verification and recovery emails are generated through Firebase Admin links and sent through Resend.
 
 ## Authorization
 
-- Every user-owned query must include authenticated `user_id`.
+- Every user-owned query must include the authenticated Firebase UID.
 - Repositories must not expose cross-user read methods.
 - Administrative capabilities are out of scope for the first release.
 
 ## Web Security
 
-- Rate limiting on authentication and AI endpoints.
+- Rate limiting on sensitive GraphQL operations, email triggers, and AI endpoints.
 - CORS restricted by environment.
 - Helmet security headers in backend.
 - Input validation for every write endpoint.
-- Sanitized output and React escaping in frontend.
+- Sanitized output and React Native text rendering in the app.
 - CSRF risk reviewed for any cookie-based auth decision.
 
 ## Audit
 
-- Log authentication events, profile changes, financial mutations, and AI requests.
+- Log authentication-adjacent events, profile changes, financial mutations, email triggers, and AI requests.
 - Audit logs must avoid storing raw secrets or full tokens.

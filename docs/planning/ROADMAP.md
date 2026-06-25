@@ -4,14 +4,14 @@
 
 - Documentation.
 - Monorepo.
-- Backend and frontend base.
+- GraphQL backend and Expo app base.
 - Testing setup.
 
 ## Phase 2 - Authentication
 
-- Register, login, refresh, logout.
+- Register, login, token verification, logout.
 - Password recovery and e-mail verification.
-- Profile and session control.
+- Profile control.
 
 ## Phase 3 - Financial Core
 
@@ -38,4 +38,4 @@
 
 - E2E tests.
 - Security review.
-- Deployment documentation.
+- GCP, Firebase, and Resend deployment documentation.

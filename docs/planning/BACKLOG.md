@@ -4,16 +4,16 @@
 
 - Create documentation structure.
 - Create monorepo.
-- Configure backend.
-- Configure frontend.
+- Configure GraphQL backend.
+- Configure Expo app.
 - Configure tests.
 
 ## Authentication
 
-- Register user.
-- Login user.
-- Refresh access token.
-- Logout session.
+- Register user with Firebase Auth.
+- Login user with Firebase Auth.
+- Verify Firebase ID tokens in GraphQL.
+- Logout local Firebase session.
 - Recover password.
 - Verify e-mail.
 - Manage profile.

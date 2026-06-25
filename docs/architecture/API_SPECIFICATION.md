@@ -1,68 +1,51 @@
 # API Specification
 
-## Base Path
+## GraphQL Endpoint
 
-All endpoints use:
+Domain operations use:
 
 ```txt
-/api/v1
+POST /graphql
 ```
 
-## Response Envelope
+Operational health uses:
 
-```json
-{
-  "success": true,
-  "data": {},
-  "error": null,
-  "meta": {
-    "requestId": "string"
-  }
+```txt
+GET /health
+```
+
+## Initial Schema
+
+```graphql
+type Health {
+  status: String!
+  service: String!
+  version: String!
+}
+
+type AuthUser {
+  id: ID!
+  email: String
+  emailVerified: Boolean!
+}
+
+type Query {
+  health: Health!
+  me: AuthUser
 }
 ```
 
-## Error Envelope
+## Planned Operations
 
-```json
-{
-  "success": false,
-  "data": null,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid request.",
-    "details": {}
-  },
-  "meta": {
-    "requestId": "string"
-  }
-}
-```
-
-## Initial Routes
-
-- `GET /health`
-- `POST /auth/register`
-- `POST /auth/login`
-- `POST /auth/refresh`
-- `POST /auth/logout`
-- `POST /auth/password-recovery`
-- `GET /profile`
-- `PATCH /profile`
-- `GET /categories`
-- `POST /categories`
-- `GET /cost-centers`
-- `POST /cost-centers`
-- `GET /incomes`
-- `POST /incomes`
-- `GET /expenses`
-- `POST /expenses`
-- `GET /dashboard/summary`
-- `POST /ai/messages`
+- Authentication lifecycle is handled by Firebase Auth on the client.
+- Backend authenticated operations require `Authorization: Bearer <Firebase ID token>`.
+- Profile, categories, cost centers, incomes, expenses, dashboard summary, agenda, and AI assistant operations will be added as GraphQL queries and mutations.
+- Password recovery and verification emails use Firebase Admin generated links delivered through Resend when custom email templates are required.
 
 ## API Rules
 
-- Authenticated routes require bearer access token.
-- User-owned resources must be filtered by authenticated user ID.
-- Controllers must not contain business rules.
+- Authenticated operations require a valid Firebase ID token.
+- User-owned resources must be filtered by Firebase UID.
+- Resolvers must not contain business rules.
 - Validation must run before service execution.
-- Errors must use the standard envelope.
+- GraphQL errors must use stable extension codes.
