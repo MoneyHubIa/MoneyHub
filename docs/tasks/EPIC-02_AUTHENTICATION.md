@@ -11,7 +11,7 @@ Plan and implement secure account lifecycle with Firebase Auth, Firebase Admin t
 
 ## Initial Tasks
 
-- TASK-008 - Configure Firebase authentication specs.
+- [x] TASK-008 - Configure Firebase authentication specs.
 - TASK-009 - Implement Firebase Auth app foundation.
 - TASK-010 - Plan Firebase Admin auth context.
 - TASK-011 - Plan Firebase Analytics adapter.
