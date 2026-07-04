@@ -11,7 +11,7 @@ Create financial KPIs, comparative charts, cash-flow summaries, overdue accounts
 
 ## Initial Tasks
 
-- TASK-012 — Implement dashboard summary.
-- TASK-025 — Implement cash-flow chart data.
-- TASK-026 — Implement category analysis.
-- TASK-027 — Implement period comparison.
+- TASK-023 — Implement dashboard summary.
+- TASK-028 — Implement cash-flow chart data.
+- TASK-029 — Implement category analysis.
+- TASK-030 — Implement period comparison.

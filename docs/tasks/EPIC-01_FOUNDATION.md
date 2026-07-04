@@ -28,7 +28,7 @@ The initial workspace exists. The migration to the new stack is tracked by pendi
 ### TASK-006 - Plan GraphQL backend foundation migration
 
 ## Status
-Pending
+Done
 
 ## Objective
 Replace the REST backend foundation plan with Node.js, Express, Apollo Server GraphQL, Firebase Admin token verification, and Cloud SQL PostgreSQL access.
@@ -46,10 +46,16 @@ Executing code changes, database migrations, full authentication screens, and fi
 - Authenticated operations require Firebase ID token verification.
 - User-owned data is scoped by Firebase UID.
 
+## Completion Review
+
+The target backend contract, operational health boundary, authentication boundary,
+and user-ownership rule are documented in the architecture and API specifications.
+This status covers planning only; migration implementation remains outside this task.
+
 ### TASK-007 - Plan Expo app foundation migration
 
 ## Status
-Pending
+Done
 
 ## Objective
 Replace the React/Vite frontend plan with a React Native + Expo app for iOS, Android, and Web.
@@ -66,3 +72,9 @@ Executing code changes, native build setup, authentication screens, data loading
 - Expo Router is the planned navigation foundation.
 - Firebase public config uses `EXPO_PUBLIC_*` variables.
 - Analytics has a web and native implementation strategy.
+
+## Completion Review
+
+The cross-platform target, navigation foundation, public configuration boundary,
+and platform-specific Analytics strategy are documented. This status covers
+planning only; migration implementation remains outside this task.

@@ -12,6 +12,6 @@ Implement a safe AI assistant that answers financial questions using only author
 ## Initial Tasks
 
 - TASK-013 — Implement AI context builder.
-- TASK-028 — Implement AI prompt registry.
-- TASK-029 — Implement LLM adapter contract.
-- TASK-030 — Implement AI conversation logging.
+- TASK-031 — Implement AI prompt registry.
+- TASK-032 — Implement LLM adapter contract.
+- TASK-033 — Implement AI conversation logging.

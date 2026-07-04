@@ -11,9 +11,9 @@ Implement categories, cost centers, income, expenses, accounts payable, accounts
 
 ## Initial Tasks
 
-- TASK-010 — Implement financial categories.
-- TASK-011 — Implement income and expenses.
-- TASK-021 — Implement cost centers.
-- TASK-022 — Implement accounts payable.
-- TASK-023 — Implement accounts receivable.
-- TASK-024 — Implement recurring transactions.
+- TASK-021 — Implement financial categories.
+- TASK-022 — Implement income and expenses.
+- TASK-024 — Implement cost centers.
+- TASK-025 — Implement accounts payable.
+- TASK-026 — Implement accounts receivable.
+- TASK-027 — Implement recurring transactions.
