@@ -7,18 +7,19 @@ Minimum coverage target is 80% for critical application code.
 ## Backend
 
 - Unit tests: services, validators, utilities.
-- Integration tests: routes, controllers, repositories, auth middlewares.
+- Integration tests: GraphQL schema, resolvers, repositories, auth context, and operational health.
 - Security tests: authorization boundaries and validation failures.
 
-## Frontend
+## App
 
-- Component tests with React Testing Library.
+- Component tests with React Native Testing Library.
 - Hook and service tests for reusable behavior.
-- Accessibility checks for critical UI.
+- Firebase Auth, Firebase Analytics, and GraphQL client adapters must use mocks in unit tests.
+- Accessibility checks for critical UI on mobile and web.
 
 ## E2E
 
-Cypress will cover:
+E2E will cover iOS, Android, and Web smoke flows after the Expo foundation is stable:
 
 - Registration.
 - Login.

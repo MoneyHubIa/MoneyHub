@@ -1,19 +1,29 @@
-# EPIC-02 — Authentication and Identity
+# EPIC-02 - Authentication and Identity
 
 ## Status
 Pending
 
 ## Feature
-Authentication.
+Firebase Authentication.
 
 ## Objective
-Implement secure account lifecycle with JWT, refresh tokens, bcrypt, e-mail verification, password recovery, profile management, and session control.
+Plan and implement secure account lifecycle with Firebase Auth, Firebase Admin token verification, custom transactional email through Resend, profile management, and authorization boundaries in GraphQL.
 
 ## Initial Tasks
 
-- TASK-008 — Configure authentication specs.
-- TASK-009 — Implement registration and login foundation.
-- TASK-017 — Implement refresh token rotation.
-- TASK-018 — Implement logout and session revocation.
-- TASK-019 — Implement password recovery.
-- TASK-020 — Implement profile management.
+- TASK-008 - Configure Firebase authentication specs.
+- TASK-009 - Implement Firebase Auth app foundation.
+- TASK-010 - Plan Firebase Admin auth context.
+- TASK-011 - Plan Firebase Analytics adapter.
+- TASK-017 - Implement authenticated GraphQL profile bootstrap.
+- TASK-018 - Implement logout and local Firebase session cleanup.
+- TASK-019 - Implement password recovery through Firebase links and Resend email.
+- TASK-020 - Implement profile management.
+
+## Technical Rules
+
+- The backend must never store passwords, password hashes, or refresh tokens.
+- The app authenticates with Firebase Auth and sends Firebase ID tokens to GraphQL.
+- The backend verifies ID tokens with Firebase Admin before resolving authenticated fields.
+- Email verification and password recovery emails use Firebase-generated action links delivered by Resend when custom templates are required.
+- User-owned data must be scoped by Firebase UID.

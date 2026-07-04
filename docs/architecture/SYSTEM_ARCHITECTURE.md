@@ -2,30 +2,31 @@
 
 ## Overview
 
-MoneyHub uses a JavaScript monorepo with separate backend and frontend applications. The backend owns business rules, authorization, validation, AI context assembly, and database access. The frontend consumes versioned REST APIs and does not duplicate critical business rules.
+MoneyHub uses a JavaScript monorepo with a Node.js backend and a universal Expo app. The backend owns business rules, authorization, validation, AI context assembly, email orchestration, and database access. The app runs on iOS, Android, and Web and consumes a GraphQL contract without duplicating critical business rules.
 
 ## Backend Layers
 
 ```txt
-routes -> controllers -> services -> repositories -> database
+graphql schema -> resolvers -> services -> repositories -> database
 ```
 
-- **Routes:** bind HTTP paths to controllers and middlewares.
-- **Controllers:** parse request context and delegate to services.
+- **GraphQL schema:** defines public queries, mutations, types, and auth boundaries.
+- **Resolvers:** parse request context and delegate to services.
 - **Services:** own business rules and orchestration.
-- **Repositories:** isolate persistence and Supabase/PostgreSQL access.
-- **Database:** PostgreSQL managed by Supabase.
+- **Repositories:** isolate persistence and Cloud SQL PostgreSQL access.
+- **Database:** PostgreSQL managed by Google Cloud SQL.
+- **Email adapter:** isolates Resend transactional email calls.
 
 ## Frontend Layers
 
 ```txt
-pages -> templates -> organisms -> molecules -> atoms
+expo-router routes -> screens -> components
 services -> hooks -> state
 ```
 
-- Pages define route-level composition.
-- Components follow Atomic Design.
-- Services isolate API calls.
+- Expo Router files define route-level composition.
+- Screens compose reusable React Native components.
+- Services isolate GraphQL, Firebase Auth, and Firebase Analytics calls.
 - Hooks contain reusable UI behavior and data loading.
 
 ## Cross-Cutting Concerns
@@ -33,5 +34,6 @@ services -> hooks -> state
 - Environment variables for all secrets and deployment-specific values.
 - Structured error handling in backend.
 - Request ID in logs and API errors.
+- Firebase ID token verification for authenticated GraphQL operations.
 - Security controls applied before feature development.
 - Tests required for critical paths.

@@ -3,7 +3,7 @@
 ## Identity
 
 - Every user account must have a unique e-mail address.
-- Passwords must be stored only as bcrypt hashes.
+- Passwords must be handled only by Firebase Auth; MoneyHub backend must not store password hashes.
 - E-mail verification is required before enabling sensitive account actions.
 - Refresh tokens must be revocable per session.
 
