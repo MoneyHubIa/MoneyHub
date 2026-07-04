@@ -1,5 +1,11 @@
 # Foundation Specification
 
+## Status
+
+This specification defines the approved target foundation. The current REST and
+React/Vite scaffold remains operational. EPIC-01 stays Pending until the GraphQL
+backend and Expo app acceptance criteria below are implemented and verified.
+
 ## Objective
 
 Create the initial MoneyHub monorepo with required documentation, task tracking, Node.js GraphQL backend foundation, Expo app foundation, Firebase integration points, and test setup.

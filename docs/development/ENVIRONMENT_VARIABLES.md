@@ -1,5 +1,11 @@
 # Environment Variables
 
+## Status
+
+The file lists the approved target configuration. `.env.example` includes all
+keys so environments can be prepared consistently, but GraphQL, Firebase, Expo,
+GCP, and Resend variables remain unused until their migrations are implemented.
+
 ## Backend
 
 - `NODE_ENV`
