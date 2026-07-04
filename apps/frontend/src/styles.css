@@ -74,7 +74,7 @@ button {
   background: #eef3f8;
 }
 
-.nav-button:first-child {
+.nav-button.is-active {
   color: #ffffff;
   background: #0f766e;
 }
@@ -234,6 +234,11 @@ button {
   .nav-button {
     color: #d8dee9;
     background: #223049;
+  }
+
+  .nav-button.is-active {
+    color: #ffffff;
+    background: #0f766e;
   }
 
   .dashboard-header p,
