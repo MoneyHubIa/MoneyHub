@@ -7,8 +7,8 @@
 | TASK-003 | Create AI strategy documentation | Done | EPIC-01 |
 | TASK-004 | Create planning documentation | Done | EPIC-01 |
 | TASK-005 | Scaffold monorepo foundation | Done | EPIC-01 |
-| TASK-006 | Plan GraphQL backend foundation migration | Pending | EPIC-01 |
-| TASK-007 | Plan Expo app foundation migration | Pending | EPIC-01 |
+| TASK-006 | Plan GraphQL backend foundation migration | Done | EPIC-01 |
+| TASK-007 | Plan Expo app foundation migration | Done | EPIC-01 |
 | TASK-008 | Configure Firebase authentication specs | Pending | EPIC-02 |
 | TASK-009 | Implement Firebase Auth app foundation | Pending | EPIC-02 |
 | TASK-010 | Plan Firebase Admin auth context | Pending | EPIC-02 |
@@ -25,6 +25,16 @@
 | TASK-021 | Implement financial categories | Pending | EPIC-03 |
 | TASK-022 | Implement income and expenses | Pending | EPIC-03 |
 | TASK-023 | Implement dashboard summary | Pending | EPIC-04 |
+| TASK-024 | Implement cost centers | Pending | EPIC-03 |
+| TASK-025 | Implement accounts payable | Pending | EPIC-03 |
+| TASK-026 | Implement accounts receivable | Pending | EPIC-03 |
+| TASK-027 | Implement recurring transactions | Pending | EPIC-03 |
+| TASK-028 | Implement cash-flow chart data | Pending | EPIC-04 |
+| TASK-029 | Implement category analysis | Pending | EPIC-04 |
+| TASK-030 | Implement period comparison | Pending | EPIC-04 |
+| TASK-031 | Implement AI prompt registry | Pending | EPIC-05 |
+| TASK-032 | Implement LLM adapter contract | Pending | EPIC-05 |
+| TASK-033 | Implement AI conversation logging | Pending | EPIC-05 |
 | TASK-034 | Configure backend GraphQL coverage thresholds | Pending | EPIC-07 |
 | TASK-035 | Configure Expo app coverage thresholds | Pending | EPIC-07 |
 | TASK-036 | Add Firebase authentication E2E flow | Pending | EPIC-07 |
@@ -36,3 +46,6 @@
 | TASK-042 | Add Expo Web smoke build verification | Pending | EPIC-07 |
 | TASK-043 | Document Firebase Auth and Analytics project setup | Pending | EPIC-08 |
 | TASK-044 | Document Resend email setup | Pending | EPIC-08 |
+| TASK-045 | Implement financial reminders | Pending | EPIC-06 |
+| TASK-046 | Implement notification center | Pending | EPIC-06 |
+| TASK-047 | Implement recurring events | Pending | EPIC-06 |

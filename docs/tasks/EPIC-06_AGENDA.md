@@ -12,6 +12,6 @@ Implement financial calendar, events, reminders, notifications, and recurring ev
 ## Initial Tasks
 
 - TASK-014 — Implement agenda foundation.
-- TASK-031 — Implement financial reminders.
-- TASK-032 — Implement notification center.
-- TASK-033 — Implement recurring events.
+- TASK-045 — Implement financial reminders.
+- TASK-046 — Implement notification center.
+- TASK-047 — Implement recurring events.

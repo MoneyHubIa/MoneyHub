@@ -4,14 +4,16 @@ MoneyHub is a universal financial management SaaS for personal and business user
 
 ## Current Stage
 
-The project is in foundation setup. Documentation and task files drive all implementation through Spec Driven Development.
+The project is in foundation migration planning. The GraphQL and Expo migration
+plans are complete, but their implementation has not started. Documentation and
+task files drive all implementation through Spec Driven Development.
 
 ## Monorepo
 
 ```txt
 apps/
   backend/
-  app/
+  frontend/
 docs/
   product/
   architecture/
@@ -31,10 +33,16 @@ npm install
 npm test
 npm run lint
 npm run dev:backend
-npm run dev:app
+npm run dev:frontend
 ```
 
-## Foundation Stack
+## Current Foundation
+
+- App: React + Vite for Web.
+- API: Node.js + Express with a REST operational health endpoint.
+- Status: operational scaffold retained until the approved migration is implemented.
+
+## Approved Target Foundation
 
 - App: React Native + Expo + Expo Router for iOS, Android, and Web.
 - API: Node.js + Express + Apollo Server GraphQL.
