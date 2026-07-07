@@ -14,12 +14,36 @@ Plan and implement secure account lifecycle with Firebase Auth, Firebase Admin t
 - [x] TASK-008 - Configure Firebase authentication specs.
 - TASK-009 - Implement Firebase Auth app foundation.
 - TASK-010 - Plan Firebase Admin auth context.
-- TASK-011 - Plan Firebase Analytics adapter.
+- [x] TASK-011 - Plan Firebase Analytics adapter.
 - TASK-017 - Implement authenticated GraphQL profile bootstrap.
 - TASK-018 - Implement logout and local Firebase session cleanup.
 - TASK-019 - Implement password recovery through Firebase links and Resend email.
 - TASK-020 - Implement profile management.
 
+## Tasks Detail
+
+### TASK-011 - Plan Firebase Analytics adapter
+
+## Status
+Done
+
+## Objective
+Planejar o adapter do Firebase Analytics no app cliente Expo (com suporte a Web, iOS e Android), estabelecendo a interface comum, a estratégia de inicialização resiliente por plataforma e o isolamento dos fluxos financeiros.
+
+## Scope
+Definir a interface TypeScript comum `AnalyticsAdapter`, a estratégia de build/divisão de arquivos por plataforma (`.web.ts` e `.native.ts`), a inicialização segura com verificação de suporte (`isSupported()` do SDK Web), o uso de comportamento No-Op como fallback de resiliência e as regras de mock para testes unitários.
+
+## Out of Scope
+Escrever códigos de implementação funcionais, configurar projetos de Firebase no console do Google, instalar dependências no app ou realizar deploys.
+
+## Acceptance Criteria
+- Interface `AnalyticsAdapter` especificada com suporte a eventos genéricos, identificação de usuário, propriedades e visualização de telas.
+- Estratégia de resolução por plataforma planejada via extensões de arquivo do Metro/Vite.
+- Fluxo de resiliência (verificação de suporte e fallback No-Op) detalhado para evitar que falhas de analytics interrompam fluxos financeiros.
+- Padrão de mock para testes unitários definido.
+
+## Completion Review
+A arquitetura do adapter, as regras de resiliência por plataforma, o contrato unificado de eventos e a estratégia de mocks de teste foram planejados e documentados na especificação `docs/specs/FIREBASE_ANALYTICS_ADAPTER_SPEC.md`.
 ## Technical Rules
 
 - The backend must never store passwords, password hashes, or refresh tokens.
