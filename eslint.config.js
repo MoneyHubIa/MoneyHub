@@ -1,3 +1,5 @@
+import tseslint from 'typescript-eslint';
+
 export default [
   {
     ignores: ['node_modules/**', 'dist/**', 'coverage/**']
@@ -22,6 +24,17 @@ export default [
         describe: 'readonly',
         test: 'readonly',
         expect: 'readonly'
+      }
+    }
+  },
+  ...tseslint.configs.recommended,
+  {
+    files: ['**/*.ts', '**/*.tsx'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly'
       }
     }
   }

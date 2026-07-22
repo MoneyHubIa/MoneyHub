@@ -11,10 +11,15 @@
   "scripts": {
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
     "dev:backend": "npm run dev -w apps/backend",
     "dev:frontend": "npm run dev -w apps/frontend"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.13.0 <23"
+  },
+  "devDependencies": {
+    "typescript-eslint": "^8.65.0"
   }
 }

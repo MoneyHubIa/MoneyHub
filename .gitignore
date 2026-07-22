@@ -11,4 +11,5 @@ cypress/screenshots/
 .worktrees/
 worktrees/
 logs/
+apps/backend/src/generated/prisma/
 .env*
