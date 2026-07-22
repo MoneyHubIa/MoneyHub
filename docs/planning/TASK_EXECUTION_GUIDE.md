@@ -6,56 +6,51 @@ Este guia define quais tasks pendentes devem ser executadas agora, quais podem
 avancar em paralelo e quais devem permanecer bloqueadas. Ele nao cria tasks,
 nao altera escopo e nao substitui os criterios de aceite de cada task.
 
-## Estado de Partida
+## Estado Atual
 
-- `TASK-001` ate `TASK-007` estao concluidas.
-- `EPIC-01` permanece pendente porque a fundacao GraphQL e Expo foi planejada,
-  mas ainda nao foi implementada.
-- A proxima task obrigatoria e `TASK-008`.
+- `TASK-001` ate `TASK-008`, `TASK-010` e `TASK-011` estao concluidas.
+- `EPIC-01` permanece pendente porque GraphQL e Expo foram planejados, mas ainda
+  nao foram implementados.
+- Nenhuma task esta em andamento.
+- `TASK-012` e `TASK-043` sao as proximas tasks existentes liberadas e podem
+  avancar em paralelo.
 - A ordem numerica nao deve ser usada isoladamente para decidir a execucao.
 
-## Fluxo Recomendado
+## Correcao Obrigatoria do Backlog
 
-### Onda 1 - Decisao de identidade
+Antes de iniciar tasks de implementacao dependentes da fundacao alvo, devem ser
+criadas no catalogo:
 
-Execute primeiro:
+1. Uma task para implementar a fundacao Node.js, Express e Apollo Server
+   GraphQL.
+2. Uma task para implementar a fundacao React Native, Expo e Expo Router.
 
-| Task | Objetivo | Depende de | Pode executar em paralelo |
+Essas tasks devem possuir objetivo, escopo, fora de escopo, dependencias,
+criterios de aceite e estrategia de testes. Este guia nao atribui numeros a
+elas. A numeracao deve ser definida quando o catalogo for atualizado.
+
+As duas fundacoes podem ser planejadas em paralelo. A implementacao GraphQL
+depende do plano da `TASK-006` e deve respeitar os contratos das `TASK-008` e
+`TASK-010`. A implementacao Expo depende do plano da `TASK-007` e deve respeitar
+os contratos das `TASK-008` e `TASK-011`.
+
+## Proxima Onda
+
+As proximas tasks existentes podem ser executadas simultaneamente:
+
+| Task | Objetivo | Dependencias concluidas | Pode executar em paralelo |
 | --- | --- | --- | --- |
-| `TASK-008` | Configurar as especificacoes de autenticacao Firebase | `TASK-006`, `TASK-007` | Nao nesta onda |
-
-A `TASK-008` deve fixar os contratos de registro, login, verificacao de e-mail,
-recuperacao de senha, token Firebase, perfil e limites de autorizacao. As tasks
-seguintes nao devem inventar regras de identidade diferentes.
-
-### Onda 2 - Planos independentes
-
-Depois da `TASK-008`, estas tasks podem ser executadas simultaneamente:
-
-| Task | Objetivo | Depende de | Independencia |
-| --- | --- | --- | --- |
-| `TASK-010` | Planejar o contexto de autenticacao com Firebase Admin | `TASK-006`, `TASK-008` | Nao depende de `TASK-011` ou `TASK-012` |
-| `TASK-011` | Planejar o adapter de Firebase Analytics | `TASK-007`, `TASK-008` | Nao depende de `TASK-010` ou `TASK-012` |
-| `TASK-012` | Planejar a documentacao de GCP e Resend | `TASK-006`, `TASK-007`, `TASK-008` | Nao depende de `TASK-010` ou `TASK-011` |
+| `TASK-012` | Planejar GCP, Cloud Run, Cloud SQL, Secret Manager e Resend | `TASK-006`, `TASK-007`, `TASK-008` | Sim, com `TASK-043` |
+| `TASK-043` | Documentar Firebase Auth e Analytics | `TASK-008`, `TASK-011` | Sim, com `TASK-012` |
 
 Cada task deve permanecer no seu limite:
 
-- `TASK-010` define verificacao de token, contexto autenticado e propagacao do
-  Firebase UID no backend.
-- `TASK-011` define o contrato de eventos e as implementacoes Web, iOS e
-  Android sem acoplar Analytics aos fluxos financeiros.
 - `TASK-012` define projetos, ambientes, segredos, Cloud Run, Cloud SQL e o
-  limite de entrega de e-mails pelo Resend.
+  limite de entrega de e-mails pelo Resend. Nao provisiona infraestrutura.
+- `TASK-043` documenta a configuracao dos projetos Firebase Auth e Analytics.
+  Nao implementa o app Expo nem o adapter de Analytics.
 
-### Onda 3 - Guias de configuracao
-
-Quando os planos da onda anterior estiverem concluidos, estas duas tasks podem
-ser executadas em paralelo:
-
-| Task | Objetivo | Depende de | Independencia |
-| --- | --- | --- | --- |
-| `TASK-043` | Documentar a configuracao de Firebase Auth e Analytics | `TASK-008`, `TASK-011` | Nao depende de `TASK-044` |
-| `TASK-044` | Documentar dominio, remetente e entrega transacional do Resend | `TASK-008`, `TASK-012` | Nao depende de `TASK-043` |
+`TASK-044` permanece bloqueada ate a conclusao da `TASK-012`.
 
 ## Tasks que Nao Devem Comecar Agora
 
@@ -65,24 +60,22 @@ As tasks abaixo exigem componentes que ainda nao existem no codigo:
 
 | Tasks | Bloqueio |
 | --- | --- |
-| `TASK-009` | Requer a fundacao Expo implementada e a especificacao da `TASK-008` |
-| `TASK-017` | Requer backend GraphQL, `TASK-009` e o plano da `TASK-010` |
-| `TASK-034`, `TASK-040` | Requerem backend GraphQL e contexto Firebase Admin implementados |
-| `TASK-035`, `TASK-041`, `TASK-042` | Requerem app Expo e adapters implementados |
-| `TASK-015`, `TASK-036` | Requerem fluxos integrados e estaveis no app Expo e no backend GraphQL |
-| `TASK-037` | Requer builds reais do backend GraphQL e do Expo Web |
+| `TASK-009` | Aguarda a nova fundacao Expo e a especificacao concluida da `TASK-008` |
+| `TASK-017` | Aguarda a nova fundacao GraphQL, `TASK-009` e o plano concluido da `TASK-010` |
+| `TASK-034`, `TASK-040` | Aguardam a nova fundacao GraphQL e o contexto Firebase Admin implementado |
+| `TASK-035`, `TASK-041`, `TASK-042` | Aguardam a nova fundacao Expo e os adapters implementados |
+| `TASK-015`, `TASK-036` | Aguardam fundacoes e fluxos integrados estaveis |
+| `TASK-037` | Aguarda builds reais do backend GraphQL e do Expo Web |
 
-O planejamento atual nao possui uma task de execucao para migrar o backend REST
-para GraphQL nem uma task de execucao para migrar o frontend Vite para Expo.
-Esse bloqueio deve ser resolvido no planejamento antes de iniciar `TASK-009`.
-Este guia apenas registra o bloqueio e nao cria novas tasks.
+Nenhuma task de implementacao deve contornar a correcao obrigatoria do backlog
+ou assumir que as fundacoes GraphQL e Expo ja existem.
 
 ### Dependencias dentro da autenticacao
 
 | Task | Deve aguardar |
 | --- | --- |
 | `TASK-018` | `TASK-009` e o fluxo de sessao Firebase |
-| `TASK-019` | `TASK-008`, `TASK-009`, `TASK-012` e `TASK-044` |
+| `TASK-019` | `TASK-009`, `TASK-012` e `TASK-044` |
 | `TASK-020` | `TASK-017` e o modelo de perfil autenticado |
 
 ### Funcionalidades de produto
@@ -101,22 +94,24 @@ Este guia apenas registra o bloqueio e nao cria novas tasks.
 | `TASK-016` | Decisoes das `TASK-012`, `TASK-043` e `TASK-044`, alem dos alvos de build |
 | `TASK-038`, `TASK-039` | Infraestrutura e builds de producao definidos e verificaveis |
 
-## Resumo de Paralelismo
+## Resumo de Execucao
 
 ```text
-TASK-008
-   |
-   +--> TASK-010
-   +--> TASK-011 --> TASK-043
-   +--> TASK-012 --> TASK-044
+Agora:
+  TASK-012 --------> TASK-044
+  TASK-043
+
+Correcao do backlog:
+  criar task GraphQL --> implementar fundacao GraphQL
+  criar task Expo ----> implementar fundacao Expo --> TASK-009
 ```
 
-- `TASK-010`, `TASK-011` e `TASK-012` sao independentes entre si depois da
-  `TASK-008`.
-- `TASK-043` e `TASK-044` sao independentes entre si quando seus respectivos
-  planos estiverem concluidos.
-- Nenhuma task de implementacao deve contornar o bloqueio da fundacao GraphQL e
-  Expo.
+- `TASK-012` e `TASK-043` podem avancar em paralelo.
+- `TASK-044` depende da `TASK-012`.
+- As novas tasks de fundacao podem ser planejadas em paralelo com a proxima
+  onda documental.
+- Tasks de implementacao dependentes permanecem bloqueadas ate suas fundacoes
+  existirem e serem verificadas.
 
 ## Regra de Inicio
 
@@ -125,5 +120,5 @@ Antes de mover uma task para `In Progress`, confirme:
 1. Todas as dependencias listadas neste guia estao concluidas.
 2. A task possui objetivo, escopo, fora de escopo e criterios de aceite claros.
 3. Os testes necessarios foram definidos antes da implementacao.
-4. Nenhuma decisao contradiz a arquitetura ou a especificacao de autenticacao.
+4. Nenhuma decisao contradiz a arquitetura ou as especificacoes aprovadas.
 5. A task pode ser concluida sem assumir componentes ainda inexistentes.
