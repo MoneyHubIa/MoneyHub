@@ -9,7 +9,7 @@
 | TASK-005 | Scaffold monorepo foundation | Done | EPIC-01 |
 | TASK-006 | Plan GraphQL backend foundation migration | Done | EPIC-01 |
 | TASK-007 | Plan Expo app foundation migration | Done | EPIC-01 |
-| TASK-008 | Configure Firebase authentication specs | Pending | EPIC-02 |
+| TASK-008 | Configure Firebase authentication specs | Done | EPIC-02 |
 | TASK-009 | Implement Firebase Auth app foundation | Pending | EPIC-02 |
 | TASK-010 | Plan Firebase Admin auth context | Pending | EPIC-02 |
 | TASK-011 | Plan Firebase Analytics adapter | Pending | EPIC-02 |
