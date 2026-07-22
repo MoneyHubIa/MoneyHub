@@ -2,7 +2,8 @@
 
 ## General
 
-- JavaScript only.
+- TypeScript only for application and test source files.
+- TypeScript strict mode is required in every workspace.
 - No hard-coded secrets, URLs, credentials, or environment-specific values.
 - Prefer small modules with one responsibility.
 - Use explicit, consistent names.

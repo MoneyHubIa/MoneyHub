@@ -16,23 +16,16 @@ nao altera escopo e nao substitui os criterios de aceite de cada task.
   avancar em paralelo.
 - A ordem numerica nao deve ser usada isoladamente para decidir a execucao.
 
-## Correcao Obrigatoria do Backlog
+## Fundacoes Registradas
 
-Antes de iniciar tasks de implementacao dependentes da fundacao alvo, devem ser
-criadas no catalogo:
+As lacunas de implementacao foram registradas no catalogo:
 
-1. Uma task para implementar a fundacao Node.js, Express e Apollo Server
-   GraphQL.
-2. Uma task para implementar a fundacao React Native, Expo e Expo Router.
+1. `TASK-048` implementa a fundacao Node.js, Express e Apollo Server GraphQL.
+2. `TASK-049` implementa a fundacao React Native, Expo e Expo Router.
 
-Essas tasks devem possuir objetivo, escopo, fora de escopo, dependencias,
-criterios de aceite e estrategia de testes. Este guia nao atribui numeros a
-elas. A numeracao deve ser definida quando o catalogo for atualizado.
-
-As duas fundacoes podem ser planejadas em paralelo. A implementacao GraphQL
-depende do plano da `TASK-006` e deve respeitar os contratos das `TASK-008` e
-`TASK-010`. A implementacao Expo depende do plano da `TASK-007` e deve respeitar
-os contratos das `TASK-008` e `TASK-011`.
+`TASK-048` depende do plano da `TASK-006` e respeita os contratos das
+`TASK-008` e `TASK-010`. `TASK-049` depende do plano da `TASK-007` e respeita os
+contratos das `TASK-008` e `TASK-011`.
 
 ## Proxima Onda
 
@@ -40,6 +33,8 @@ As proximas tasks existentes podem ser executadas simultaneamente:
 
 | Task | Objetivo | Dependencias concluidas | Pode executar em paralelo |
 | --- | --- | --- | --- |
+| `TASK-048` | Implementar backend TypeScript, GraphQL e Prisma | `TASK-006`, `TASK-008`, `TASK-010` | Nao; executar antes de `TASK-009` |
+| `TASK-049` | Implementar app TypeScript com Expo Router | `TASK-007`, `TASK-008`, `TASK-011` | Depois de `TASK-048` para reduzir conflitos de workspace |
 | `TASK-012` | Planejar GCP, Cloud Run, Cloud SQL, Secret Manager e Resend | `TASK-006`, `TASK-007`, `TASK-008` | Sim, com `TASK-043` |
 | `TASK-043` | Documentar Firebase Auth e Analytics | `TASK-008`, `TASK-011` | Sim, com `TASK-012` |
 
@@ -60,15 +55,15 @@ As tasks abaixo exigem componentes que ainda nao existem no codigo:
 
 | Tasks | Bloqueio |
 | --- | --- |
-| `TASK-009` | Aguarda a nova fundacao Expo e a especificacao concluida da `TASK-008` |
-| `TASK-017` | Aguarda a nova fundacao GraphQL, `TASK-009` e o plano concluido da `TASK-010` |
+| `TASK-009` | Aguarda a conclusao da `TASK-049` e a especificacao concluida da `TASK-008` |
+| `TASK-017` | Aguarda `TASK-048`, `TASK-009` e o plano concluido da `TASK-010` |
 | `TASK-034`, `TASK-040` | Aguardam a nova fundacao GraphQL e o contexto Firebase Admin implementado |
 | `TASK-035`, `TASK-041`, `TASK-042` | Aguardam a nova fundacao Expo e os adapters implementados |
 | `TASK-015`, `TASK-036` | Aguardam fundacoes e fluxos integrados estaveis |
 | `TASK-037` | Aguarda builds reais do backend GraphQL e do Expo Web |
 
-Nenhuma task de implementacao deve contornar a correcao obrigatoria do backlog
-ou assumir que as fundacoes GraphQL e Expo ja existem.
+Nenhuma task dependente deve assumir que `TASK-048` ou `TASK-049` esta concluida
+antes de seus criterios de aceite serem verificados.
 
 ### Dependencias dentro da autenticacao
 
@@ -102,14 +97,13 @@ Agora:
   TASK-043
 
 Correcao do backlog:
-  criar task GraphQL --> implementar fundacao GraphQL
-  criar task Expo ----> implementar fundacao Expo --> TASK-009
+  TASK-048 --> TASK-049 --> TASK-009
 ```
 
 - `TASK-012` e `TASK-043` podem avancar em paralelo.
 - `TASK-044` depende da `TASK-012`.
-- As novas tasks de fundacao podem ser planejadas em paralelo com a proxima
-  onda documental.
+- As tasks de fundacao podem ser executadas enquanto a proxima onda documental
+  avanca em paralelo.
 - Tasks de implementacao dependentes permanecem bloqueadas ate suas fundacoes
   existirem e serem verificadas.
 

@@ -49,3 +49,5 @@
 | TASK-045 | Implement financial reminders | Pending | EPIC-06 |
 | TASK-046 | Implement notification center | Pending | EPIC-06 |
 | TASK-047 | Implement recurring events | Pending | EPIC-06 |
+| TASK-048 | Implement TypeScript GraphQL backend foundation | Pending | EPIC-01 |
+| TASK-049 | Implement TypeScript Expo app foundation | Pending | EPIC-01 |
