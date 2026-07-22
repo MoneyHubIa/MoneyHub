@@ -17,11 +17,38 @@ A aplicação cliente deve interagir com o serviço de analytics exclusivamente 
 O contrato do adapter é definido da seguinte forma:
 
 ```typescript
+/**
+ * Nomes de eventos permitidos para evitar poluição e inconsistência.
+ */
+export type AppEventName = 
+  | 'login'
+  | 'signup'
+  | 'logout'
+  | 'screen_view'
+  | 'button_click'
+  | 'error_occurred'
+  | 'feature_used';
+
+/**
+ * Parâmetros permitidos nos eventos.
+ * REGRA CRÍTICA: É estritamente proibido enviar dados financeiros (valores, saldos), 
+ * senhas, ou PII (dados sensíveis/pessoais como nome, email, CPF).
+ */
+export type AppEventParams = {
+  screen_name?: string;
+  button_id?: string;
+  error_code?: string;
+  error_message?: string;
+  method?: string; // ex: 'email', 'google'
+  feature_name?: string;
+};
+
 export interface AnalyticsAdapter {
   /**
-   * Envia um evento genérico de analytics com parâmetros opcionais.
+   * Envia um evento de analytics, restrito ao dicionário de eventos e parâmetros permitidos,
+   * garantindo que nenhum dado sensível ou financeiro seja trafegado.
    */
-  logEvent(name: string, params?: Record<string, any>): Promise<void> | void;
+  logEvent(name: AppEventName, params?: AppEventParams): Promise<void> | void;
 
   /**
    * Define a tela atual que o usuário está visualizando.
@@ -51,7 +78,7 @@ A implementação Web será executada no navegador do usuário e utilizará o SD
 Nem todos os ambientes Web suportam o Firebase Analytics (por exemplo, navegação anônima estrita, bloqueadores de anúncios ou SSR). Portanto, a inicialização do SDK Web deve obrigatoriamente validar o suporte antes de invocar a API.
 
 ```typescript
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAnalytics, isSupported, logEvent as fbLogEvent } from 'firebase/analytics';
 
 const firebaseConfig = {
@@ -69,7 +96,8 @@ let webAnalyticsInstance: any = null;
 // Inicializa de forma assíncrona para não bloquear a thread principal
 isSupported().then((supported) => {
   if (supported) {
-    const app = initializeApp(firebaseConfig);
+    // Reutiliza o Firebase App existente (ex: inicializado pelo Auth) ou cria um novo
+    const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
     webAnalyticsInstance = getAnalytics(app);
   } else {
     console.warn('Firebase Analytics não é suportado no ambiente web atual.');
@@ -96,10 +124,10 @@ A implementação nativa será executada em dispositivos iOS e Android utilizand
 ### Exemplo de Implementação:
 ```typescript
 import analytics from '@react-native-firebase/analytics';
-import { AnalyticsAdapter } from './analytics';
+import { AnalyticsAdapter, AppEventName, AppEventParams } from './analytics';
 
 export class NativeAnalyticsAdapter implements AnalyticsAdapter {
-  async logEvent(name: string, params?: Record<string, any>): Promise<void> {
+  async logEvent(name: AppEventName, params?: AppEventParams): Promise<void> {
     try {
       await analytics().logEvent(name, params);
     } catch (error) {
@@ -147,8 +175,10 @@ Para garantir esse isolamento:
 2. **Implementação No-Op (Sem Operação):** Uma classe `NoOpAnalyticsAdapter` que implementa `AnalyticsAdapter` com métodos vazios será utilizada caso ocorram erros graves de inicialização ou caso o suporte a analytics seja ausente.
 
 ```typescript
+import { AnalyticsAdapter, AppEventName, AppEventParams } from './analytics';
+
 export class NoOpAnalyticsAdapter implements AnalyticsAdapter {
-  logEvent(name: string, params?: Record<string, any>): void {}
+  logEvent(name: AppEventName, params?: AppEventParams): void {}
   setCurrentScreen(screenName: string, screenClass?: string): void {}
   setUserId(userId: string | null): void {}
   setUserProperties(properties: Record<string, any>): void {}
@@ -179,11 +209,11 @@ jest.mock('./services/analytics', () => {
 
 ---
 
-## Critérios de Aceite para Futura Implementação
+## Requisitos para Futura Implementação
 
-- [ ] Definição do contrato comum de `AnalyticsAdapter` compatível com TypeScript.
-- [ ] Criação do adapter Web utilizando o Firebase JS SDK com verificação dinâmica via `isSupported()`.
-- [ ] Criação do adapter Nativo utilizando `@react-native-firebase/analytics`.
-- [ ] Uso automático do arquivo correto por plataforma (`analytics.web.ts` e `analytics.native.ts` exportando a instância unificada de `analytics`).
-- [ ] Fallback silencioso (sem lançar erros fatais) para um comportamento No-Op em caso de falha de carregamento ou ambientes não suportados.
-- [ ] Garantia de 100% de cobertura nos testes unitários mockando o comportamento do Firebase Analytics.
+* Definição do contrato comum de `AnalyticsAdapter` e restrições de eventos em TypeScript.
+* Criação do adapter Web utilizando o Firebase JS SDK com verificação via `isSupported()` e compartilhamento do app inicializado (`getApps()`).
+* Criação do adapter Nativo utilizando `@react-native-firebase/analytics`.
+* Uso automático do arquivo correto por plataforma (`analytics.web.ts` e `analytics.native.ts` exportando a instância unificada).
+* Fallback silencioso (sem lançar erros fatais) para um comportamento No-Op em caso de falha.
+* Garantia de 100% de cobertura nos testes unitários mockando o comportamento do Analytics.
