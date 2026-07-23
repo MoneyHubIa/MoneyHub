@@ -10,7 +10,7 @@
 | TASK-006 | Plan GraphQL backend foundation migration | Done | EPIC-01 |
 | TASK-007 | Plan Expo app foundation migration | Done | EPIC-01 |
 | TASK-008 | Configure Firebase authentication specs | Done | EPIC-02 |
-| TASK-009 | Implement Firebase Auth app foundation | Pending | EPIC-02 |
+| TASK-009 | Implement Firebase Auth app foundation | Done | EPIC-02 |
 | TASK-010 | Plan Firebase Admin auth context | Done | EPIC-02 |
 | TASK-011 | Plan Firebase Analytics adapter | Done | EPIC-02 |
 | TASK-012 | Plan GCP and Resend infrastructure docs | Pending | EPIC-08 |
@@ -49,5 +49,5 @@
 | TASK-045 | Implement financial reminders | Pending | EPIC-06 |
 | TASK-046 | Implement notification center | Pending | EPIC-06 |
 | TASK-047 | Implement recurring events | Pending | EPIC-06 |
-| TASK-048 | Implement TypeScript GraphQL backend foundation | Pending | EPIC-01 |
-| TASK-049 | Implement TypeScript Expo app foundation | Pending | EPIC-01 |
+| TASK-048 | Implement TypeScript GraphQL backend foundation | In Progress | EPIC-01 |
+| TASK-049 | Implement TypeScript Expo app foundation | Done | EPIC-01 |

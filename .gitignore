@@ -6,6 +6,7 @@ coverage/
 .DS_Store
 npm-debug.log*
 .vite/
+.expo/
 cypress/videos/
 cypress/screenshots/
 .worktrees/
@@ -13,3 +14,4 @@ worktrees/
 logs/
 apps/backend/src/generated/prisma/
 .env*
+apps/backend/credentials

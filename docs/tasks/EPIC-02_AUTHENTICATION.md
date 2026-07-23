@@ -12,7 +12,7 @@ Plan and implement secure account lifecycle with Firebase Auth, Firebase Admin t
 ## Initial Tasks
 
 - [x] TASK-008 - Configure Firebase authentication specs.
-- TASK-009 - Implement Firebase Auth app foundation.
+- [x] TASK-009 - Implement Firebase Auth app foundation.
 - [x] TASK-010 - Plan Firebase Admin auth context.
 - [x] TASK-011 - Plan Firebase Analytics adapter.
 - TASK-017 - Implement authenticated GraphQL profile bootstrap.
@@ -21,6 +21,18 @@ Plan and implement secure account lifecycle with Firebase Auth, Firebase Admin t
 - TASK-020 - Implement profile management.
 
 ## Tasks Detail
+
+### TASK-009 - Implement Firebase Auth app foundation
+
+## Status
+Done
+
+## Completion Review
+
+The Expo app implements Firebase email/password registration, login, session
+observation with native persistence, and fresh ID-token propagation to Apollo
+requests. The Auth Emulator acceptance test verifies registration, login, token
+issuance, and restored session state without contacting production Firebase.
 
 ### TASK-010 - Plan Firebase Admin auth context
 

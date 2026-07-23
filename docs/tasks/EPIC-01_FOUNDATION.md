@@ -1,7 +1,7 @@
 # EPIC-01 - Foundation
 
 ## Status
-Pending
+In Progress
 
 ## Feature
 Project foundation migration.
@@ -83,7 +83,7 @@ planning only; migration implementation remains outside this task.
 ### TASK-048 - Implement TypeScript GraphQL backend foundation
 
 ## Status
-Pending
+In Progress
 
 ## Objective
 Replace the REST-only JavaScript scaffold with a strict TypeScript Express and
@@ -110,10 +110,18 @@ Apollo Server GraphQL foundation backed by Prisma and PostgreSQL.
 - Prisma validates and its initial migration applies to disposable PostgreSQL.
 - Backend tests, lint, typecheck, and build pass.
 
+## Implementation Review
+
+The TypeScript GraphQL backend, Firebase Admin context, Prisma schema, and
+initial migration are implemented. Unit and integration tests, lint, typecheck,
+build, Prisma validation, and Prisma client generation pass. Applying the
+initial migration remains pending because no disposable external
+`DATABASE_URL` is configured.
+
 ### TASK-049 - Implement TypeScript Expo app foundation
 
 ## Status
-Pending
+Done
 
 ## Objective
 Replace the Vite app with a strict TypeScript Expo Router app for iOS, Android,
@@ -137,6 +145,13 @@ and Web while preserving the MoneyHub shell.
 - Apollo Client reads the configured GraphQL endpoint.
 - Analytics failures never block app workflows.
 - App tests, lint, typecheck, and build pass.
+
+## Completion Review
+
+The Vite app was replaced in place by Expo Router with strict TypeScript,
+responsive native components, Apollo Client, Firebase Auth boundaries, and
+resilient Web/native Analytics adapters. Jest, lint, typecheck, Expo Doctor,
+Firebase Auth Emulator integration, and Web/iOS/Android exports pass.
 
 ## Completion Dependencies
 

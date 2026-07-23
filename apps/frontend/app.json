@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "MoneyHub",
+    "slug": "moneyhub",
+    "scheme": "moneyhub",
+    "version": "0.1.0",
+    "orientation": "default",
+    "userInterfaceStyle": "automatic",
+    "plugins": [
+      "expo-router",
+      "expo-splash-screen",
+      "@react-native-firebase/app",
+      "@react-native-firebase/analytics"
+    ],
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
