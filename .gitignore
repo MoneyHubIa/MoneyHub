@@ -5,6 +5,7 @@ coverage/
 .env.local
 .DS_Store
 npm-debug.log*
+firebase-debug.log*
 .vite/
 .expo/
 cypress/videos/
