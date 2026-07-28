@@ -51,6 +51,7 @@ describe('HTTP request logging', () => {
     assert.equal(response.status, 200);
     assert.equal(logs.length, 1);
     assert.equal(logs[0]?.level, 'info');
+    assert.equal(logs[0]?.event.requestId, response.headers['x-request-id']);
     assert.deepEqual(
       {
         ...logs[0]?.event,
