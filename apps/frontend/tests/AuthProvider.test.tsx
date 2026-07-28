@@ -16,6 +16,7 @@ describe('AuthProvider', () => {
     const service: AuthService = {
       register: jest.fn(),
       login: jest.fn(),
+      logout: jest.fn(),
       getIdToken: jest.fn(),
       observeSession: (callback) => {
         callback({ uid: 'firebase-uid', email: 'person@example.com' });
@@ -32,3 +33,4 @@ describe('AuthProvider', () => {
     expect(screen.getByText('person@example.com')).toBeOnTheScreen();
   });
 });
+

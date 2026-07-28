@@ -10,6 +10,7 @@ type FirebaseUserLike = SessionUser & {
 interface FirebaseAuthDependencies {
   createUser(email: string, password: string): Promise<unknown>;
   signIn(email: string, password: string): Promise<unknown>;
+  signOut(): Promise<void>;
   observe(callback: (user: FirebaseUserLike | null) => void): () => void;
   getCurrentUser(): FirebaseUserLike | null;
 }
@@ -17,6 +18,7 @@ interface FirebaseAuthDependencies {
 export interface AuthService {
   register(email: string, password: string): Promise<void>;
   login(email: string, password: string): Promise<void>;
+  logout(): Promise<void>;
   observeSession(callback: (user: SessionUser | null) => void): () => void;
   getIdToken(): Promise<string | null>;
 }
@@ -34,6 +36,9 @@ export function createFirebaseAuthService(
     },
     async login(email, password) {
       await dependencies.signIn(normalizeEmail(email), password);
+    },
+    async logout() {
+      await dependencies.signOut();
     },
     observeSession(callback) {
       return dependencies.observe((user) => {

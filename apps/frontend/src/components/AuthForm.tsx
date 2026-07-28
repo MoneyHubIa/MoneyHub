@@ -20,10 +20,12 @@ export function AuthForm({ mode, onSubmit }: AuthFormProps) {
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const submit = async () => {
     setError(null);
+    setSuccess(null);
     if (registering && password !== confirmation) {
       setError('As senhas nao coincidem.');
       return;
@@ -32,6 +34,11 @@ export function AuthForm({ mode, onSubmit }: AuthFormProps) {
     setSubmitting(true);
     try {
       await onSubmit(email, password);
+      setSuccess(
+        registering
+          ? 'Conta criada com sucesso!'
+          : 'Login realizado com sucesso!'
+      );
     } catch (submitError) {
       setError(authErrorMessage(submitError));
     } finally {
@@ -78,6 +85,7 @@ export function AuthForm({ mode, onSubmit }: AuthFormProps) {
         </View>
       ) : null}
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+      {success ? <Text accessibilityRole="alert" style={styles.success}>{success}</Text> : null}
       <Pressable
         accessibilityRole="button"
         disabled={submitting}
@@ -112,6 +120,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12
   },
   error: { color: '#b91c1c', fontSize: 14 },
+  success: { color: '#15803d', fontSize: 14, fontWeight: '600' },
   submit: {
     alignItems: 'center',
     backgroundColor: '#0f766e',
@@ -126,3 +135,4 @@ const styles = StyleSheet.create({
   submitDisabled: { opacity: 0.7 },
   submitText: { color: '#ffffff', fontSize: 16, fontWeight: '700' }
 });
+

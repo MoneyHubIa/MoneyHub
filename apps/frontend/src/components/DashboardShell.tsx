@@ -1,15 +1,18 @@
+import { useRouter } from 'expo-router';
 import {
   BarChart3,
   Bot,
   CalendarDays,
   CreditCard,
   LayoutDashboard,
+  LogOut,
   Settings,
   Target,
   WalletCards
 } from 'lucide-react-native';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +20,7 @@ import {
   useWindowDimensions,
   View
 } from 'react-native';
+import { useAuth } from '../providers/AuthProvider';
 
 const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -33,11 +37,24 @@ type NavigationId = (typeof navigationItems)[number]['id'];
 export function DashboardShell() {
   const { width } = useWindowDimensions();
   const desktop = width >= 900;
+  const { logout } = useAuth();
+  const router = useRouter();
   const [activeSectionId, setActiveSectionId] =
     useState<NavigationId>('dashboard');
+  const [loggingOut, setLoggingOut] = useState(false);
   const activeSection =
     navigationItems.find((item) => item.id === activeSectionId) ??
     navigationItems[0];
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+      router.replace('/(auth)/login');
+    } catch {
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <View style={[styles.shell, desktop ? styles.shellDesktop : styles.shellMobile]}>
@@ -72,6 +89,25 @@ export function DashboardShell() {
             );
           })}
         </ScrollView>
+
+        <Pressable
+          accessibilityLabel="Sair"
+          accessibilityRole="button"
+          disabled={loggingOut}
+          onPress={handleLogout}
+          style={({ pressed }) => [
+            styles.logoutButton,
+            pressed && styles.logoutButtonPressed,
+            loggingOut && styles.logoutButtonDisabled
+          ]}
+        >
+          {loggingOut ? (
+            <ActivityIndicator color="#b91c1c" size="small" />
+          ) : (
+            <LogOut color="#b91c1c" size={18} />
+          )}
+          <Text style={styles.logoutText}>Sair</Text>
+        </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} style={styles.main}>
@@ -162,5 +198,9 @@ const styles = StyleSheet.create({
   primaryAction: { alignItems: 'center', backgroundColor: '#0f766e', borderRadius: 6, flexDirection: 'row', gap: 8, minHeight: 42, paddingHorizontal: 16, paddingVertical: 10 },
   primaryActionText: { color: '#ffffff', fontSize: 14, fontWeight: '700' },
   chartPlaceholder: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: 6, borderStyle: 'dashed', borderWidth: 1, gap: 12, justifyContent: 'center', minHeight: 220, padding: 24 },
-  placeholderText: { color: '#64748b', fontSize: 14, maxWidth: 520, textAlign: 'center' }
+  placeholderText: { color: '#64748b', fontSize: 14, maxWidth: 520, textAlign: 'center' },
+  logoutButton: { alignItems: 'center', borderColor: '#fecaca', borderRadius: 6, borderWidth: 1, flexDirection: 'row', gap: 9, marginTop: 'auto', minHeight: 42, paddingHorizontal: 12, paddingVertical: 10 },
+  logoutButtonPressed: { backgroundColor: '#fef2f2' },
+  logoutButtonDisabled: { opacity: 0.6 },
+  logoutText: { color: '#b91c1c', fontSize: 14, fontWeight: '600' }
 });
