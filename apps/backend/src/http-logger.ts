@@ -29,13 +29,14 @@ export function httpLogLevel(statusCode: number): HttpLogLevel {
 export function createHttpLoggingMiddleware(logger: HttpLogger): RequestHandler {
   return (request, response, next) => {
     const startedAt = performance.now();
+    const path = request.path;
 
     response.once('finish', () => {
       const event: HttpCompletionEvent = {
         event: 'http_request_completed',
         requestId: String(response.locals.requestId),
         method: request.method,
-        path: request.path,
+        path,
         statusCode: response.statusCode,
         durationMs: Math.max(0, performance.now() - startedAt)
       };
