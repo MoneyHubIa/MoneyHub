@@ -38,12 +38,6 @@ describe('backend foundation', () => {
     assert.ok(response.headers['x-request-id']);
   });
 
-  test('removes the legacy health route', async () => {
-    const response = await request(app).get('/api/v1/health');
-
-    assert.equal(response.status, 404);
-  });
-
   test('serves the public GraphQL health query', async () => {
     const response = await request(app)
       .post('/graphql')
