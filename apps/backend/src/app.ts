@@ -17,9 +17,15 @@ import {
   type GraphQLContext
 } from './graphql.js';
 import { disconnectDatabase } from './database.js';
+import {
+  appLogger,
+  createHttpLoggingMiddleware,
+  type HttpLogger
+} from './http-logger.js';
 
 type CreateAppOptions = {
   verifyIdToken?: VerifyIdToken;
+  logger?: HttpLogger;
 };
 
 function bearerToken(request: Request): string | null {
@@ -56,6 +62,7 @@ export async function createApp(
   options: CreateAppOptions = {}
 ): Promise<Express> {
   const verifyIdToken = options.verifyIdToken ?? verifyFirebaseIdToken;
+  const logger = options.logger ?? appLogger;
   const app = express();
   const apollo = new ApolloServer<GraphQLContext>({ typeDefs, resolvers });
   await apollo.start();
@@ -69,6 +76,7 @@ export async function createApp(
     response.setHeader('x-request-id', requestId);
     next();
   });
+  app.use(createHttpLoggingMiddleware(logger));
 
   app.get('/health', (_request, response) => {
     response.status(200).json({
