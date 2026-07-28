@@ -7,16 +7,12 @@ import {
   TextInput,
   View
 } from 'react-native';
+import { authErrorMessage } from '../services/authErrorMessage';
 
 type AuthFormProps = Readonly<{
   mode: 'login' | 'register';
   onSubmit(email: string, password: string): Promise<void>;
 }>;
-
-function authErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message) return error.message;
-  return 'Nao foi possivel autenticar. Tente novamente.';
-}
 
 export function AuthForm({ mode, onSubmit }: AuthFormProps) {
   const registering = mode === 'register';
