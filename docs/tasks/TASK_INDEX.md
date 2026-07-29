@@ -18,8 +18,8 @@
 | TASK-014 | Implement agenda foundation | Pending | EPIC-06 |
 | TASK-015 | Configure E2E tests | Pending | EPIC-07 |
 | TASK-016 | Prepare deploy checklist | Pending | EPIC-08 |
-| TASK-017 | Implement authenticated GraphQL profile bootstrap | Pending | EPIC-02 |
-| TASK-018 | Implement logout and local Firebase session cleanup | Pending | EPIC-02 |
+| TASK-017 | Implement authenticated GraphQL profile bootstrap | Done | EPIC-02 |
+| TASK-018 | Implement logout and local Firebase session cleanup | Done | EPIC-02 |
 | TASK-019 | Implement password recovery with Firebase links and Resend | Pending | EPIC-02 |
 | TASK-020 | Implement profile management | Pending | EPIC-02 |
 | TASK-021 | Implement financial categories | Pending | EPIC-03 |

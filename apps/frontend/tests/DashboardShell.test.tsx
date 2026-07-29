@@ -23,6 +23,12 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: jest.fn() })
 }));
 
+jest.mock('@apollo/client', () => ({
+  useApolloClient: () => ({
+    clearStore: jest.fn()
+  })
+}));
+
 describe('MoneyHub dashboard shell', () => {
   test('renders the product and financial summary', async () => {
     await render(<DashboardShell />, { wrapper: Wrapper });

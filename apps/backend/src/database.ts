@@ -13,6 +13,11 @@ function createPrismaClient(databaseUrl: string): PrismaClient {
   return new PrismaClient({ adapter });
 }
 
+export function getPrismaClient(): PrismaClient {
+  if (!prisma) throw new Error('Prisma is not initialized. Database is not connected.');
+  return prisma;
+}
+
 export function getIdentityRepository(): IdentityRepository {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
