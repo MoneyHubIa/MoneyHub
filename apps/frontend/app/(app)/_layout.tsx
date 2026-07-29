@@ -1,6 +1,7 @@
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
-import { Redirect, Stack, usePathname } from 'expo-router';
+import { Redirect, Stack, usePathname, useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -14,17 +15,27 @@ const ME_QUERY = gql`
 `;
 
 export default function AuthenticatedLayout() {
+  const router = useRouter();
   const { loading: authLoading, user } = useAuth();
-  const { data, loading: apolloLoading } = useQuery<{ me: { id: string, needsProfileBootstrap: boolean } }>(ME_QUERY, { skip: !user });
+  const { data, loading: apolloLoading } = useQuery<{ me: { id: string; needsProfileBootstrap: boolean } }>(ME_QUERY, { skip: !user });
   const pathname = usePathname();
 
-  if (authLoading || (user && apolloLoading)) return <LoadingScreen />;
-  if (!user) return <Redirect href="/(auth)/login" />;
-
+  const isInitialLoading = apolloLoading && !data;
   const needsBootstrap = data?.me?.needsProfileBootstrap;
-  if (needsBootstrap && pathname !== '/onboarding') {
-    return <Redirect href="/(app)/onboarding" />;
-  }
+  const isOnboarding = pathname.includes('onboarding');
+
+  useEffect(() => {
+    if (authLoading || apolloLoading || !user) return;
+
+    if (needsBootstrap && !isOnboarding) {
+      router.replace('/(app)/onboarding');
+    } else if (needsBootstrap === false && isOnboarding) {
+      router.replace('/(app)');
+    }
+  }, [authLoading, apolloLoading, user, needsBootstrap, isOnboarding, router]);
+
+  if (authLoading || (user && isInitialLoading)) return <LoadingScreen />;
+  if (!user) return <Redirect href="/(auth)/login" />;
 
   return <Stack screenOptions={{ headerShown: false }} />;
 }

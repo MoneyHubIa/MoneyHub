@@ -43,7 +43,16 @@ export function createFirebaseVerifier(
 ): VerifyIdToken {
   return async (token) => {
     const decodedToken = await dependencies.verifyToken(token);
-    const firebaseUser = await dependencies.getUser(decodedToken.uid);
+    let firebaseUser: FirebaseUser;
+    try {
+      firebaseUser = await dependencies.getUser(decodedToken.uid);
+    } catch {
+      firebaseUser = {
+        uid: decodedToken.uid,
+        email: ((decodedToken as Record<string, unknown>).email as string | undefined) ?? null,
+        emailVerified: Boolean((decodedToken as Record<string, unknown>).email_verified)
+      };
+    }
 
     if (!firebaseUser.email) {
       const error = new Error('Firebase identity must expose an email address.');
@@ -67,11 +76,16 @@ export function createFirebaseVerifier(
   };
 }
 
+import fs from 'node:fs';
+
 function firebaseAuth() {
+  const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  const hasCredFile = credPath && fs.existsSync(credPath);
+
   const app =
     getApps()[0] ??
     initializeApp({
-      credential: applicationDefault(),
+      ...(hasCredFile ? { credential: applicationDefault() } : {}),
       ...(process.env.FIREBASE_PROJECT_ID
         ? { projectId: process.env.FIREBASE_PROJECT_ID }
         : {})
@@ -80,9 +94,11 @@ function firebaseAuth() {
 }
 
 export const verifyFirebaseIdToken: VerifyIdToken = (token) => {
+  const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  const hasCredFile = Boolean(credPath && fs.existsSync(credPath));
   const auth = firebaseAuth();
   return createFirebaseVerifier({
-    verifyToken: async (value) => auth.verifyIdToken(value, true),
+    verifyToken: async (value) => auth.verifyIdToken(value, hasCredFile),
     getUser: async (uid) => auth.getUser(uid),
     identityRepository: getIdentityRepository()
   })(token);

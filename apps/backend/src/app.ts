@@ -53,7 +53,8 @@ async function authenticate(
 
   try {
     return await verifyIdToken(token);
-  } catch {
+  } catch (error) {
+    console.error('[AUTH ERROR] Firebase ID token verification failed:', error);
     throw unauthenticatedError();
   }
 }
@@ -69,7 +70,8 @@ export async function createApp(
 
   app.disable('x-powered-by');
   app.use(helmet());
-  app.use(cors({ origin: process.env.FRONTEND_URL || false }));
+  const configuredOrigin = process.env.FRONTEND_URL?.replace(/\/+$/, '');
+  app.use(cors({ origin: configuredOrigin || false }));
   app.use((request, response, next) => {
     const requestId = request.header('x-request-id') || crypto.randomUUID();
     response.locals.requestId = requestId;
