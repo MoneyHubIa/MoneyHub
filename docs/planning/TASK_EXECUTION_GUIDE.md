@@ -14,6 +14,8 @@ depois da conclusao do `EPIC-01`.
   possui Apollo Client e adapters de Analytics Web/nativo.
 - `TASK-009` esta concluida. Registro, login, sessao e ID token foram validados
   no Firebase Auth Emulator.
+- `TASK-020` esta concluida. O perfil autenticado pode consultar e alterar nome,
+  moeda preferida e tema pela tela Ajustes e pelo contrato GraphQL.
 - `EPIC-01` esta concluido.
 - Producao Firebase, Cloud SQL, GCP, Resend e deploy continuam fora do escopo da
   fundacao.
@@ -32,9 +34,9 @@ depois da conclusao do `EPIC-01`.
 
 | Ordem | Task | Acao | Condicao de conclusao |
 | --- | --- | --- | --- |
-| 1 | `TASK-020` | Implementar gerenciamento de perfil | Contrato, testes e fluxo autenticado concluidos |
-| 2 | `TASK-019` | Implementar recuperacao de senha | Firebase Admin e Resend configurados; entrega de link testada |
-| 3 | `TASK-021` | Implementar categorias financeiras | Contrato, migration, resolvers, interface e testes concluidos |
+| 1 | `TASK-019` | Implementar recuperacao de senha | Firebase Admin e Resend configurados; entrega de link testada |
+| 2 | `TASK-021` | Implementar categorias financeiras | Contrato, migration, resolvers, interface e testes concluidos |
+| 3 | `TASK-014` | Implementar fundacao de agenda | Contrato, persistence, interface e testes concluidos |
 
 `TASK-012` e `TASK-043` podem avancar em paralelo por serem documentais e nao
 alterarem o gate de fundacao.

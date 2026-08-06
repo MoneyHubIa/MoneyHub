@@ -5,8 +5,8 @@ MoneyHub is a universal financial management SaaS for personal and business user
 ## Current Stage
 
 The foundation migration is complete. The project is now in the authentication
-phase: Firebase registration, login, session handling, profile bootstrap, and
-logout are implemented; password recovery and profile management remain.
+phase: Firebase registration, login, session handling, profile bootstrap,
+logout, and profile management are implemented; password recovery remains.
 
 ## Monorepo
 

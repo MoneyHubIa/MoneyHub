@@ -22,6 +22,7 @@ import {
   View
 } from 'react-native';
 import { useAuth } from '../providers/AuthProvider';
+import { ProfileSettings } from './ProfileSettings';
 
 const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -155,6 +156,8 @@ export function DashboardShell() {
               </Text>
             </View>
           </>
+        ) : activeSectionId === 'ajustes' ? (
+          <ProfileSettings />
         ) : (
           <View style={styles.header}>
             <Text style={styles.eyebrow}>MoneyHub</Text>

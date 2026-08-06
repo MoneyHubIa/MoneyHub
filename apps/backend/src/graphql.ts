@@ -1,6 +1,13 @@
 import { GraphQLError } from 'graphql';
 import type { AuthContext } from './auth.js';
 import { getPrismaClient } from './database.js';
+import {
+  getMyProfile,
+  updateMyProfile,
+  type Profile,
+  type ProfileInput,
+  type ProfileRepository
+} from './profile-management.js';
 
 export type GraphQLContext = {
   requestId: string;
@@ -12,6 +19,30 @@ type BootstrapProfileInput = {
   preferredCurrency?: string;
   theme?: 'SYSTEM' | 'LIGHT' | 'DARK';
 };
+
+function profileRepository(): ProfileRepository {
+  const prisma = getPrismaClient();
+  const mapProfile = (profile: {
+    id: string;
+    fullName: string;
+    preferredCurrency: string;
+    theme: string;
+  }): Profile => ({
+    ...profile,
+    theme: profile.theme as Profile['theme']
+  });
+
+  return {
+    findUnique: async ({ where }) => {
+      const profile = await prisma.profile.findUnique({ where });
+      return profile ? mapProfile(profile) : null;
+    },
+    update: async ({ where, data }) => {
+      const profile = await prisma.profile.update({ where, data });
+      return mapProfile(profile);
+    }
+  };
+}
 
 export const typeDefs = `#graphql
   type Health {
@@ -47,6 +78,12 @@ export const typeDefs = `#graphql
     theme: ProfileTheme = SYSTEM
   }
 
+  input UpdateMyProfileInput {
+    fullName: String!
+    preferredCurrency: String!
+    theme: ProfileTheme!
+  }
+
   type BootstrapProfilePayload {
     user: AuthUser!
     profile: Profile!
@@ -56,10 +93,12 @@ export const typeDefs = `#graphql
   type Query {
     health: Health!
     me: AuthUser
+    myProfile: Profile!
   }
 
   type Mutation {
     bootstrapProfile(input: BootstrapProfileInput!): BootstrapProfilePayload!
+    updateMyProfile(input: UpdateMyProfileInput!): Profile!
   }
 `;
 
@@ -80,6 +119,9 @@ export const resolvers = {
         email: context.auth.email,
         emailVerified: context.auth.emailVerified
       };
+    },
+    myProfile: (_parent: unknown, _args: unknown, context: GraphQLContext) => {
+      return getMyProfile(context, profileRepository());
     }
   },
   Mutation: {
@@ -152,6 +194,13 @@ export const resolvers = {
           created: true
         };
       });
+    },
+    updateMyProfile: (
+      _parent: unknown,
+      args: { input: ProfileInput },
+      context: GraphQLContext
+    ) => {
+      return updateMyProfile(context, args.input, profileRepository());
     }
   },
   AuthUser: {

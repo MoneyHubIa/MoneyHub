@@ -21,7 +21,7 @@
 | TASK-017 | Implement authenticated GraphQL profile bootstrap | Done | EPIC-02 |
 | TASK-018 | Implement logout and local Firebase session cleanup | Done | EPIC-02 |
 | TASK-019 | Implement password recovery with Firebase links and Resend | Pending | EPIC-02 |
-| TASK-020 | Implement profile management | Pending | EPIC-02 |
+| TASK-020 | Implement profile management | Done | EPIC-02 |
 | TASK-021 | Implement financial categories | Pending | EPIC-03 |
 | TASK-022 | Implement income and expenses | Pending | EPIC-03 |
 | TASK-023 | Implement dashboard summary | Pending | EPIC-04 |
