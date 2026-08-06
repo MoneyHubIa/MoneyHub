@@ -2,20 +2,19 @@
 
 ## Objetivo
 
-Este guia registra o estado executavel do backlog, as dependencias liberadas e
-o gate restante para concluir o `EPIC-01`.
+Este guia registra o estado executavel do backlog e as dependencias liberadas
+depois da conclusao do `EPIC-01`.
 
 ## Estado Atual
 
-- `TASK-048` esta em andamento. O backend TypeScript, GraphQL, Firebase Admin e
-  Prisma esta implementado e verificado; falta aplicar a migration inicial em
-  um PostgreSQL externo descartavel.
+- `TASK-048` esta concluida. O backend TypeScript, GraphQL, Firebase Admin e
+  Prisma foram verificados; a schema de identidade existente foi comparada com
+  a migration inicial e baselined no PostgreSQL descartavel.
 - `TASK-049` esta concluida. O app Expo Router exporta Web, iOS e Android e
   possui Apollo Client e adapters de Analytics Web/nativo.
 - `TASK-009` esta concluida. Registro, login, sessao e ID token foram validados
   no Firebase Auth Emulator.
-- `EPIC-01` permanece em andamento somente pelo aceite externo da migration da
-  `TASK-048`.
+- `EPIC-01` esta concluido.
 - Producao Firebase, Cloud SQL, GCP, Resend e deploy continuam fora do escopo da
   fundacao.
 
@@ -27,15 +26,15 @@ o gate restante para concluir o `EPIC-01`.
 | App | 22 testes, lint, typecheck e Expo Doctor 20/20 passam |
 | Bundles | Expo export passa para Web, iOS e Android |
 | Firebase Auth | Auth Emulator valida registro, login, ID token e restauracao da sessao |
-| PostgreSQL | schema e migration existem; aplicacao aguarda `DATABASE_URL` descartavel |
+| PostgreSQL | schema de identidade baselined; `prisma migrate status` reporta banco atualizado |
 
 ## Execucao Imediata
 
 | Ordem | Task | Acao | Condicao de conclusao |
 | --- | --- | --- | --- |
-| 1 | `TASK-048` | Configurar PostgreSQL externo descartavel e aplicar a migration | `prisma migrate deploy` e verificacao do schema passam |
-| 2 | `EPIC-01` | Revisar evidencias e encerrar o epic | `TASK-048`, `TASK-049` e `TASK-009` aceitas |
-| 3 | `TASK-017` | Implementar bootstrap de usuario e perfil | Iniciar depois do aceite da migration |
+| 1 | `TASK-020` | Implementar gerenciamento de perfil | Contrato, testes e fluxo autenticado concluidos |
+| 2 | `TASK-019` | Implementar recuperacao de senha | Firebase Admin e Resend configurados; entrega de link testada |
+| 3 | `TASK-021` | Implementar categorias financeiras | Contrato, migration, resolvers, interface e testes concluidos |
 
 `TASK-012` e `TASK-043` podem avancar em paralelo por serem documentais e nao
 alterarem o gate de fundacao.
@@ -53,9 +52,7 @@ alterarem o gate de fundacao.
 
 | Tasks | Bloqueio |
 | --- | --- |
-| `TASK-017` | Aceite da migration PostgreSQL da `TASK-048` |
 | `TASK-019` | `TASK-012` e `TASK-044` para entrega de links pelo Resend |
-| `TASK-020` | `TASK-017` e modelo de perfil persistido |
 | `TASK-021` a `TASK-033` | Bootstrap de identidade, autorizacao e modelos de dominio |
 | `TASK-014`, `TASK-045` a `TASK-047` | Identidade persistida e fundacao de agenda |
 | `TASK-016`, `TASK-038`, `TASK-039` | Decisoes e documentacao de infraestrutura de producao |
@@ -72,8 +69,9 @@ npm exec -w apps/frontend expo-doctor
 npm exec -w apps/backend prisma -- migrate deploy
 ```
 
-O ultimo comando exige uma `DATABASE_URL` de PostgreSQL externa e descartavel.
-Nenhum status deve ser promovido para Done apenas com `prisma validate`.
+O ultimo comando foi validado contra o PostgreSQL descartavel que contem o
+schema de identidade baselined. Nenhum status deve ser promovido para Done
+apenas com `prisma validate`.
 
 ## Regra de Inicio
 

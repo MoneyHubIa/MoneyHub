@@ -1,6 +1,6 @@
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
-import { Redirect, Stack, usePathname, useRouter } from 'expo-router';
+import { type Href, Redirect, Stack, usePathname, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { useAuth } from '@/providers/AuthProvider';
@@ -28,7 +28,7 @@ export default function AuthenticatedLayout() {
     if (authLoading || apolloLoading || !user) return;
 
     if (needsBootstrap && !isOnboarding) {
-      router.replace('/(app)/onboarding');
+      router.replace('/onboarding' as Href);
     } else if (needsBootstrap === false && isOnboarding) {
       router.replace('/(app)');
     }

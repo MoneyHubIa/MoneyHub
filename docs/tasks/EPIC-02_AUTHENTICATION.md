@@ -1,7 +1,7 @@
 # EPIC-02 - Authentication and Identity
 
 ## Status
-Pending
+In Progress
 
 ## Feature
 Firebase Authentication.

@@ -7,6 +7,12 @@ export type GraphQLContext = {
   auth: AuthContext | null;
 };
 
+type BootstrapProfileInput = {
+  fullName: string;
+  preferredCurrency?: string;
+  theme?: 'SYSTEM' | 'LIGHT' | 'DARK';
+};
+
 export const typeDefs = `#graphql
   type Health {
     status: String!
@@ -77,7 +83,11 @@ export const resolvers = {
     }
   },
   Mutation: {
-    bootstrapProfile: async (_parent: unknown, args: { input: any }, context: GraphQLContext) => {
+    bootstrapProfile: async (
+      _parent: unknown,
+      args: { input: BootstrapProfileInput },
+      context: GraphQLContext
+    ) => {
       if (!context.auth) throw unauthenticatedError();
       const { input } = args;
 
@@ -88,7 +98,7 @@ export const resolvers = {
       const prisma = getPrismaClient();
 
       return prisma.$transaction(async (tx) => {
-        let existingUser = await tx.user.findUnique({ where: { firebaseUid: context.auth!.uid } });
+        const existingUser = await tx.user.findUnique({ where: { firebaseUid: context.auth!.uid } });
         let emailVerifiedAt = existingUser?.emailVerifiedAt ?? null;
         if (!context.auth!.emailVerified) {
           emailVerifiedAt = null;

@@ -49,7 +49,7 @@ export default function OnboardingScreen() {
       });
       // Route the user to dashboard after success
       router.replace('/(app)');
-    } catch (err) {
+    } catch {
       // Error is handled by Apollo and displayed below
     }
   };

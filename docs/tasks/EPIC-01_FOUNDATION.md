@@ -1,7 +1,7 @@
 # EPIC-01 - Foundation
 
 ## Status
-In Progress
+Done
 
 ## Feature
 Project foundation migration.
@@ -83,7 +83,7 @@ planning only; migration implementation remains outside this task.
 ### TASK-048 - Implement TypeScript GraphQL backend foundation
 
 ## Status
-In Progress
+Done
 
 ## Objective
 Replace the REST-only JavaScript scaffold with a strict TypeScript Express and
@@ -114,9 +114,10 @@ Apollo Server GraphQL foundation backed by Prisma and PostgreSQL.
 
 The TypeScript GraphQL backend, Firebase Admin context, Prisma schema, and
 initial migration are implemented. Unit and integration tests, lint, typecheck,
-build, Prisma validation, and Prisma client generation pass. Applying the
-initial migration remains pending because no disposable external
-`DATABASE_URL` is configured.
+build, Prisma validation, and Prisma client generation pass. The initial
+identity schema was verified against the configured disposable PostgreSQL and
+the existing matching schema was baselined as
+`20260722230000_init_identity`; Prisma now reports the database as up to date.
 
 ### TASK-049 - Implement TypeScript Expo app foundation
 

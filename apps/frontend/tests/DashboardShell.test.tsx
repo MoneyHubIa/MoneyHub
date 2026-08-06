@@ -23,7 +23,7 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: jest.fn() })
 }));
 
-jest.mock('@apollo/client', () => ({
+jest.mock('@apollo/client/react', () => ({
   useApolloClient: () => ({
     clearStore: jest.fn()
   })
