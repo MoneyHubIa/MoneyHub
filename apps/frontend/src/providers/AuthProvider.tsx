@@ -13,6 +13,7 @@ type AuthContextValue = Readonly<{
   user: SessionUser | null;
   login(email: string, password: string): Promise<void>;
   register(email: string, password: string): Promise<void>;
+  logout(): Promise<void>;
 }>;
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -39,7 +40,8 @@ export function AuthProvider({ children, service }: AuthProviderProps) {
       loading,
       user,
       login: service.login,
-      register: service.register
+      register: service.register,
+      logout: service.logout
     }),
     [loading, service, user]
   );
@@ -52,3 +54,4 @@ export function useAuth() {
   if (!value) throw new Error('useAuth must be used inside AuthProvider.');
   return value;
 }
+

@@ -6,6 +6,7 @@ describe('Firebase auth service', () => {
     const service = createFirebaseAuthService({
       createUser,
       signIn: jest.fn(),
+      signOut: jest.fn(),
       observe: jest.fn(),
       getCurrentUser: () => null
     });
@@ -23,6 +24,7 @@ describe('Firebase auth service', () => {
     const service = createFirebaseAuthService({
       createUser: jest.fn(),
       signIn,
+      signOut: jest.fn(),
       observe: jest.fn(),
       getCurrentUser: () => null
     });
@@ -32,11 +34,27 @@ describe('Firebase auth service', () => {
     expect(signIn).toHaveBeenCalledWith('person@example.com', 'firebase-only');
   });
 
+  test('logs out by delegating to Firebase signOut', async () => {
+    const signOutMock = jest.fn().mockResolvedValue(undefined);
+    const service = createFirebaseAuthService({
+      createUser: jest.fn(),
+      signIn: jest.fn(),
+      signOut: signOutMock,
+      observe: jest.fn(),
+      getCurrentUser: () => null
+    });
+
+    await service.logout();
+
+    expect(signOutMock).toHaveBeenCalledTimes(1);
+  });
+
   test('maps restored Firebase sessions to the application contract', () => {
     let observer: ((user: { uid: string; email: string | null } | null) => void) | undefined;
     const service = createFirebaseAuthService({
       createUser: jest.fn(),
       signIn: jest.fn(),
+      signOut: jest.fn(),
       observe: (callback) => {
         observer = callback;
         return () => undefined;
@@ -59,6 +77,7 @@ describe('Firebase auth service', () => {
     const service = createFirebaseAuthService({
       createUser: jest.fn(),
       signIn: jest.fn(),
+      signOut: jest.fn(),
       observe: jest.fn(),
       getCurrentUser: () => ({
         uid: 'firebase-uid',
@@ -71,3 +90,4 @@ describe('Firebase auth service', () => {
     expect(getIdToken).toHaveBeenCalledTimes(1);
   });
 });
+
