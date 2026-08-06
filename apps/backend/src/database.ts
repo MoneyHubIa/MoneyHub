@@ -8,9 +8,26 @@ const noDatabaseRepository: IdentityRepository = {
   synchronizeExistingIdentity: async () => null
 };
 
+import pg from 'pg';
+
 function createPrismaClient(databaseUrl: string): PrismaClient {
-  const adapter = new PrismaPg({ connectionString: databaseUrl });
+  const pool = new pg.Pool({
+    connectionString: databaseUrl,
+    ssl: { rejectUnauthorized: false }
+  });
+  const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
+}
+
+export function getPrismaClient(): PrismaClient {
+  if (!prisma) {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error('Prisma is not initialized. DATABASE_URL is missing.');
+    }
+    prisma = createPrismaClient(databaseUrl);
+  }
+  return prisma;
 }
 
 export function getIdentityRepository(): IdentityRepository {

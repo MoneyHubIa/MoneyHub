@@ -1,3 +1,4 @@
+import { useApolloClient } from '@apollo/client/react';
 import { useRouter } from 'expo-router';
 import {
   BarChart3,
@@ -39,6 +40,7 @@ export function DashboardShell() {
   const desktop = width >= 900;
   const { logout } = useAuth();
   const router = useRouter();
+  const apolloClient = useApolloClient();
   const [activeSectionId, setActiveSectionId] =
     useState<NavigationId>('dashboard');
   const [loggingOut, setLoggingOut] = useState(false);
@@ -49,6 +51,7 @@ export function DashboardShell() {
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
+      await apolloClient.clearStore();
       await logout();
       router.replace('/(auth)/login');
     } catch {
