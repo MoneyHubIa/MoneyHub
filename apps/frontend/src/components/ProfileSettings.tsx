@@ -9,6 +9,8 @@ import {
   TextInput,
   View
 } from 'react-native';
+import { useAuth } from '../providers/AuthProvider';
+import { hasGraphQLErrorCode } from '../services/graphqlErrors';
 
 const MY_PROFILE_QUERY = gql`
   query MyProfile {
@@ -52,6 +54,7 @@ const themes: Array<{ value: ProfileTheme; label: string }> = [
 ];
 
 export function ProfileSettings() {
+  const { resendEmailVerification, refreshEmailVerification } = useAuth();
   const { data, error, loading } = useQuery<MyProfileData>(MY_PROFILE_QUERY);
   const [saveProfile, { loading: saving }] = useMutation<UpdateProfileData>(
     UPDATE_MY_PROFILE_MUTATION
@@ -61,6 +64,10 @@ export function ProfileSettings() {
   const [theme, setTheme] = useState<ProfileTheme>('SYSTEM');
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [verificationRequired, setVerificationRequired] = useState(false);
+  const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
+  const [resendingVerification, setResendingVerification] = useState(false);
+  const [refreshingVerification, setRefreshingVerification] = useState(false);
   const loadedProfileId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -72,6 +79,18 @@ export function ProfileSettings() {
     setTheme(data.myProfile.theme);
   }, [data]);
 
+  const persistProfile = async (normalizedName: string) => {
+    setVerificationMessage(null);
+    await saveProfile({
+      variables: {
+        input: { fullName: normalizedName, preferredCurrency, theme }
+      }
+    });
+    setFullName(normalizedName);
+    setVerificationRequired(false);
+    setSuccessMessage('Alterações salvas com sucesso.');
+  };
+
   const handleSave = async () => {
     const normalizedName = fullName.trim();
     if (!normalizedName) {
@@ -82,19 +101,66 @@ export function ProfileSettings() {
 
     setFormError(null);
     setSuccessMessage(null);
+    setVerificationRequired(false);
+    setVerificationMessage(null);
 
     try {
-      await saveProfile({
-        variables: {
-          input: { fullName: normalizedName, preferredCurrency, theme }
-        }
-      });
-      setFullName(normalizedName);
-      setSuccessMessage('Alterações salvas com sucesso.');
-    } catch {
+      await persistProfile(normalizedName);
+    } catch (error: unknown) {
+      if (hasGraphQLErrorCode(error, 'EMAIL_NOT_VERIFIED')) {
+        setVerificationRequired(true);
+        return;
+      }
       setFormError('Não foi possível salvar as alterações. Tente novamente.');
     }
   };
+
+  const handleResendVerification = async () => {
+    setResendingVerification(true);
+    setVerificationMessage(null);
+    try {
+      await resendEmailVerification();
+      setVerificationMessage(
+        'Enviamos um novo e-mail de verificação. Confira também a caixa de spam.'
+      );
+    } catch {
+      setVerificationMessage(
+        'Não foi possível reenviar o e-mail de verificação. Tente novamente.'
+      );
+    } finally {
+      setResendingVerification(false);
+    }
+  };
+
+  const handleRefreshVerification = async () => {
+    setRefreshingVerification(true);
+    setVerificationMessage(null);
+    try {
+      const verified = await refreshEmailVerification();
+      if (!verified) {
+        setVerificationMessage('A verificação ainda não foi detectada.');
+        return;
+      }
+
+      try {
+        await persistProfile(fullName.trim());
+      } catch (error: unknown) {
+        if (hasGraphQLErrorCode(error, 'EMAIL_NOT_VERIFIED')) {
+          setVerificationMessage('A verificação ainda não foi detectada.');
+          return;
+        }
+        throw error;
+      }
+    } catch {
+      setVerificationMessage(
+        'Não foi possível atualizar o status da verificação. Tente novamente.'
+      );
+    } finally {
+      setRefreshingVerification(false);
+    }
+  };
+
+  const actionsDisabled = saving || resendingVerification || refreshingVerification;
 
   if (loading) {
     return <ActivityIndicator accessibilityLabel="Carregando perfil" color="#0f766e" />;
@@ -171,12 +237,56 @@ export function ProfileSettings() {
         {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
         {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
 
+        {verificationRequired ? (
+          <View
+            accessibilityLabel="Verificação de e-mail necessária"
+            style={styles.verificationPanel}
+          >
+            <Text accessibilityRole="header" style={styles.verificationTitle}>
+              Verifique seu e-mail para salvar alterações
+            </Text>
+            <Text style={styles.verificationDescription}>
+              Confirme seu endereço de e-mail e tente salvar novamente.
+            </Text>
+            {verificationMessage ? (
+              <Text style={styles.verificationMessage}>{verificationMessage}</Text>
+            ) : null}
+            <View style={styles.verificationActions}>
+              <Pressable
+                accessibilityLabel="Reenviar e-mail"
+                accessibilityRole="button"
+                disabled={actionsDisabled}
+                onPress={handleResendVerification}
+                style={[
+                  styles.verificationButton,
+                  actionsDisabled && styles.saveButtonDisabled
+                ]}
+              >
+                <Text style={styles.verificationButtonText}>Reenviar e-mail</Text>
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Já verifiquei"
+                accessibilityRole="button"
+                disabled={actionsDisabled}
+                onPress={handleRefreshVerification}
+                style={[
+                  styles.verificationButton,
+                  styles.verificationButtonPrimary,
+                  actionsDisabled && styles.saveButtonDisabled
+                ]}
+              >
+                <Text style={styles.verificationButtonPrimaryText}>Já verifiquei</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+
         <Pressable
           accessibilityLabel="Salvar alterações"
           accessibilityRole="button"
-          disabled={saving}
+          disabled={actionsDisabled}
           onPress={handleSave}
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          style={[styles.saveButton, actionsDisabled && styles.saveButtonDisabled]}
         >
           {saving ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.saveText}>Salvar alterações</Text>}
         </Pressable>
@@ -204,5 +314,14 @@ const styles = StyleSheet.create({
   saveText: { color: '#ffffff', fontSize: 14, fontWeight: '700' },
   errorText: { color: '#b91c1c', fontSize: 14, marginTop: 6 },
   successText: { color: '#047857', fontSize: 14, marginTop: 6 },
-  messagePanel: { backgroundColor: '#fef2f2', borderColor: '#fecaca', borderRadius: 8, borderWidth: 1, padding: 16 }
+  messagePanel: { backgroundColor: '#fef2f2', borderColor: '#fecaca', borderRadius: 8, borderWidth: 1, padding: 16 },
+  verificationPanel: { backgroundColor: '#f0fdfa', borderColor: '#99f6e4', borderRadius: 8, borderWidth: 1, gap: 8, marginTop: 6, padding: 16 },
+  verificationTitle: { color: '#115e59', fontSize: 16, fontWeight: '700' },
+  verificationDescription: { color: '#475569', fontSize: 14, lineHeight: 20 },
+  verificationMessage: { color: '#334155', fontSize: 14, lineHeight: 20 },
+  verificationActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  verificationButton: { alignItems: 'center', borderColor: '#0f766e', borderRadius: 6, borderWidth: 1, justifyContent: 'center', minHeight: 40, paddingHorizontal: 14 },
+  verificationButtonPrimary: { backgroundColor: '#0f766e' },
+  verificationButtonText: { color: '#0f766e', fontSize: 14, fontWeight: '700' },
+  verificationButtonPrimaryText: { color: '#ffffff', fontSize: 14, fontWeight: '700' }
 });
