@@ -7,6 +7,8 @@ describe('session routing', () => {
 
   test('routes anonymous and authenticated users to separate groups', () => {
     expect(resolveSessionRoute(false, null)).toBe('/(auth)/login');
-    expect(resolveSessionRoute(false, { uid: 'uid', email: null })).toBe('/(app)');
+    expect(
+      resolveSessionRoute(false, { uid: 'uid', email: null, emailVerified: false })
+    ).toBe('/(app)');
   });
 });
