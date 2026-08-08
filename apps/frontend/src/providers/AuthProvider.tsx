@@ -1,6 +1,7 @@
 import {
   createContext,
   type PropsWithChildren,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -13,6 +14,8 @@ type AuthContextValue = Readonly<{
   user: SessionUser | null;
   login(email: string, password: string): Promise<void>;
   register(email: string, password: string): Promise<void>;
+  resendEmailVerification(): Promise<void>;
+  refreshEmailVerification(): Promise<boolean>;
   logout(): Promise<void>;
 }>;
 
@@ -35,15 +38,23 @@ export function AuthProvider({ children, service }: AuthProviderProps) {
     [service]
   );
 
+  const refreshEmailVerification = useCallback(async () => {
+    const refreshedUser = await service.refreshEmailVerification();
+    setUser(refreshedUser);
+    return refreshedUser.emailVerified;
+  }, [service]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       loading,
       user,
       login: service.login,
       register: service.register,
+      resendEmailVerification: service.resendEmailVerification,
+      refreshEmailVerification,
       logout: service.logout
     }),
-    [loading, service, user]
+    [loading, refreshEmailVerification, service, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
