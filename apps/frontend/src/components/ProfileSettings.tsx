@@ -45,6 +45,11 @@ type Profile = {
 
 type MyProfileData = { myProfile: Profile };
 type UpdateProfileData = { updateMyProfile: Profile };
+type UpdateProfileInput = Readonly<{
+  fullName: string;
+  preferredCurrency: string;
+  theme: ProfileTheme;
+}>;
 
 const currencies = ['BRL', 'USD', 'EUR'];
 const themes: Array<{ value: ProfileTheme; label: string }> = [
@@ -69,6 +74,7 @@ export function ProfileSettings() {
   const [resendingVerification, setResendingVerification] = useState(false);
   const [refreshingVerification, setRefreshingVerification] = useState(false);
   const loadedProfileId = useRef<string | null>(null);
+  const rejectedProfileInput = useRef<UpdateProfileInput | null>(null);
 
   useEffect(() => {
     if (!data) return;
@@ -79,14 +85,13 @@ export function ProfileSettings() {
     setTheme(data.myProfile.theme);
   }, [data]);
 
-  const persistProfile = async (normalizedName: string) => {
+  const persistProfile = async (input: UpdateProfileInput) => {
     setVerificationMessage(null);
     await saveProfile({
-      variables: {
-        input: { fullName: normalizedName, preferredCurrency, theme }
-      }
+      variables: { input }
     });
-    setFullName(normalizedName);
+    rejectedProfileInput.current = null;
+    setFullName(input.fullName);
     setVerificationRequired(false);
     setSuccessMessage('Alterações salvas com sucesso.');
   };
@@ -103,11 +108,19 @@ export function ProfileSettings() {
     setSuccessMessage(null);
     setVerificationRequired(false);
     setVerificationMessage(null);
+    rejectedProfileInput.current = null;
+
+    const input: UpdateProfileInput = {
+      fullName: normalizedName,
+      preferredCurrency,
+      theme
+    };
 
     try {
-      await persistProfile(normalizedName);
+      await persistProfile(input);
     } catch (error: unknown) {
       if (hasGraphQLErrorCode(error, 'EMAIL_NOT_VERIFIED')) {
+        rejectedProfileInput.current = input;
         setVerificationRequired(true);
         return;
       }
@@ -133,6 +146,7 @@ export function ProfileSettings() {
   };
 
   const handleRefreshVerification = async () => {
+    const input = rejectedProfileInput.current;
     setRefreshingVerification(true);
     setVerificationMessage(null);
     try {
@@ -143,7 +157,8 @@ export function ProfileSettings() {
       }
 
       try {
-        await persistProfile(fullName.trim());
+        if (!input) throw new Error('Missing rejected profile input.');
+        await persistProfile(input);
       } catch (error: unknown) {
         if (hasGraphQLErrorCode(error, 'EMAIL_NOT_VERIFIED')) {
           setVerificationMessage('A verificação ainda não foi detectada.');

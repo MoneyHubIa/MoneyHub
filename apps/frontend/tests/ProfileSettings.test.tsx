@@ -128,7 +128,7 @@ describe('ProfileSettings', () => {
     expect(mockSaveProfile).toHaveBeenCalledTimes(1);
   });
 
-  test('retries once with identical variables after verification is detected', async () => {
+  test('retries once with the rejected variables despite later form edits', async () => {
     mockSaveProfile
       .mockRejectedValueOnce(emailNotVerifiedError())
       .mockResolvedValueOnce({ data: { updateMyProfile: {} } });
@@ -139,6 +139,11 @@ describe('ProfileSettings', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'USD' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Escuro' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Salvar alterações' }));
+
+    await screen.findByText('Verifique seu e-mail para salvar alterações');
+    await fireEvent.changeText(screen.getByLabelText('Nome completo'), '');
+    await fireEvent.press(screen.getByRole('button', { name: 'EUR' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Claro' }));
     await fireEvent.press(await screen.findByRole('button', { name: 'Já verifiquei' }));
 
     const expectedMutation = {
