@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@as-integrations/express4';
 import cors from 'cors';
@@ -26,7 +28,19 @@ import {
 type CreateAppOptions = {
   verifyIdToken?: VerifyIdToken;
   logger?: HttpLogger;
+  appUrl?: URL;
+  frontendDistDir?: string;
+  nodeEnvironment?: string;
 };
+
+function isLoopbackOrigin(origin: string): boolean {
+  try {
+    const hostname = new URL(origin).hostname;
+    return hostname === 'localhost' || hostname === '127.0.0.1';
+  } catch {
+    return false;
+  }
+}
 
 function bearerToken(request: Request): string | null {
   const authorization = request.header('authorization');
@@ -70,8 +84,15 @@ export async function createApp(
 
   app.disable('x-powered-by');
   app.use(helmet());
-  const configuredOrigin = process.env.FRONTEND_URL?.replace(/\/+$/, '');
-  app.use(cors({ origin: configuredOrigin || false }));
+  const nodeEnvironment = options.nodeEnvironment ?? process.env.NODE_ENV;
+  app.use(cors({
+    origin: (origin, callback) => {
+      const allowed = !origin
+        || origin === options.appUrl?.origin
+        || (nodeEnvironment !== 'production' && isLoopbackOrigin(origin));
+      callback(null, allowed);
+    }
+  }));
   app.use((request, response, next) => {
     const requestId = request.header('x-request-id') || crypto.randomUUID();
     response.locals.requestId = requestId;
@@ -109,6 +130,21 @@ export async function createApp(
       })
     })
   );
+
+  const frontendIndex = options.frontendDistDir
+    ? join(options.frontendDistDir, 'index.html')
+    : null;
+  if (options.frontendDistDir && frontendIndex && existsSync(frontendIndex)) {
+    app.use(express.static(options.frontendDistDir));
+    app.get('*', (request, response, next) => {
+      if (!request.accepts('html')) {
+        next();
+        return;
+      }
+
+      response.sendFile(frontendIndex);
+    });
+  }
 
   app.use((request, response) => {
     response.status(404).json({

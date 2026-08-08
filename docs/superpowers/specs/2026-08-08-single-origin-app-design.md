@@ -7,8 +7,8 @@ frontend use `/graphql` e não precise conhecer uma URL de backend separada.
 
 ## Configuração
 
-- `APP_URL` é a única URL pública da aplicação, por exemplo
-  `http://177.71.25.231:3000`.
+- `APP_URL` é a única URL da aplicação acessível pelos clientes. Em
+  desenvolvimento local, por exemplo: `http://192.168.1.8:3000`.
 - O backend escuta na porta indicada por `PORT` e deriva a origem permitida de
   `APP_URL` apenas para compatibilidade com clientes externos.
 - O frontend não usa `EXPO_PUBLIC_GRAPHQL_ENDPOINT`. No web, o Apollo Client

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import type { Express } from 'express';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
@@ -49,6 +50,62 @@ describe('backend foundation', () => {
       service: 'moneyhub-backend',
       version: '0.1.0'
     });
+  });
+
+  test('allows the local Expo Web origin in development', async () => {
+    const developmentApp = await createApp({
+      appUrl: new URL('http://example.test:3000'),
+      nodeEnvironment: 'development'
+    });
+
+    const response = await request(developmentApp)
+      .post('/graphql')
+      .set('origin', 'http://localhost:8081')
+      .send({ query: '{ health { status } }' });
+
+    assert.equal(response.status, 200);
+    assert.equal(
+      response.headers['access-control-allow-origin'],
+      'http://localhost:8081'
+    );
+    await developmentApp.locals.stop?.();
+  });
+
+  test('serves the exported web entrypoint from the API origin', async () => {
+    const frontendDistDir = fileURLToPath(
+      new URL('./fixtures/web-dist', import.meta.url)
+    );
+    const webApp = await createApp({ frontendDistDir });
+
+    const response = await request(webApp).get('/');
+
+    assert.equal(response.status, 200);
+    assert.match(response.text, /MoneyHub/);
+    await webApp.locals.stop?.();
+  });
+
+  test('serves the web entrypoint for client-side routes', async () => {
+    const frontendDistDir = fileURLToPath(
+      new URL('./fixtures/web-dist', import.meta.url)
+    );
+    const webApp = await createApp({ frontendDistDir });
+
+    const response = await request(webApp)
+      .get('/settings')
+      .set('accept', 'text/html');
+
+    assert.equal(response.status, 200);
+    assert.match(response.text, /MoneyHub/);
+    await webApp.locals.stop?.();
+  });
+
+  test('keeps unknown API routes as JSON 404 responses', async () => {
+    const response = await request(app)
+      .get('/api/missing')
+      .set('accept', 'application/json');
+
+    assert.equal(response.status, 404);
+    assert.equal(response.body.error.code, 'NOT_FOUND');
   });
 
   test('returns null for anonymous me queries', async () => {

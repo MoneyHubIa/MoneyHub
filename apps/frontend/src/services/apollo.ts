@@ -1,5 +1,6 @@
 import { ApolloClient, HttpLink, InMemoryCache } from '@apollo/client';
 import { SetContextLink } from '@apollo/client/link/context';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { resolveRuntimeUrl } from './runtimeUrl';
 
@@ -16,9 +17,25 @@ export async function createAuthorizationHeaders(
     : { ...headers };
 }
 
+export function resolveGraphqlEndpoint(
+  appUrl: unknown,
+  platform: string,
+  isDevelopment = __DEV__
+): string {
+  if (platform === 'web' && !isDevelopment) {
+    return '/graphql';
+  }
+
+  if (typeof appUrl !== 'string' || !appUrl) {
+    throw new Error('APP_URL is required in the Expo configuration.');
+  }
+
+  return resolveRuntimeUrl(new URL('/graphql', appUrl).toString(), platform);
+}
+
 export function createMoneyHubApolloClient(getIdToken: GetIdToken) {
-  const endpoint = resolveRuntimeUrl(
-    process.env.EXPO_PUBLIC_GRAPHQL_ENDPOINT ?? 'http://localhost:3000/graphql',
+  const endpoint = resolveGraphqlEndpoint(
+    process.env.EXPO_PUBLIC_APP_URL ?? Constants.expoConfig?.extra?.appUrl,
     Platform.OS
   );
   const authorizationLink = new SetContextLink(async (previousContext) => ({

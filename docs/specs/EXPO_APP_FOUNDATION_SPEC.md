@@ -15,8 +15,9 @@ Approved for `TASK-049` and the app portion of `TASK-009`.
 
 ## Data and Identity
 
-- Apollo Client reads `EXPO_PUBLIC_GRAPHQL_ENDPOINT` and resolves a fresh
-  Firebase ID token for every request.
+- Apollo Client uses the same application origin at `/graphql` on Web and reads
+  the shared root `APP_URL` through Expo configuration on native platforms. It
+  resolves a fresh Firebase ID token for every request.
 - Firebase JS SDK implements email/password registration, login, and session
   restoration on Web, iOS, and Android.
 - Logout, recovery, verification delivery, and profile bootstrap remain outside

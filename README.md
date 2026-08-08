@@ -36,6 +36,21 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
+Define the public application origin once in the repository root `.env`:
+
+```dotenv
+APP_URL=http://192.168.1.8:3000
+```
+
+For a single-origin Web build, export the frontend and start the backend. The
+backend serves both the application and GraphQL at `APP_URL/graphql`:
+
+```bash
+npm run build -w apps/frontend
+npm run build -w apps/backend
+npm run start -w apps/backend
+```
+
 ## Current Foundation
 
 - App: React Native + Expo Router for iOS, Android, and Web.
