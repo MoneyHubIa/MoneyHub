@@ -53,6 +53,15 @@ describe('profile management', () => {
     assert.deepEqual(result, profile);
   });
 
+  test('allows an unverified user to read their own profile', async () => {
+    const context = verifiedContext();
+    context.auth.emailVerified = false;
+
+    const result = await getMyProfile(context, createRepository());
+
+    assert.deepEqual(result, profile);
+  });
+
   test('updates only the authenticated profile with normalized values', async () => {
     let updatedProfileId = '';
     const repository = createRepository({
