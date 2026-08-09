@@ -15,4 +15,5 @@ worktrees/
 logs/
 apps/backend/src/generated/prisma/
 .env*
+!.env.example
 apps/backend/credentials

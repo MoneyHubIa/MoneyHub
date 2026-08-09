@@ -18,7 +18,7 @@ export type HttpLogger = {
   error(event: HttpCompletionEvent): void;
 };
 
-export const appLogger: HttpLogger = pino();
+export const appLogger = pino();
 
 export function httpLogLevel(statusCode: number): HttpLogLevel {
   if (statusCode >= 500) return 'error';

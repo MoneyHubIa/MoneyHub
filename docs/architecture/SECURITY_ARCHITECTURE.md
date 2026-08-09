@@ -6,7 +6,8 @@
 - The app obtains Firebase ID tokens and sends them to the backend as bearer tokens.
 - The backend verifies ID tokens with Firebase Admin before resolving authenticated GraphQL fields.
 - Password storage, refresh token rotation, and session revocation are delegated to Firebase Auth.
-- Custom verification and recovery emails are generated through Firebase Admin links and sent through Resend.
+- Password recovery links are generated through Firebase Admin and sent through
+  Resend. Verification email continues to use Firebase delivery.
 
 ## Authorization
 
@@ -27,3 +28,6 @@
 
 - Log authentication-adjacent events, profile changes, financial mutations, email triggers, and AI requests.
 - Audit logs must avoid storing raw secrets or full tokens.
+- Password recovery audit stores request ID, internal status, and SHA-256 of the
+  normalized email; it never stores raw email, password, `oobCode`, token, or a
+  complete action link.

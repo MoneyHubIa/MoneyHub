@@ -16,6 +16,8 @@ depois da conclusao do `EPIC-01`.
   no Firebase Auth Emulator.
 - `TASK-020` esta concluida. O perfil autenticado pode consultar e alterar nome,
   moeda preferida e tema pela tela Ajustes e pelo contrato GraphQL.
+- `TASK-019` esta implementada e coberta por testes automatizados. O fechamento
+  depende apenas do smoke real com Firebase e Resend.
 - `EPIC-01` esta concluido.
 - Producao Firebase, Cloud SQL, GCP, Resend e deploy continuam fora do escopo da
   fundacao.
@@ -24,8 +26,9 @@ depois da conclusao do `EPIC-01`.
 
 | Area | Evidencia |
 | --- | --- |
-| Backend | testes, lint, typecheck, build, `prisma validate` e `prisma generate` passam |
-| App | 22 testes, lint, typecheck e Expo Doctor 20/20 passam |
+| Backend | 41 testes, lint, typecheck e build passam |
+| App | 89 testes, lint, typecheck e export Expo passam |
+| Monorepo | 130 testes automatizados passam |
 | Bundles | Expo export passa para Web, iOS e Android |
 | Firebase Auth | Auth Emulator valida registro, login, ID token e restauracao da sessao |
 | PostgreSQL | schema de identidade baselined; `prisma migrate status` reporta banco atualizado |
@@ -34,7 +37,7 @@ depois da conclusao do `EPIC-01`.
 
 | Ordem | Task | Acao | Condicao de conclusao |
 | --- | --- | --- | --- |
-| 1 | `TASK-019` | Implementar recuperacao de senha | Firebase Admin e Resend configurados; entrega de link testada |
+| 1 | `TASK-019` | Executar smoke real da recuperacao implementada | Entrega Resend, troca de senha e nao enumeracao comprovadas |
 | 2 | `TASK-021` | Implementar categorias financeiras | Contrato, migration, resolvers, interface e testes concluidos |
 | 3 | `TASK-014` | Implementar fundacao de agenda | Contrato, persistence, interface e testes concluidos |
 
@@ -54,7 +57,6 @@ alterarem o gate de fundacao.
 
 | Tasks | Bloqueio |
 | --- | --- |
-| `TASK-019` | `TASK-012` e `TASK-044` para entrega de links pelo Resend |
 | `TASK-021` a `TASK-033` | Bootstrap de identidade, autorizacao e modelos de dominio |
 | `TASK-014`, `TASK-045` a `TASK-047` | Identidade persistida e fundacao de agenda |
 | `TASK-016`, `TASK-038`, `TASK-039` | Decisoes e documentacao de infraestrutura de producao |

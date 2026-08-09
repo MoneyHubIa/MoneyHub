@@ -78,7 +78,7 @@ export function createFirebaseVerifier(
 
 import fs from 'node:fs';
 
-function firebaseAuth() {
+export function firebaseAuth() {
   const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
   const hasCredFile = credPath && fs.existsSync(credPath);
 

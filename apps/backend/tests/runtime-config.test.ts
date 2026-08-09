@@ -10,14 +10,36 @@ import {
 
 describe('runtime configuration', () => {
   test('normalizes the single public application URL', () => {
-    assert.equal(
-      loadRuntimeConfig({ APP_URL: 'http://example.test:3000/' }).appUrl.toString(),
-      'http://example.test:3000/'
-    );
+    const config = loadRuntimeConfig({
+      APP_URL: 'http://example.test:3000/',
+      RESEND_API_KEY: 're_test_key',
+      RESEND_FROM_EMAIL: 'MoneyHub <security@example.test>'
+    });
+
+    assert.equal(config.appUrl.toString(), 'http://example.test:3000/');
+    assert.equal(config.resendApiKey, 're_test_key');
+    assert.equal(config.resendFromEmail, 'MoneyHub <security@example.test>');
   });
 
   test('requires the single public application URL', () => {
     assert.throws(() => loadRuntimeConfig({}), /APP_URL is required/);
+  });
+
+  test('requires Resend credentials at startup', () => {
+    assert.throws(
+      () => loadRuntimeConfig({
+        APP_URL: 'https://moneyhub.example',
+        RESEND_FROM_EMAIL: 'security@moneyhub.example'
+      }),
+      /RESEND_API_KEY is required/
+    );
+    assert.throws(
+      () => loadRuntimeConfig({
+        APP_URL: 'https://moneyhub.example',
+        RESEND_API_KEY: 're_test_key'
+      }),
+      /RESEND_FROM_EMAIL is required/
+    );
   });
 
   test('prefers the repository root environment over the backend environment', () => {

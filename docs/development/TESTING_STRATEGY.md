@@ -16,9 +16,19 @@ Minimum coverage target is 80% for critical application code.
 - Hook and service tests for reusable behavior.
 - Firebase Auth, Firebase Analytics, and GraphQL client adapters must use mocks in unit tests.
 - Accessibility checks for critical UI on mobile and web.
+- Password recovery service and component tests cover neutral responses,
+  rate limiting, audit redaction, action-code states, password validation, and
+  session cleanup.
 - `npm run test:auth-emulator -w apps/frontend` runs the real Firebase client
   flow against the local Auth Emulator and requires Java 21.
 - `npm run build -w apps/frontend` exports Web, iOS, and Android bundles.
+
+## Transactional Email Smoke
+
+Password recovery closure additionally requires a real Firebase/Resend smoke:
+delivery to a known account, sender/content/action URL inspection, password
+change and action-code non-reuse, old/new password login checks, and a neutral
+request for an unknown address.
 
 ## E2E
 

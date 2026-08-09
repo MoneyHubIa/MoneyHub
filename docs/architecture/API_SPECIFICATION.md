@@ -14,6 +14,17 @@ Operational health uses:
 GET /health
 ```
 
+Public password recovery uses:
+
+```txt
+POST /auth/password-recovery
+```
+
+It accepts `{ "email": "user@example.com" }`. Valid requests return HTTP `202`
+with `data.accepted: true` for known and unknown accounts alike. Invalid email
+returns `400 INVALID_EMAIL`; more than five requests per IP in 15 minutes
+returns `429 RATE_LIMITED`.
+
 ## Initial Schema
 
 ```graphql
@@ -40,7 +51,8 @@ type Query {
 - Authentication lifecycle is handled by Firebase Auth on the client.
 - Backend authenticated operations require `Authorization: Bearer <Firebase ID token>`.
 - Profile, categories, cost centers, incomes, expenses, dashboard summary, agenda, and AI assistant operations will be added as GraphQL queries and mutations.
-- Password recovery and verification emails use Firebase Admin generated links delivered through Resend when custom email templates are required.
+- Password recovery uses Firebase Admin generated links delivered through
+  Resend. Email verification continues to use Firebase delivery.
 
 ## API Rules
 

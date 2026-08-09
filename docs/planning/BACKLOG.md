@@ -14,8 +14,8 @@
 - Login user with Firebase Auth.
 - Verify Firebase ID tokens in GraphQL.
 - Logout local Firebase session.
-- Recover password.
-- Verify e-mail.
+- Recover password (implemented; real Firebase/Resend smoke pending).
+- Verify e-mail (implemented with Firebase delivery).
 - Manage profile.
 
 ## Financial Management

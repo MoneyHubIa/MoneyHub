@@ -1,5 +1,13 @@
 # Firebase Email Verification Implementation Plan
 
+**Status:** Implemented and verified on 2026-08-09.
+
+Registration now sends Firebase verification email, authentication state exposes
+verification and refresh operations, Settings recovers `EMAIL_NOT_VERIFIED`
+saves, and the focused plus repository-wide automated gates passed during the
+implementation. Delivery remains owned by Firebase; migration of verification
+email to Resend is intentionally outside the password-recovery closure.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Send Firebase verification emails and let an unverified user refresh their token and retry a rejected profile save from Settings.

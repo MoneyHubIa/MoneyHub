@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { Link, type Href } from 'expo-router';
 import { WalletCards } from 'lucide-react-native';
 import {
   KeyboardAvoidingView,
@@ -43,6 +43,11 @@ export function AuthScreen({ mode, onSubmit }: AuthScreenProps) {
             </Text>
           </View>
           <AuthForm mode={mode} onSubmit={onSubmit} />
+          {!registering ? (
+            <Link href={'/forgot-password' as Href} style={styles.recoveryLink}>
+              Esqueci minha senha
+            </Link>
+          ) : null}
           <Text style={styles.alternative}>
             {registering ? 'Ja possui uma conta? ' : 'Ainda nao possui uma conta? '}
             <Link href={registering ? '/login' : '/register'} style={styles.link}>
@@ -84,5 +89,6 @@ const styles = StyleSheet.create({
   title: { color: '#0f172a', fontSize: 24, fontWeight: '700' },
   subtitle: { color: '#64748b', fontSize: 15, lineHeight: 22 },
   alternative: { color: '#64748b', fontSize: 14, textAlign: 'center' },
+  recoveryLink: { color: '#0f766e', fontWeight: '700', textAlign: 'right' },
   link: { color: '#0f766e', fontWeight: '700' }
 });

@@ -7,6 +7,7 @@ import cors from 'cors';
 import express, { type Express, type Request } from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
+import { z } from 'zod';
 import {
   verifyFirebaseIdToken,
   type AuthContext,
@@ -31,7 +32,16 @@ type CreateAppOptions = {
   appUrl?: URL;
   frontendDistDir?: string;
   nodeEnvironment?: string;
+  passwordRecovery?: PasswordRecoveryRequester;
 };
+
+export type PasswordRecoveryRequester = {
+  request(input: { email: string; requestId: string }): Promise<void>;
+};
+
+const passwordRecoveryInput = z.object({
+  email: z.string().trim().email()
+});
 
 function isLoopbackOrigin(origin: string): boolean {
   try {
@@ -113,6 +123,61 @@ export async function createApp(
       meta: { requestId: response.locals.requestId }
     });
   });
+
+  app.post(
+    '/auth/password-recovery',
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      limit: 5,
+      standardHeaders: 'draft-7',
+      legacyHeaders: false,
+      handler: (_request, response) => {
+        response.status(429).json({
+          success: false,
+          data: null,
+          error: {
+            code: 'RATE_LIMITED',
+            message: 'Too many password recovery requests.',
+            details: null
+          },
+          meta: { requestId: response.locals.requestId }
+        });
+      }
+    }),
+    express.json({ limit: '16kb' }),
+    async (request, response) => {
+      const input = passwordRecoveryInput.safeParse(request.body);
+      if (!input.success) {
+        response.status(400).json({
+          success: false,
+          data: null,
+          error: {
+            code: 'INVALID_EMAIL',
+            message: 'A valid email address is required.',
+            details: null
+          },
+          meta: { requestId: response.locals.requestId }
+        });
+        return;
+      }
+
+      try {
+        await options.passwordRecovery?.request({
+          email: input.data.email,
+          requestId: String(response.locals.requestId)
+        });
+      } catch {
+        // The public response must not reveal account or provider state.
+      }
+
+      response.status(202).json({
+        success: true,
+        data: { accepted: true },
+        error: null,
+        meta: { requestId: response.locals.requestId }
+      });
+    }
+  );
 
   app.use(
     '/graphql',
