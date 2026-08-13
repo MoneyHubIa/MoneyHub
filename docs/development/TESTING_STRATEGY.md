@@ -25,10 +25,10 @@ Minimum coverage target is 80% for critical application code.
 
 ## Transactional Email Smoke
 
-Password recovery closure additionally requires a real Firebase/Resend smoke:
-delivery to a known account, sender/content/action URL inspection, password
-change and action-code non-reuse, old/new password login checks, and a neutral
-request for an unknown address.
+Password recovery closure additionally requires a real Firebase smoke:
+delivery to a known account, Firebase template/content/MoneyHub action URL
+inspection, password change and action-code non-reuse, old/new password login
+checks, and a neutral request for an unknown address.
 
 ## E2E
 

@@ -4,7 +4,7 @@
 
 The file lists the active application configuration and the remaining target
 infrastructure keys. GraphQL, PostgreSQL, Firebase client, Firebase Admin, the
-Auth Emulator, and the Resend password-recovery integration are implemented.
+Auth Emulator, and the Firebase REST password-recovery flow are implemented.
 Broad GCP and production provisioning remain pending in `EPIC-08`.
 
 ## Shared Application Origin
@@ -24,8 +24,7 @@ Broad GCP and production provisioning remain pending in `EPIC-08`.
 - `GOOGLE_APPLICATION_CREDENTIALS`
 - `FIREBASE_AUTH_EMULATOR_HOST`
 - `DATABASE_URL`
-- `RESEND_API_KEY`
-- `RESEND_FROM_EMAIL`
+- `FIREBASE_WEB_API_KEY`
 - `RATE_LIMIT_WINDOW_MS`
 - `RATE_LIMIT_MAX`
 
@@ -53,15 +52,20 @@ Broad GCP and production provisioning remain pending in `EPIC-08`.
 - Keep `.env.example` synchronized with required variables.
 - `APP_URL` and `EXPO_PUBLIC_*` values are public and may be exposed to the app
   bundle. Secrets must never be placed in either category.
-- `APP_URL`, `RESEND_API_KEY`, and `RESEND_FROM_EMAIL` are validated when the
-  backend starts. `RESEND_API_KEY` is backend-only.
+- `APP_URL` and `FIREBASE_WEB_API_KEY` are validated when the backend starts.
+- Never log password-recovery request bodies, `oobCode`, `newPassword`, or URLs
+  that contain `FIREBASE_WEB_API_KEY`.
 
 ## Password Recovery Provider Setup
 
-- Verify the `RESEND_FROM_EMAIL` sender domain in Resend.
+- Set `FIREBASE_WEB_API_KEY` to the key used by Firebase Authentication REST
+  password-reset calls.
 - Set the Firebase Authentication password-reset action URL to
   `${APP_URL}/reset-password`.
 - Add the `APP_URL` domain to Firebase Authentication authorized domains.
+- Enable Firebase Email Enumeration Protection.
+- Update the Firebase password-reset email template so recovery links return to
+  MoneyHub.
 - Keep `handleCodeInApp: false`; native deep linking is not part of this flow.
 
 ## Local Device Networking

@@ -6,8 +6,10 @@
 - The app obtains Firebase ID tokens and sends them to the backend as bearer tokens.
 - The backend verifies ID tokens with Firebase Admin before resolving authenticated GraphQL fields.
 - Password storage, refresh token rotation, and session revocation are delegated to Firebase Auth.
-- Password recovery links are generated through Firebase Admin and sent through
-  Resend. Verification email continues to use Firebase delivery.
+- Password recovery request, action-code verification, and password
+  confirmation all pass through backend-owned Firebase Auth REST endpoints.
+- Verification email and password-recovery delivery remain managed by Firebase.
+- Firebase Email Enumeration Protection remains enabled for recovery requests.
 
 ## Authorization
 

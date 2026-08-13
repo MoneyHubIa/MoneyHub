@@ -13,14 +13,14 @@
 | TASK-009 | Implement Firebase Auth app foundation | Done | EPIC-02 |
 | TASK-010 | Plan Firebase Admin auth context | Done | EPIC-02 |
 | TASK-011 | Plan Firebase Analytics adapter | Done | EPIC-02 |
-| TASK-012 | Plan GCP and Resend infrastructure docs | Pending | EPIC-08 |
+| TASK-012 | Plan GCP and Firebase operations docs | Pending | EPIC-08 |
 | TASK-013 | Implement AI context builder | Pending | EPIC-05 |
 | TASK-014 | Implement agenda foundation | Pending | EPIC-06 |
 | TASK-015 | Configure E2E tests | Pending | EPIC-07 |
 | TASK-016 | Prepare deploy checklist | Pending | EPIC-08 |
 | TASK-017 | Implement authenticated GraphQL profile bootstrap | Done | EPIC-02 |
 | TASK-018 | Implement logout and local Firebase session cleanup | Done | EPIC-02 |
-| TASK-019 | Implement password recovery with Firebase links and Resend | In Progress (real smoke pending) | EPIC-02 |
+| TASK-019 | Implement password recovery with Firebase REST endpoints | In Progress (real smoke pending) | EPIC-02 |
 | TASK-020 | Implement profile management | Done | EPIC-02 |
 | TASK-021 | Implement financial categories | Pending | EPIC-03 |
 | TASK-022 | Implement income and expenses | Pending | EPIC-03 |
@@ -45,7 +45,7 @@
 | TASK-041 | Add Firebase Analytics adapter tests | Pending | EPIC-07 |
 | TASK-042 | Add Expo Web smoke build verification | Pending | EPIC-07 |
 | TASK-043 | Document Firebase Auth and Analytics project setup | Pending | EPIC-08 |
-| TASK-044 | Document Resend email setup | Pending | EPIC-08 |
+| TASK-044 | Document Firebase identity email and recovery setup | Pending | EPIC-08 |
 | TASK-045 | Implement financial reminders | Pending | EPIC-06 |
 | TASK-046 | Implement notification center | Pending | EPIC-06 |
 | TASK-047 | Implement recurring events | Pending | EPIC-06 |

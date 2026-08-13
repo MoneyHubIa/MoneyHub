@@ -7,7 +7,7 @@ MoneyHub is a universal financial management SaaS for personal and business user
 The foundation migration is complete. Firebase registration, login, session
 handling, profile bootstrap, logout, profile management, email verification,
 and password recovery are implemented. Password recovery still requires its
-real Resend/Firebase smoke before `TASK-019` and `EPIC-02` can be closed.
+real Firebase smoke before `TASK-019` and `EPIC-02` can be closed.
 
 ## Monorepo
 
@@ -41,14 +41,15 @@ Define the public application origin once in the repository root `.env`:
 
 ```dotenv
 APP_URL=http://192.168.1.8:3000
-RESEND_API_KEY=re_replace_me
-RESEND_FROM_EMAIL=MoneyHub <security@example.com>
+FIREBASE_WEB_API_KEY=re_replace_me
 ```
 
 Copy `.env.example` for the complete local configuration shape. The backend
-will refuse to start without `APP_URL`, `RESEND_API_KEY`, and
-`RESEND_FROM_EMAIL`. In Firebase Authentication, configure the password-reset
-action URL as `${APP_URL}/reset-password` and authorize the `APP_URL` domain.
+will refuse to start without `APP_URL` and `FIREBASE_WEB_API_KEY`. In Firebase
+Authentication, configure the password-reset action URL as
+`${APP_URL}/reset-password`, authorize the `APP_URL` domain, keep Email
+Enumeration Protection enabled, and update the password-reset email template to
+send users back to MoneyHub.
 
 For a single-origin Web build, export the frontend and start the backend. The
 backend serves both the application and GraphQL at `APP_URL/graphql`:
@@ -74,7 +75,7 @@ npm run start -w apps/backend
 - Identity: Firebase Auth, verified in the backend with Firebase Admin.
 - Analytics: Firebase Analytics.
 - Infrastructure: Google Cloud Platform with Cloud Run, Cloud SQL for PostgreSQL, Secret Manager, and Cloud Logging.
-- Email: Resend for transactional messages.
+- Identity email: Firebase Authentication templates for verification and password recovery.
 
 ## Development Rule
 

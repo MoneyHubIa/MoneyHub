@@ -7,7 +7,7 @@ In Progress
 Firebase Authentication.
 
 ## Objective
-Plan and implement secure account lifecycle with Firebase Auth, Firebase Admin token verification, custom transactional email through Resend, profile management, and authorization boundaries in GraphQL.
+Plan and implement secure account lifecycle with Firebase Auth, Firebase Admin token verification, Firebase-managed identity email flows, profile management, and authorization boundaries in GraphQL.
 
 ## Initial Tasks
 
@@ -17,7 +17,7 @@ Plan and implement secure account lifecycle with Firebase Auth, Firebase Admin t
 - [x] TASK-011 - Plan Firebase Analytics adapter.
 - [x] TASK-017 - Implement authenticated GraphQL profile bootstrap.
 - [x] TASK-018 - Implement logout and local Firebase session cleanup.
-- [ ] TASK-019 - Implement password recovery through Firebase links and Resend email (implementation complete; real smoke pending).
+- [ ] TASK-019 - Implement password recovery through Firebase REST endpoints (implementation complete; real smoke pending).
 - [x] TASK-020 - Implement profile management.
 
 ## Tasks Detail
@@ -94,18 +94,18 @@ screen loads those values, saves them with Apollo, and provides safe loading,
 success, and failure feedback. Backend and frontend tests cover the contract,
 authorization, validation, and save flow.
 
-### TASK-019 - Implement password recovery through Firebase links and Resend email
+### TASK-019 - Implement password recovery through Firebase REST endpoints
 
 ## Status
 In Progress - Real Smoke Required
 
 ## Implementation Review
 
-The backend exposes rate-limited `POST /auth/password-recovery`, generates
-Firebase Admin action links, delivers HTML and text through Resend with an
-idempotency key, returns account-neutral public responses, and records only a
-SHA-256 email hash plus safe operational status. Startup validates the required
-Resend configuration.
+The backend exposes rate-limited `POST /auth/password-recovery`,
+`POST /auth/password-recovery/verify`, and
+`POST /auth/password-recovery/confirm`. It returns account-neutral public
+responses, records only a SHA-256 email hash plus safe operational status, and
+validates `APP_URL` plus `FIREBASE_WEB_API_KEY` at startup.
 
 The Expo app links login to `/forgot-password` and hosts `/reset-password`
 outside the authenticated and anonymous layouts. It validates Firebase action
@@ -115,16 +115,17 @@ links. Automated backend and frontend tests cover the security contract.
 
 ## Remaining Acceptance
 
-`TASK-019` and this epic remain open until a real account proves Resend delivery,
-the MoneyHub action URL and content, password change, code non-reuse, rejection
-of the old password, acceptance of the new password, and indistinguishable
-submission for an unknown address.
+`TASK-019` and this epic remain open until a real account proves Firebase
+delivery, the MoneyHub action URL and content, password change, code
+non-reuse, rejection of the old password, acceptance of the new password, and
+indistinguishable submission for an unknown address.
 
 ## Technical Rules
 
 - The backend must never store passwords, password hashes, or refresh tokens.
 - The app authenticates with Firebase Auth and sends Firebase ID tokens to GraphQL.
 - The backend verifies ID tokens with Firebase Admin before resolving authenticated fields.
-- Password recovery uses Firebase-generated action links delivered by Resend.
+- Password recovery uses backend-owned Firebase Auth REST endpoints and Firebase
+  password-reset templates.
 - Email verification remains delivered directly by Firebase.
 - User-owned data must be scoped by Firebase UID.
