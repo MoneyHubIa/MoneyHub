@@ -87,6 +87,10 @@ function passwordRecoveryPublicErrorStatus(code: PasswordRecoveryPublicError['co
   return code === 'RECOVERY_UNAVAILABLE' ? 503 : 400;
 }
 
+function passwordRecoveryUserIp(request: Request): string {
+  return typeof request.ip === 'string' ? request.ip : '';
+}
+
 function isLoopbackOrigin(origin: string): boolean {
   try {
     const hostname = new URL(origin).hostname;
@@ -209,7 +213,7 @@ export async function createApp(
         await options.passwordRecovery?.request({
           email: input.data.email,
           requestId: String(response.locals.requestId),
-          userIp: request.ip
+          userIp: passwordRecoveryUserIp(request)
         });
       } catch {
         // The public response must not reveal account or provider state.
