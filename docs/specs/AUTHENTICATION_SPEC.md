@@ -93,7 +93,7 @@ Firebase does not expose the original verification timestamp, so `email_verified
 - `POST /auth/password-recovery` accepts an email. Syntactically valid input
   always returns account-neutral HTTP `202` with the same public result for
   known addresses, unknown addresses, and provider failures. Each recovery
-  route parses JSON bodies with a `16kb` limit.
+  route parses JSON bodies with a `16 KiB` limit.
 - `POST /auth/password-recovery/verify` accepts a non-empty `oobCode`. Invalid,
   expired, used, or malformed codes return HTTP `400`
   `INVALID_OR_EXPIRED_ACTION_CODE`; too many attempts return

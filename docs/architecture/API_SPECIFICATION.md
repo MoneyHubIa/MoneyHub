@@ -25,7 +25,7 @@ POST /auth/password-recovery/confirm
 - Recovery responses echo a sanitized `x-request-id` value in the response
   header and `meta.requestId`. Only `[A-Za-z0-9._-]{1,128}` is accepted from
   the client; any other value is replaced with a generated UUID.
-- All three public recovery endpoints parse JSON bodies with a `16kb` limit.
+- All three public recovery endpoints parse JSON bodies with a `16 KiB` limit.
 - The backend-owned Firebase Auth REST adapter aborts provider requests after
   10 seconds and maps provider failures to stable public error codes.
 - `POST /auth/password-recovery` accepts `{ "email": "user@example.com" }`.
