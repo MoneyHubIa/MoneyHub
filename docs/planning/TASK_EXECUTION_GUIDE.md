@@ -16,29 +16,44 @@ depois da conclusao do `EPIC-01`.
   no Firebase Auth Emulator.
 - `TASK-020` esta concluida. O perfil autenticado pode consultar e alterar nome,
   moeda preferida e tema pela tela Ajustes e pelo contrato GraphQL.
-- `TASK-019` esta implementada e coberta por testes automatizados. O fechamento
-  depende apenas do smoke real com entrega Firebase, URL MoneyHub e troca de
-  senha verificadas.
+- `TASK-019` esta em `In Progress (real smoke pending)`. A implementacao atual
+  usa backend Firebase Auth REST apenas no backend, falhas temporarias
+  recuperaveis com retry no app, enforcement local por janela deslizante,
+  auditoria segura e sanitizacao de `x-request-id` antes de logs ou eventos.
+- `EPIC-02` permanece aberto ate o smoke real Firebase passar.
 - `EPIC-01` esta concluido.
 - Producao Firebase, Cloud SQL, GCP, deploy, proxy confiavel no Cloud Run e
-  rate limit compartilhado continuam fora do escopo da fundacao.
+  rate limit compartilhado continuam fora do escopo da fundacao; `EPIC-08`
+  ainda cobre store compartilhado e revisao do comportamento
+  `trust proxy`/`X-Forwarded-For` antes de qualquer deploy Cloud Run com varias
+  instancias.
 
 ## Evidencias Disponiveis
 
 | Area | Evidencia |
 | --- | --- |
-| Backend | 62 testes, lint, typecheck e build passam |
-| App | 96 testes, lint, typecheck e export Expo passam |
-| Monorepo | 158 testes automatizados passam |
+| Backend | 72 testes, lint, typecheck e build passam |
+| App | 104 testes, lint, typecheck e export Expo passam |
+| Monorepo | 176 testes automatizados passam |
 | Bundles | Expo export passa para Web, iOS e Android |
 | Firebase Auth | Auth Emulator valida registro, login, ID token e restauracao da sessao |
 | PostgreSQL | schema de identidade baselined; `prisma migrate status` reporta banco atualizado |
+
+## Evidencias de Smoke Ainda Pendentes
+
+- Entrega real do e-mail e conteudo final enviado pelo Firebase.
+- `Action URL` do MoneyHub apontando para `${APP_URL}/reset-password`.
+- Troca efetiva de senha na conta real.
+- Nao reutilizacao do action code apos confirmacao.
+- Falha do login com a senha antiga.
+- Sucesso do login com a senha nova.
+- Paridade de resposta para endereco de e-mail desconhecido.
 
 ## Execucao Imediata
 
 | Ordem | Task | Acao | Condicao de conclusao |
 | --- | --- | --- | --- |
-| 1 | `TASK-019` | Executar smoke real da recuperacao implementada | Entrega Firebase, URL MoneyHub, troca de senha e nao enumeracao comprovadas |
+| 1 | `TASK-019` | Executar smoke real da recuperacao implementada | Entrega/conteudo Firebase, URL MoneyHub, troca de senha, nao reutilizacao do codigo, falha da senha antiga, sucesso da senha nova e paridade para endereco desconhecido comprovadas |
 | 2 | `TASK-021` | Implementar categorias financeiras | Contrato, migration, resolvers, interface e testes concluidos |
 | 3 | `TASK-014` | Implementar fundacao de agenda | Contrato, persistence, interface e testes concluidos |
 
@@ -60,7 +75,7 @@ alterarem o gate de fundacao.
 | --- | --- |
 | `TASK-021` a `TASK-033` | Bootstrap de identidade, autorizacao e modelos de dominio |
 | `TASK-014`, `TASK-045` a `TASK-047` | Identidade persistida e fundacao de agenda |
-| `TASK-016`, `TASK-038`, `TASK-039` | Decisoes e documentacao de infraestrutura de producao |
+| `TASK-016`, `TASK-038`, `TASK-039` | Decisoes e documentacao de infraestrutura de producao, store compartilhado e revisao de `trust proxy`/`X-Forwarded-For` para Cloud Run |
 
 ## Comandos de Aceite
 

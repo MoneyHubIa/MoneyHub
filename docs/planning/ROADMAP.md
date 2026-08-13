@@ -10,7 +10,8 @@
 ## Phase 2 - Authentication
 
 - Register, login, token verification, logout.
-- Password recovery and e-mail verification.
+- Password recovery (implemented; real Firebase smoke pending) and e-mail
+  verification.
 - Profile control.
 
 ## Phase 3 - Financial Core
@@ -39,5 +40,6 @@
 - E2E tests.
 - Security review.
 - GCP and Firebase deployment documentation.
-- Shared password-recovery rate limiting and reviewed trusted-proxy behavior for
-  multi-instance Cloud Run deployment (EPIC-08).
+- Shared password-recovery rate limiting and reviewed trusted-proxy/X-Forwarded-
+  For behavior remain pre-deployment work for multi-instance Cloud Run
+  deployment; the current in-process limiter is not suitable there (EPIC-08).

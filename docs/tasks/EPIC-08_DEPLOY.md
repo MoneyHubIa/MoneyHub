@@ -37,9 +37,11 @@ password-reset template pointed at MoneyHub. This narrow setup does not
 complete the broader GCP, monitoring, production-build, or Cloud Run hardening
 tasks in this epic.
 
-Before a multi-instance Cloud Run deployment, replace the process-local recovery
-rate-limit store with a shared store and test the exact trusted-proxy/X-Forwarded-
-For chain so the five-request limit applies per real client IP. If production
-threat modeling requires timing-indistinguishable account lookup, introduce a
-durable asynchronous email-dispatch boundary; status/body parity alone cannot
-remove provider-latency differences safely in serverless execution.
+Before a multi-instance Cloud Run deployment, replace the current process-local
+recovery rate-limit store with a shared store and test the exact
+trusted-proxy/X-Forwarded-For chain so the five-request limit applies per real
+client IP. The current in-process sliding-window limiter is not suitable for
+multiple Cloud Run instances. If production threat modeling requires timing-
+indistinguishable account lookup, introduce a durable asynchronous email-
+dispatch boundary; status/body parity alone cannot remove provider-latency
+differences safely in serverless execution.

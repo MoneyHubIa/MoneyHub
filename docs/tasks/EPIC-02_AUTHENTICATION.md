@@ -1,7 +1,7 @@
 # EPIC-02 - Authentication and Identity
 
 ## Status
-In Progress
+In Progress (real smoke pending)
 
 ## Feature
 Firebase Authentication.
@@ -17,7 +17,7 @@ Plan and implement secure account lifecycle with Firebase Auth, Firebase Admin t
 - [x] TASK-011 - Plan Firebase Analytics adapter.
 - [x] TASK-017 - Implement authenticated GraphQL profile bootstrap.
 - [x] TASK-018 - Implement logout and local Firebase session cleanup.
-- [ ] TASK-019 - Implement password recovery through Firebase REST endpoints (implementation complete; real smoke pending).
+- [ ] TASK-019 - Implement password recovery through Firebase REST endpoints (In Progress (real smoke pending)).
 - [x] TASK-020 - Implement profile management.
 
 ## Tasks Detail
@@ -97,28 +97,32 @@ authorization, validation, and save flow.
 ### TASK-019 - Implement password recovery through Firebase REST endpoints
 
 ## Status
-In Progress - Real Smoke Required
+In Progress (real smoke pending)
 
 ## Implementation Review
 
-The backend exposes rate-limited `POST /auth/password-recovery`,
-`POST /auth/password-recovery/verify`, and
+The backend owns the Firebase Auth REST integration and exposes rate-limited
+`POST /auth/password-recovery`, `POST /auth/password-recovery/verify`, and
 `POST /auth/password-recovery/confirm`. It returns account-neutral public
-responses, records only a SHA-256 email hash plus safe operational status, and
-validates `APP_URL` plus `FIREBASE_WEB_API_KEY` at startup.
+responses, applies process-local sliding-window enforcement, records only a
+SHA-256 email hash plus safe operational status, maps retryable temporary
+failures safely, validates `APP_URL` plus `FIREBASE_WEB_API_KEY` at startup,
+and sanitizes client-provided `x-request-id` values before logs or audit
+events.
 
 The Expo app links login to `/forgot-password` and hosts `/reset-password`
 outside the authenticated and anonymous layouts. It validates Firebase action
-codes, confirms matching passwords, maps weak-password errors safely, signs out
-after success, and offers a new request for missing, invalid, expired, or used
+codes, confirms matching passwords, maps weak-password errors safely, retries
+recoverable temporary failures, signs out and clears the local session after
+success, and offers a new request for missing, invalid, expired, or used
 links. Automated backend and frontend tests cover the security contract.
 
 ## Remaining Acceptance
 
-`TASK-019` and this epic remain open until a real account proves Firebase
-delivery, the MoneyHub action URL and content, password change, code
-non-reuse, rejection of the old password, acceptance of the new password, and
-indistinguishable submission for an unknown address.
+`TASK-019` and `EPIC-02` remain open until a real account proves Firebase
+delivery and message content, the MoneyHub action URL, password change, action
+code non-reuse, rejection of the old password, acceptance of the new password,
+and indistinguishable submission for an unknown address.
 
 ## Technical Rules
 
