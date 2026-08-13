@@ -26,6 +26,10 @@ describe('authErrorMessage', () => {
       'Não foi possível conectar. Verifique sua internet e tente novamente.'
     ],
     [
+      'auth/recovery-unavailable',
+      'A recuperação de senha está temporariamente indisponível. Tente novamente.'
+    ],
+    [
       'auth/operation-not-allowed',
       'Este método de acesso não está disponível no momento.'
     ]

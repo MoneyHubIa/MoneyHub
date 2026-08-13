@@ -63,9 +63,15 @@ describe('PasswordRecoveryClient', () => {
       )
     });
 
-    await expect(client.request('invalid')).rejects.toThrow(
-      'Password recovery request was not accepted.'
-    );
+    await expect(client.request('invalid')).rejects.toMatchObject({
+      code: 'auth/recovery-unavailable',
+      message: 'Password recovery request failed.'
+    });
+    await client.request('invalid').catch((error: unknown) => {
+      expect(JSON.stringify(error)).not.toContain('retryAfterSeconds');
+      expect(error).not.toHaveProperty('details');
+      expect(error).not.toHaveProperty('response');
+    });
   });
 
   test('posts recovery code verification to backend verify endpoint', async () => {
@@ -224,7 +230,7 @@ describe('PasswordRecoveryClient', () => {
     });
   });
 
-  test('maps unavailable backend confirm errors to a safe internal error', async () => {
+  test('maps unavailable backend confirm errors to auth/recovery-unavailable', async () => {
     const client = createPasswordRecoveryClient({
       endpoint: '/auth/password-recovery',
       fetchRequest: jest.fn().mockResolvedValue(
@@ -244,7 +250,7 @@ describe('PasswordRecoveryClient', () => {
     });
 
     await expect(client.confirm('valid-code', 'new-password')).rejects.toMatchObject({
-      code: 'auth/internal-error',
+      code: 'auth/recovery-unavailable',
       message: 'Password recovery confirmation failed.'
     });
     await client.confirm('valid-code', 'new-password').catch((error: unknown) => {
@@ -253,6 +259,49 @@ describe('PasswordRecoveryClient', () => {
       );
       expect(JSON.stringify(error)).not.toContain('confirm-request-1');
       expect(error).not.toHaveProperty('details');
+      expect(error).not.toHaveProperty('response');
+    });
+  });
+
+  test('maps backend rate limits to auth/too-many-requests', async () => {
+    const client = createPasswordRecoveryClient({
+      endpoint: '/auth/password-recovery',
+      fetchRequest: jest.fn().mockResolvedValue(
+        response({
+          ok: false,
+          status: 429,
+          body: {
+            success: false,
+            error: {
+              code: 'RATE_LIMITED',
+              message: 'secret upstream throttling detail'
+            }
+          }
+        })
+      )
+    });
+
+    await expect(client.request('person@example.com')).rejects.toMatchObject({
+      code: 'auth/too-many-requests',
+      message: 'Password recovery request failed.'
+    });
+  });
+
+  test('maps fetch failures to auth/network-request-failed without leaking details', async () => {
+    const client = createPasswordRecoveryClient({
+      endpoint: '/auth/password-recovery',
+      fetchRequest: jest.fn().mockRejectedValue(
+        new Error('request failed for oobCode=secret-action-code')
+      )
+    });
+
+    await expect(client.verifyCode('secret-action-code')).rejects.toMatchObject({
+      code: 'auth/network-request-failed',
+      message: 'Password recovery verification failed.'
+    });
+    await client.verifyCode('secret-action-code').catch((error: unknown) => {
+      expect(JSON.stringify(error)).not.toContain('secret-action-code');
+      expect(error).not.toHaveProperty('cause');
       expect(error).not.toHaveProperty('response');
     });
   });

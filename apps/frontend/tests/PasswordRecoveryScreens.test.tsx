@@ -276,6 +276,68 @@ describe('reset password screen', () => {
       );
     });
     expect(screen.getByText('Solicitar novo link')).toBeOnTheScreen();
+    expect(screen.queryByText('Tentar novamente')).not.toBeOnTheScreen();
+  });
+
+  test.each([
+    [
+      'auth/recovery-unavailable',
+      'A recuperação de senha está temporariamente indisponível. Tente novamente.'
+    ],
+    [
+      'auth/network-request-failed',
+      'Não foi possível conectar. Verifique sua internet e tente novamente.'
+    ],
+    [
+      'auth/too-many-requests',
+      'Muitas tentativas. Aguarde um momento e tente novamente.'
+    ]
+  ])('offers retry when verification fails with %s', async (code, message) => {
+    const recovery = client({
+      verifyCode: jest.fn().mockRejectedValue(
+        Object.assign(new Error('temporary failure'), { code })
+      )
+    });
+    await render(
+      <ResetPasswordScreen
+        client={recovery}
+        logout={jest.fn()}
+        mode="resetPassword"
+        oobCode="valid-code"
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(message);
+    });
+    expect(screen.getByText('Tentar novamente')).toBeOnTheScreen();
+    expect(screen.queryByText('Solicitar novo link')).not.toBeOnTheScreen();
+  });
+
+  test('retries temporary verification without discarding the action code', async () => {
+    const verifyCode = jest.fn()
+      .mockRejectedValueOnce(
+        Object.assign(new Error('offline'), {
+          code: 'auth/network-request-failed'
+        })
+      )
+      .mockResolvedValueOnce(undefined);
+    const recovery = client({ verifyCode });
+    await render(
+      <ResetPasswordScreen
+        client={recovery}
+        logout={jest.fn()}
+        mode="resetPassword"
+        oobCode="valid-code"
+      />
+    );
+
+    await screen.findByText('Tentar novamente');
+    await fireEvent.press(screen.getByRole('button', { name: 'Tentar novamente' }));
+
+    await screen.findByLabelText('Nova senha');
+    expect(verifyCode).toHaveBeenCalledTimes(2);
+    expect(verifyCode).toHaveBeenNthCalledWith(2, 'valid-code');
   });
 
   test('does not call backend confirmation when password confirmation differs', async () => {
@@ -346,6 +408,41 @@ describe('reset password screen', () => {
       );
     });
     expect(screen.queryByText('Firebase leaked policy')).not.toBeOnTheScreen();
+  });
+
+  test('keeps the form available when confirmation is temporarily unavailable', async () => {
+    const recovery = client({
+      confirm: jest.fn().mockRejectedValue(
+        Object.assign(new Error('temporary'), {
+          code: 'auth/recovery-unavailable'
+        })
+      )
+    });
+    await render(
+      <ResetPasswordScreen
+        client={recovery}
+        logout={jest.fn()}
+        mode="resetPassword"
+        oobCode="valid-code"
+      />
+    );
+    await screen.findByLabelText('Nova senha');
+
+    await fireEvent.changeText(screen.getByLabelText('Nova senha'), 'strong-password');
+    await fireEvent.changeText(
+      screen.getByLabelText('Confirmar nova senha'),
+      'strong-password'
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Redefinir senha' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'A recuperação de senha está temporariamente indisponível. Tente novamente.'
+      );
+    });
+    expect(screen.getByLabelText('Nova senha')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Redefinir senha' })).toBeEnabled();
+    expect(screen.queryByText('Solicitar novo link')).not.toBeOnTheScreen();
   });
 
   test('offers a new request when the code expires during confirmation', async () => {

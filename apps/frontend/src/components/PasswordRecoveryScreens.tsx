@@ -17,6 +17,15 @@ import type { PasswordRecoveryClient } from '../services/passwordRecoveryClient'
 const INVALID_LINK_MESSAGE =
   'Este link de recuperação é inválido, expirou ou já foi usado.';
 
+function recoveryErrorCode(error: unknown) {
+  return typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof error.code === 'string'
+    ? error.code
+    : null;
+}
+
 type ForgotPasswordScreenProps = Readonly<{
   client: PasswordRecoveryClient;
 }>;
@@ -145,12 +154,15 @@ function ResetPasswordFlow({
   const [error, setError] = useState<string | null>(
     validParameters ? null : INVALID_LINK_MESSAGE
   );
+  const [retryableVerificationError, setRetryableVerificationError] = useState(false);
+  const [verificationAttempt, setVerificationAttempt] = useState(0);
   const [completed, setCompleted] = useState(false);
 
   useEffect(() => {
     if (!validParameters || !oobCode) {
       setChecking(false);
       setValidCode(false);
+      setRetryableVerificationError(false);
       setError(INVALID_LINK_MESSAGE);
       return;
     }
@@ -158,6 +170,7 @@ function ResetPasswordFlow({
 
     setChecking(true);
     setValidCode(false);
+    setRetryableVerificationError(false);
     setError(null);
 
     void client.verifyCode(oobCode).then(
@@ -166,9 +179,14 @@ function ResetPasswordFlow({
         setValidCode(true);
         setChecking(false);
       },
-      () => {
+      (verifyError) => {
         if (!active) return;
-        setError(INVALID_LINK_MESSAGE);
+        const code = recoveryErrorCode(verifyError);
+        const invalidCode =
+          code === 'auth/expired-action-code' ||
+          code === 'auth/invalid-action-code';
+        setRetryableVerificationError(!invalidCode);
+        setError(invalidCode ? INVALID_LINK_MESSAGE : authErrorMessage(verifyError));
         setChecking(false);
       }
     );
@@ -176,7 +194,7 @@ function ResetPasswordFlow({
     return () => {
       active = false;
     };
-  }, [client, oobCode, validParameters]);
+  }, [client, oobCode, validParameters, verificationAttempt]);
 
   const submit = async () => {
     setError(null);
@@ -199,13 +217,7 @@ function ResetPasswordFlow({
       await logout();
       setCompleted(true);
     } catch (submitError) {
-      const code =
-        typeof submitError === 'object' &&
-        submitError !== null &&
-        'code' in submitError &&
-        typeof submitError.code === 'string'
-          ? submitError.code
-          : null;
+      const code = recoveryErrorCode(submitError);
       if (
         code === 'auth/expired-action-code' ||
         code === 'auth/invalid-action-code'
@@ -234,11 +246,23 @@ function ResetPasswordFlow({
   if (!validCode) {
     return (
       <RecoveryPage>
-        <Text accessibilityRole="header" style={styles.title}>Link indisponível</Text>
-        <Text accessibilityRole="alert" style={styles.error}>{error}</Text>
-        <Link href={'/forgot-password' as Href} style={styles.link}>
-          Solicitar novo link
-        </Link>
+        <Text accessibilityRole="header" style={styles.title}>
+          {retryableVerificationError
+            ? 'Não foi possível validar o link'
+            : 'Link indisponível'}
+        </Text>
+        {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+        {retryableVerificationError ? (
+          <SubmitButton
+            label="Tentar novamente"
+            loading={false}
+            onPress={() => setVerificationAttempt((attempt) => attempt + 1)}
+          />
+        ) : (
+          <Link href={'/forgot-password' as Href} style={styles.link}>
+            Solicitar novo link
+          </Link>
+        )}
       </RecoveryPage>
     );
   }

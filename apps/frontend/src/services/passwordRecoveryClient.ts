@@ -29,6 +29,9 @@ function passwordRecoveryError(
   code:
     | 'auth/internal-error'
     | 'auth/invalid-action-code'
+    | 'auth/network-request-failed'
+    | 'auth/recovery-unavailable'
+    | 'auth/too-many-requests'
     | 'auth/weak-password',
   message: string
 ) {
@@ -84,8 +87,30 @@ async function ensureSuccess(
       failureMessage
     );
   }
+  if (errorCode === 'RATE_LIMITED') {
+    throw passwordRecoveryError('auth/too-many-requests', failureMessage);
+  }
+  if (errorCode === 'RECOVERY_UNAVAILABLE') {
+    throw passwordRecoveryError('auth/recovery-unavailable', failureMessage);
+  }
 
   throw passwordRecoveryError('auth/internal-error', failureMessage);
+}
+
+async function postRecoveryRequest(
+  dependencies: PasswordRecoveryDependencies,
+  endpoint: string,
+  body: Record<string, string>,
+  failureMessage: string
+) {
+  let response: PasswordRecoveryFetchResponse;
+  try {
+    response = await dependencies.fetchRequest(endpoint, recoveryRequest(body));
+  } catch {
+    throw passwordRecoveryError('auth/network-request-failed', failureMessage);
+  }
+
+  await ensureSuccess(response, failureMessage);
 }
 
 export function createPasswordRecoveryClient(
@@ -93,27 +118,28 @@ export function createPasswordRecoveryClient(
 ): PasswordRecoveryClient {
   return {
     async request(email) {
-      const response = await dependencies.fetchRequest(
+      await postRecoveryRequest(
+        dependencies,
         dependencies.endpoint,
-        recoveryRequest({ email })
+        { email },
+        'Password recovery request failed.'
       );
-      if (!response.ok) {
-        throw new Error('Password recovery request was not accepted.');
-      }
     },
     async verifyCode(oobCode) {
-      const response = await dependencies.fetchRequest(
+      await postRecoveryRequest(
+        dependencies,
         `${dependencies.endpoint}/verify`,
-        recoveryRequest({ oobCode })
+        { oobCode },
+        'Password recovery verification failed.'
       );
-      await ensureSuccess(response, 'Password recovery verification failed.');
     },
     async confirm(oobCode, newPassword) {
-      const response = await dependencies.fetchRequest(
+      await postRecoveryRequest(
+        dependencies,
         `${dependencies.endpoint}/confirm`,
-        recoveryRequest({ oobCode, newPassword })
+        { oobCode, newPassword },
+        'Password recovery confirmation failed.'
       );
-      await ensureSuccess(response, 'Password recovery confirmation failed.');
     }
   };
 }
