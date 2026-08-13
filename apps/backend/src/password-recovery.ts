@@ -1,58 +1,59 @@
 import { createHash } from 'node:crypto';
+import {
+  FirebaseAuthRestError,
+  type FirebaseAuthRestClient
+} from './firebase-auth-rest.js';
 
 export type PasswordRecoveryService = {
-  request(input: { email: string; requestId: string }): Promise<void>;
+  request(input: {
+    email: string;
+    requestId: string;
+    userIp: string;
+  }): Promise<void>;
+  verify(input: { oobCode: string; requestId: string }): Promise<void>;
+  confirm(input: {
+    oobCode: string;
+    newPassword: string;
+    requestId: string;
+  }): Promise<void>;
 };
 
+export type PasswordRecoveryPublicCode =
+  | 'INVALID_OR_EXPIRED_ACTION_CODE'
+  | 'WEAK_PASSWORD'
+  | 'RECOVERY_UNAVAILABLE';
+
+export class PasswordRecoveryPublicError extends Error {
+  constructor(readonly code: PasswordRecoveryPublicCode) {
+    super('Password recovery operation failed.');
+  }
+}
+
 export type PasswordRecoveryAuditEvent = Readonly<{
-  event: 'password_recovery_requested';
+  event:
+    | 'password_recovery_requested'
+    | 'password_recovery_code_verified'
+    | 'password_recovery_confirmed';
   requestId: string;
-  emailHash: string;
-  status: 'sent' | 'unknown_user' | 'firebase_error' | 'email_error';
+  status:
+    | 'requested'
+    | 'unknown_user'
+    | 'verified'
+    | 'confirmed'
+    | 'firebase_error'
+    | 'invalid_code'
+    | 'weak_password';
+  emailHash?: string;
   providerCode?: string;
 }>;
 
 type PasswordRecoveryDependencies = Readonly<{
   appUrl: URL;
-  fromEmail: string;
-  providerTimeoutMs?: number | undefined;
-  generatePasswordResetLink(
-    email: string,
-    settings: { url: string; handleCodeInApp: boolean }
-  ): Promise<string>;
-  sendEmail(
-    message: {
-      from: string;
-      to: string[];
-      subject: string;
-      html: string;
-      text: string;
-    },
-    options: { idempotencyKey: string }
-  ): Promise<void>;
+  firebaseAuthRest: FirebaseAuthRestClient;
   audit(event: PasswordRecoveryAuditEvent): void;
 }>;
 
-function withProviderTimeout<T>(operation: Promise<T>, timeoutMs: number) {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(Object.assign(new Error('Password recovery provider timed out.'), {
-        code: 'provider/timeout'
-      }));
-    }, timeoutMs);
-
-    operation.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error: unknown) => {
-        clearTimeout(timer);
-        reject(error);
-      }
-    );
-  });
-}
+const PROVIDER_CODE_PATTERN = /^[A-Z0-9_:/-]{1,100}$/i;
 
 function normalizedEmail(email: string) {
   return email.trim().toLowerCase();
@@ -63,110 +64,151 @@ function emailHash(email: string) {
 }
 
 function providerCode(error: unknown) {
-  if (typeof error !== 'object' || error === null || !('code' in error)) {
+  if (error instanceof FirebaseAuthRestError) {
+    return error.providerCode;
+  }
+
+  if (typeof error !== 'object' || error === null || !('providerCode' in error)) {
     return undefined;
   }
 
-  const code = error.code;
-  return typeof code === 'string' && /^[a-z0-9_/-]{1,100}$/i.test(code)
+  const code = error.providerCode;
+  return typeof code === 'string' && PROVIDER_CODE_PATTERN.test(code)
     ? code
     : undefined;
 }
 
-function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;'
-  })[character] ?? character);
+function safeAudit(
+  auditTransport: PasswordRecoveryDependencies['audit'],
+  event: PasswordRecoveryAuditEvent
+) {
+  try {
+    auditTransport(event);
+  } catch {
+    // Audit transport failures must not alter the public recovery behavior.
+  }
 }
 
-function recoveryEmail(link: string) {
-  const safeLink = escapeHtml(link);
-  return {
-    subject: 'Redefina sua senha do MoneyHub',
-    text: [
-      'Recebemos uma solicitação para redefinir sua senha do MoneyHub.',
-      '',
-      `Redefina sua senha: ${link}`,
-      '',
-      'Se você não solicitou esta alteração, ignore este e-mail.'
-    ].join('\n'),
-    html: [
-      '<h1>Redefina sua senha do MoneyHub</h1>',
-      '<p>Recebemos uma solicitação para redefinir sua senha.</p>',
-      `<p><a href="${safeLink}">Redefinir senha</a></p>`,
-      '<p>Se você não solicitou esta alteração, ignore este e-mail.</p>'
-    ].join('')
-  };
+function invalidOrExpiredCode(providerCode: string | undefined) {
+  return providerCode === 'INVALID_OOB_CODE' || providerCode === 'EXPIRED_OOB_CODE';
+}
+
+function weakPasswordCode(providerCode: string | undefined) {
+  return (
+    providerCode === 'WEAK_PASSWORD' ||
+    providerCode === 'PASSWORD_DOES_NOT_MEET_REQUIREMENTS'
+  );
+}
+
+function withProviderCode(
+  event: Omit<PasswordRecoveryAuditEvent, 'providerCode'>,
+  code: string | undefined
+): PasswordRecoveryAuditEvent {
+  return code ? { ...event, providerCode: code } : event;
 }
 
 export function createPasswordRecoveryService(
   dependencies: PasswordRecoveryDependencies
 ): PasswordRecoveryService {
-  const providerTimeoutMs = dependencies.providerTimeoutMs ?? 10_000;
-  const audit = (event: PasswordRecoveryAuditEvent) => {
-    try {
-      dependencies.audit(event);
-    } catch {
-      // Audit transport failures must not alter the public recovery behavior.
-    }
-  };
-
   return {
-    async request({ email, requestId }) {
+    async request({ email, requestId, userIp }) {
       const normalized = normalizedEmail(email);
-      const baseAuditEvent = {
+      const baseEvent = {
         event: 'password_recovery_requested' as const,
         requestId,
         emailHash: emailHash(normalized)
       };
-      let link: string;
 
       try {
-        link = await withProviderTimeout(
-          dependencies.generatePasswordResetLink(normalized, {
-            url: new URL('/login', dependencies.appUrl).toString(),
-            handleCodeInApp: false
-          }),
-          providerTimeoutMs
-        );
+        await dependencies.firebaseAuthRest.requestPasswordReset({
+          email: normalized,
+          continueUrl: new URL('/login', dependencies.appUrl).toString(),
+          userIp
+        });
+        safeAudit(dependencies.audit, {
+          ...baseEvent,
+          status: 'requested'
+        });
       } catch (error) {
         const code = providerCode(error);
-        audit({
-          ...baseAuditEvent,
-          status: code === 'auth/user-not-found' ? 'unknown_user' : 'firebase_error',
-          ...(code ? { providerCode: code } : {})
-        });
-        return;
-      }
-
-      const message = recoveryEmail(link);
-      try {
-        await withProviderTimeout(
-          dependencies.sendEmail(
+        safeAudit(
+          dependencies.audit,
+          withProviderCode(
             {
-              from: dependencies.fromEmail,
-              to: [normalized],
-              ...message
+              ...baseEvent,
+              status: code === 'EMAIL_NOT_FOUND' ? 'unknown_user' : 'firebase_error'
             },
-            { idempotencyKey: `password-recovery/${requestId}` }
-          ),
-          providerTimeoutMs
+            code
+          )
         );
+      }
+    },
+
+    async verify({ oobCode, requestId }) {
+      try {
+        await dependencies.firebaseAuthRest.verifyPasswordResetCode(oobCode);
+        safeAudit(dependencies.audit, {
+          event: 'password_recovery_code_verified',
+          requestId,
+          status: 'verified'
+        });
       } catch (error) {
         const code = providerCode(error);
-        audit({
-          ...baseAuditEvent,
-          status: 'email_error',
-          ...(code ? { providerCode: code } : {})
-        });
-        return;
+        const publicCode = invalidOrExpiredCode(code)
+          ? 'INVALID_OR_EXPIRED_ACTION_CODE'
+          : 'RECOVERY_UNAVAILABLE';
+        safeAudit(
+          dependencies.audit,
+          withProviderCode(
+            {
+              event: 'password_recovery_code_verified',
+              requestId,
+              status: invalidOrExpiredCode(code) ? 'invalid_code' : 'firebase_error'
+            },
+            code
+          )
+        );
+        throw new PasswordRecoveryPublicError(publicCode);
       }
+    },
 
-      audit({ ...baseAuditEvent, status: 'sent' });
+    async confirm({ oobCode, newPassword, requestId }) {
+      try {
+        await dependencies.firebaseAuthRest.confirmPasswordReset(
+          oobCode,
+          newPassword
+        );
+        safeAudit(dependencies.audit, {
+          event: 'password_recovery_confirmed',
+          requestId,
+          status: 'confirmed'
+        });
+      } catch (error) {
+        const code = providerCode(error);
+        const publicCode = invalidOrExpiredCode(code)
+          ? 'INVALID_OR_EXPIRED_ACTION_CODE'
+          : weakPasswordCode(code)
+            ? 'WEAK_PASSWORD'
+            : 'RECOVERY_UNAVAILABLE';
+        const status = invalidOrExpiredCode(code)
+          ? 'invalid_code'
+          : weakPasswordCode(code)
+            ? 'weak_password'
+            : 'firebase_error';
+
+        safeAudit(
+          dependencies.audit,
+          withProviderCode(
+            {
+              event: 'password_recovery_confirmed',
+              requestId,
+              status
+            },
+            code
+          )
+        );
+        throw new PasswordRecoveryPublicError(publicCode);
+      }
     }
   };
 }
