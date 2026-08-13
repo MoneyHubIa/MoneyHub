@@ -11,34 +11,33 @@ import {
 describe('runtime configuration', () => {
   test('normalizes the single public application URL', () => {
     const config = loadRuntimeConfig({
-      APP_URL: 'http://example.test:3000/',
-      RESEND_API_KEY: 're_test_key',
-      RESEND_FROM_EMAIL: 'MoneyHub <security@example.test>'
+      APP_URL: 'https://moneyhub.example/',
+      FIREBASE_WEB_API_KEY: 'firebase-web-key'
     });
 
-    assert.equal(config.appUrl.toString(), 'http://example.test:3000/');
-    assert.equal(config.resendApiKey, 're_test_key');
-    assert.equal(config.resendFromEmail, 'MoneyHub <security@example.test>');
+    assert.equal(config.appUrl.toString(), 'https://moneyhub.example/');
+    assert.equal(config.firebaseWebApiKey, 'firebase-web-key');
+    assert.equal('resendApiKey' in config, false);
+    assert.equal('resendFromEmail' in config, false);
   });
 
   test('requires the single public application URL', () => {
     assert.throws(() => loadRuntimeConfig({}), /APP_URL is required/);
   });
 
-  test('requires Resend credentials at startup', () => {
+  test('requires Firebase Web API key at startup', () => {
     assert.throws(
       () => loadRuntimeConfig({
-        APP_URL: 'https://moneyhub.example',
-        RESEND_FROM_EMAIL: 'security@moneyhub.example'
+        APP_URL: 'https://moneyhub.example'
       }),
-      /RESEND_API_KEY is required/
+      /FIREBASE_WEB_API_KEY is required/
     );
     assert.throws(
       () => loadRuntimeConfig({
         APP_URL: 'https://moneyhub.example',
-        RESEND_API_KEY: 're_test_key'
+        FIREBASE_WEB_API_KEY: '   '
       }),
-      /RESEND_FROM_EMAIL is required/
+      /FIREBASE_WEB_API_KEY is required/
     );
   });
 
