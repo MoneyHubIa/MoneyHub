@@ -1,7 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import { ResetPasswordScreen } from '@/components/PasswordRecoveryScreens';
 import { useAuth } from '@/providers/AuthProvider';
-import { passwordRecoveryClient } from '@/services/firebasePasswordRecoveryClient';
+import { passwordRecoveryClient } from '@/services/backendPasswordRecoveryClient';
 
 export default function ResetPasswordRoute() {
   const { logout } = useAuth();

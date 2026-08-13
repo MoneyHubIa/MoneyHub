@@ -14,7 +14,7 @@ import type { PasswordRecoveryClient } from '../src/services/passwordRecoveryCli
 function client(overrides: Partial<PasswordRecoveryClient> = {}): PasswordRecoveryClient {
   return {
     request: jest.fn().mockResolvedValue(undefined),
-    verifyCode: jest.fn().mockResolvedValue('person@example.com'),
+    verifyCode: jest.fn().mockResolvedValue(undefined),
     confirm: jest.fn().mockResolvedValue(undefined),
     ...overrides
   };
@@ -65,7 +65,7 @@ describe('forgot password screen', () => {
 });
 
 describe('reset password screen', () => {
-  test('rejects missing or unrelated action parameters without calling Firebase', async () => {
+  test('rejects missing or unrelated action parameters without calling backend verification', async () => {
     const recovery = client();
     await render(
       <ResetPasswordScreen
@@ -111,12 +111,12 @@ describe('reset password screen', () => {
   });
 
   test('clears password fields when navigating between valid action codes', async () => {
-    let resolveSecondCode: ((email: string) => void) | undefined;
+    let resolveSecondCode: (() => void) | undefined;
     const recovery = client({
       verifyCode: jest.fn((code: string) =>
         code === 'code-a'
-          ? Promise.resolve('person@example.com')
-          : new Promise<string>((resolve) => {
+          ? Promise.resolve(undefined)
+          : new Promise<void>((resolve) => {
               resolveSecondCode = resolve;
             })
       )
@@ -145,7 +145,7 @@ describe('reset password screen', () => {
       />
     );
     await act(async () => {
-      resolveSecondCode?.('person@example.com');
+      resolveSecondCode?.();
     });
 
     expect(screen.getByLabelText('Nova senha')).toHaveProp('value', '');
@@ -229,10 +229,10 @@ describe('reset password screen', () => {
     expect(screen.queryByText('Senha redefinida com sucesso.')).not.toBeOnTheScreen();
   });
 
-  test('reveals the password form only after Firebase validates the code', async () => {
-    let resolveVerification: ((email: string) => void) | undefined;
+  test('reveals the password form only after backend validates the code', async () => {
+    let resolveVerification: (() => void) | undefined;
     const recovery = client({
-      verifyCode: jest.fn(() => new Promise<string>((resolve) => {
+      verifyCode: jest.fn(() => new Promise<void>((resolve) => {
         resolveVerification = resolve;
       }))
     });
@@ -247,7 +247,7 @@ describe('reset password screen', () => {
 
     expect(screen.queryByLabelText('Nova senha')).not.toBeOnTheScreen();
     await act(async () => {
-      resolveVerification?.('person@example.com');
+      resolveVerification?.();
     });
     await waitFor(() => {
       expect(screen.getByLabelText('Nova senha')).toBeOnTheScreen();
@@ -255,7 +255,7 @@ describe('reset password screen', () => {
     expect(recovery.verifyCode).toHaveBeenCalledWith('valid-code');
   });
 
-  test('offers a new request when Firebase rejects an invalid, expired, or used code', async () => {
+  test('offers a new request when backend verification rejects an invalid, expired, or used code', async () => {
     const recovery = client({
       verifyCode: jest.fn().mockRejectedValue(
         Object.assign(new Error('expired'), { code: 'auth/expired-action-code' })
@@ -278,7 +278,7 @@ describe('reset password screen', () => {
     expect(screen.getByText('Solicitar novo link')).toBeOnTheScreen();
   });
 
-  test('does not call Firebase when password confirmation differs', async () => {
+  test('does not call backend confirmation when password confirmation differs', async () => {
     const recovery = client();
     await render(
       <ResetPasswordScreen
@@ -298,7 +298,7 @@ describe('reset password screen', () => {
     expect(recovery.confirm).not.toHaveBeenCalled();
   });
 
-  test('requires both password fields before calling Firebase', async () => {
+  test('requires both password fields before calling backend confirmation', async () => {
     const recovery = client();
     await render(
       <ResetPasswordScreen
@@ -318,7 +318,7 @@ describe('reset password screen', () => {
     expect(recovery.confirm).not.toHaveBeenCalled();
   });
 
-  test('uses the safe existing message when Firebase rejects a weak password', async () => {
+  test('uses the safe existing message when backend confirmation rejects a weak password', async () => {
     const recovery = client({
       confirm: jest.fn().mockRejectedValue(
         Object.assign(new Error('Firebase leaked policy'), {
