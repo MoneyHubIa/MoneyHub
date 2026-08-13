@@ -38,4 +38,6 @@
 
 - E2E tests.
 - Security review.
-- GCP, Firebase, and Resend deployment documentation.
+- GCP and Firebase deployment documentation.
+- Shared password-recovery rate limiting and reviewed trusted-proxy behavior for
+  multi-instance Cloud Run deployment (EPIC-08).

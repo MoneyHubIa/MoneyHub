@@ -3,8 +3,8 @@
 ## Status
 
 This document defines the approved target architecture. The repository currently
-uses the operational REST and React/Vite scaffold while the GraphQL and Expo
-migration remains pending.
+uses a Node.js backend with GraphQL, public authentication REST endpoints, and a
+universal Expo application.
 
 ## Overview
 
@@ -21,7 +21,9 @@ graphql schema -> resolvers -> services -> repositories -> database
 - **Services:** own business rules and orchestration.
 - **Repositories:** isolate persistence and Cloud SQL PostgreSQL access.
 - **Database:** PostgreSQL managed by Google Cloud SQL.
-- **Email adapter:** isolates Resend transactional email calls.
+- **Firebase Auth REST adapter:** isolates backend password-recovery requests,
+  action-code verification, and password confirmation. Firebase sends recovery
+  email from its configured template.
 
 ## Frontend Layers
 
@@ -32,7 +34,8 @@ services -> hooks -> state
 
 - Expo Router files define route-level composition.
 - Screens compose reusable React Native components.
-- Services isolate GraphQL, Firebase Auth, and Firebase Analytics calls.
+- Services isolate GraphQL, Firebase Auth, Firebase Analytics, and backend
+  password-recovery calls.
 - Hooks contain reusable UI behavior and data loading.
 
 ## Analytics Strategy
@@ -49,5 +52,11 @@ services -> hooks -> state
 - Structured error handling in backend.
 - Request ID in logs and API errors.
 - Firebase ID token verification for authenticated GraphQL operations.
+- Public password-recovery routes use 16 KiB body limits, 10-second Firebase
+  deadlines, secret-free audit events, and in-process sliding-window IP limits:
+  5 request operations and 10 verify or confirm operations per 15 minutes.
+- A shared rate-limit store and reviewed trusted-proxy configuration remain
+  required before multi-instance Cloud Run deployment; this work stays in
+  EPIC-08.
 - Security controls applied before feature development.
 - Tests required for critical paths.

@@ -12,8 +12,8 @@ Define the contracts for registration, login, email verification, password recov
 
 MoneyHub delegates identity and credential management to Firebase Authentication. The backend is a resource server that verifies Firebase identity, synchronizes the local identity projection, and authorizes access to product data. It never manages credentials directly.
 
-- **Frontend (Expo App and Web):** Uses the Firebase Auth SDK to register and authenticate users, complete Firebase action links, refresh sessions, and retrieve ID tokens.
-- **Backend (Node.js/GraphQL):** Uses the Firebase Admin SDK to verify ID tokens and load the current Firebase user before creating the authenticated context.
+- **Frontend (Expo App and Web):** Uses the Firebase Auth SDK to register and authenticate users, complete email-verification actions, refresh sessions, and retrieve ID tokens. Password-recovery actions use the MoneyHub backend REST API.
+- **Backend (Node.js/GraphQL and REST):** Uses the Firebase Admin SDK to verify ID tokens and load the current Firebase user before creating the authenticated context. Its isolated Firebase Auth REST adapter owns password-recovery initiation, verification, and confirmation.
 - **Firebase Auth:** Is the source of truth for `uid`, email, and email-verification state.
 - **PostgreSQL:** Stores an application identity projection in `users` and application preferences in `profiles`.
 - **Data ownership:** The Firebase UID is the external identity key used to scope user-owned domain data. `users.id` is the internal relational key used by `profiles.user_id`.
@@ -23,7 +23,7 @@ MoneyHub delegates identity and credential management to Firebase Authentication
 ### Registration and Login
 
 - Users register and log in directly through the Firebase Auth SDK on the client.
-- Passwords, password hashes, and refresh tokens are managed exclusively by Firebase. The backend must never receive, process, log, or store them.
+- Password hashes and refresh tokens are managed exclusively by Firebase. The backend receives a new password only in the public password-recovery confirmation request and forwards it directly to Firebase Auth REST. It must never log or store a password.
 - The client retrieves a Firebase ID token and includes it in the `Authorization: Bearer <ID_TOKEN>` header for authenticated GraphQL requests.
 - An account must expose an email address. The backend rejects a Firebase identity without an email using the stable GraphQL error code `AUTH_EMAIL_REQUIRED`.
 - Creating a Firebase account does not require a pre-existing local `users` or `profiles` row. The authenticated profile-bootstrap flow creates those records.
@@ -55,7 +55,7 @@ type AuthContext = {
 
 ### Email Verification
 
-Firebase is the source of truth for whether an email is verified. Firebase generates verification action links; Resend delivers those links when MoneyHub uses custom transactional email templates.
+Firebase is the source of truth for whether an email is verified. Firebase generates and delivers verification action links.
 
 The backend must require `emailVerified === true` for every authenticated product operation except this explicit bootstrap allowlist:
 
@@ -88,11 +88,35 @@ Firebase does not expose the original verification timestamp, so `email_verified
 
 ### Password Recovery
 
-- Firebase generates password-recovery action links and remains responsible for changing the credential.
-- Resend delivers Firebase-generated recovery links when custom transactional templates are enabled.
-- The backend must not reveal whether an email is registered. A recovery request returns the same public result for known and unknown addresses.
-- Recovery-link generation endpoints must be rate-limited and audited without storing raw tokens or full action links.
+- All recovery operations pass through public MoneyHub backend REST endpoints;
+  the frontend must not call Firebase password-recovery SDK methods directly.
+- `POST /auth/password-recovery` accepts an email. Syntactically valid input
+  always returns HTTP `202` with the same public result for known addresses,
+  unknown addresses, and provider failures.
+- `POST /auth/password-recovery/verify` accepts a non-empty `oobCode`. Invalid,
+  expired, used, or malformed codes return HTTP `400`
+  `INVALID_OR_EXPIRED_ACTION_CODE`; other provider failures return HTTP `503`
+  `RECOVERY_UNAVAILABLE`.
+- `POST /auth/password-recovery/confirm` accepts `oobCode` and `newPassword`.
+  Invalid action codes use `INVALID_OR_EXPIRED_ACTION_CODE`; invalid password
+  input uses `INVALID_PASSWORD`; Firebase policy rejection uses `WEAK_PASSWORD`;
+  other provider failures use HTTP `503` `RECOVERY_UNAVAILABLE`.
+- Firebase generates and delivers recovery action links and remains responsible
+  for changing the credential. Firebase Console owns recovery email content and
+  the action URL targeting the MoneyHub `/reset-password` handler.
+- Request initiation permits 5 attempts per source IP per rolling 15 minutes.
+  Verify and confirm each permit 10 attempts per source IP per rolling
+  15 minutes. The current store is in-process; shared multi-instance enforcement
+  and reviewed trusted-proxy configuration remain EPIC-08 deployment work.
+- Recovery operations are audited without raw email, password, `oobCode`, token,
+  provider response body, full action link, or Firebase API key. Client-provided
+  request IDs must match the bounded safe format or be replaced by a generated
+  UUID before logs and audit events.
 - Password recovery does not create or bootstrap local user or profile records.
+- TASK-019 and EPIC-02 remain open until a real Firebase smoke proves delivery,
+  email content, the MoneyHub action URL, successful password change, code
+  non-reuse, old-password rejection, new-password login, and unknown-address
+  response parity.
 
 ### Profile Bootstrap
 
