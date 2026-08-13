@@ -53,7 +53,15 @@ type PasswordRecoveryDependencies = Readonly<{
   audit(event: PasswordRecoveryAuditEvent): void;
 }>;
 
-const PROVIDER_CODE_PATTERN = /^[A-Z0-9_:/-]{1,100}$/i;
+const SAFE_PROVIDER_CODES = new Set([
+  'EMAIL_NOT_FOUND',
+  'INVALID_OOB_CODE',
+  'EXPIRED_OOB_CODE',
+  'WEAK_PASSWORD',
+  'PASSWORD_DOES_NOT_MEET_REQUIREMENTS',
+  'provider/timeout',
+  'provider/unknown'
+]);
 
 function normalizedEmail(email: string) {
   return email.trim().toLowerCase();
@@ -63,19 +71,22 @@ function emailHash(email: string) {
   return createHash('sha256').update(email).digest('hex');
 }
 
+function safeProviderCode(rawCode: unknown) {
+  return typeof rawCode === 'string' && SAFE_PROVIDER_CODES.has(rawCode)
+    ? rawCode
+    : undefined;
+}
+
 function providerCode(error: unknown) {
   if (error instanceof FirebaseAuthRestError) {
-    return error.providerCode;
+    return safeProviderCode(error.providerCode);
   }
 
   if (typeof error !== 'object' || error === null || !('providerCode' in error)) {
     return undefined;
   }
 
-  const code = error.providerCode;
-  return typeof code === 'string' && PROVIDER_CODE_PATTERN.test(code)
-    ? code
-    : undefined;
+  return safeProviderCode(error.providerCode);
 }
 
 function safeAudit(

@@ -148,6 +148,30 @@ describe('password recovery service', () => {
     );
   });
 
+  test('request does not audit dangerous FirebaseAuthRestError providerCode values', async () => {
+    const { service, audit } = setup({
+      client: {
+        requestPasswordReset: async () => {
+          throw new FirebaseAuthRestError('api-key=hunter2');
+        }
+      }
+    });
+
+    await service.request({
+      email: 'user@example.com',
+      requestId: 'request-provider-code-leak',
+      userIp: '203.0.113.12'
+    });
+
+    assert.deepEqual(audit, [{
+      event: 'password_recovery_requested',
+      requestId: 'request-provider-code-leak',
+      emailHash: 'b4c9a289323b21a01c3e940f150eb9b8c542587f1abfd8f0e1cc1ffc5e475514',
+      status: 'firebase_error'
+    }]);
+    assert.doesNotMatch(JSON.stringify(audit), /api-key|hunter2/i);
+  });
+
   test('verify records verified audit event on success', async () => {
     const { service, verifications, audit } = setup();
 
@@ -215,6 +239,31 @@ describe('password recovery service', () => {
       status: 'firebase_error'
     }]);
     assert.doesNotMatch(JSON.stringify(audit), /secret-code|verify failed|key-456/i);
+  });
+
+  test('verify does not audit dangerous generic providerCode values', async () => {
+    const { service, audit } = setup({
+      client: {
+        verifyPasswordResetCode: async () => {
+          throw { providerCode: 'hunter2/api-key' };
+        }
+      }
+    });
+
+    await assertPublicError(
+      service.verify({
+        oobCode: 'secret-verify',
+        requestId: 'verify-provider-code-leak'
+      }),
+      'RECOVERY_UNAVAILABLE'
+    );
+
+    assert.deepEqual(audit, [{
+      event: 'password_recovery_code_verified',
+      requestId: 'verify-provider-code-leak',
+      status: 'firebase_error'
+    }]);
+    assert.doesNotMatch(JSON.stringify(audit), /secret-verify|api-key|hunter2/i);
   });
 
   test('confirm records confirmed audit event on success', async () => {
@@ -327,6 +376,32 @@ describe('password recovery service', () => {
       JSON.stringify(audit),
       /user@example\.com|secret-456|Sup3rS3cret!|confirm failed|key-789/i
     );
+  });
+
+  test('confirm does not audit dangerous FirebaseAuthRestError providerCode values', async () => {
+    const { service, audit } = setup({
+      client: {
+        confirmPasswordReset: async () => {
+          throw new FirebaseAuthRestError('password=hunter2');
+        }
+      }
+    });
+
+    await assertPublicError(
+      service.confirm({
+        oobCode: 'secret-confirm',
+        newPassword: 'Sup3rS3cret!',
+        requestId: 'confirm-provider-code-leak'
+      }),
+      'RECOVERY_UNAVAILABLE'
+    );
+
+    assert.deepEqual(audit, [{
+      event: 'password_recovery_confirmed',
+      requestId: 'confirm-provider-code-leak',
+      status: 'firebase_error'
+    }]);
+    assert.doesNotMatch(JSON.stringify(audit), /hunter2|secret-confirm|Sup3rS3cret!/i);
   });
 
   test('audit transport failure never changes public recovery behavior', async () => {
