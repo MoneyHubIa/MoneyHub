@@ -218,7 +218,10 @@ describe('password recovery route', () => {
       .send({ oobCode: '   ' });
 
     assert.equal(response.status, 400);
-    assert.equal(response.body.error.code, 'INVALID_ACTION_CODE');
+    assert.equal(
+      response.body.error.code,
+      'INVALID_OR_EXPIRED_ACTION_CODE'
+    );
     assert.equal(response.body.meta.requestId, 'blank-verify-code');
     assert.equal(calls, 0);
   });
@@ -237,7 +240,10 @@ describe('password recovery route', () => {
       .send({ oobCode: '   ', newPassword: 'strong-password' });
 
     assert.equal(blankCode.status, 400);
-    assert.equal(blankCode.body.error.code, 'INVALID_ACTION_CODE');
+    assert.equal(
+      blankCode.body.error.code,
+      'INVALID_OR_EXPIRED_ACTION_CODE'
+    );
 
     const blankPassword = await request(app)
       .post('/auth/password-recovery/confirm')
@@ -248,6 +254,43 @@ describe('password recovery route', () => {
     assert.equal(blankPassword.body.error.code, 'INVALID_PASSWORD');
     assert.equal(blankPassword.body.meta.requestId, 'blank-confirm-password');
     assert.equal(calls, 0);
+  });
+
+  test('uses INVALID_PASSWORD for every invalid confirmation password shape', async () => {
+    let calls = 0;
+    const app = await recoveryApp({
+      confirm: async () => {
+        calls += 1;
+      }
+    });
+
+    const invalidPasswords: unknown[] = ['', 123, 'x'.repeat(4097)];
+    for (const newPassword of invalidPasswords) {
+      const response = await request(app)
+        .post('/auth/password-recovery/confirm')
+        .send({ oobCode: 'valid-code', newPassword });
+
+      assert.equal(response.status, 400);
+      assert.equal(response.body.error.code, 'INVALID_PASSWORD');
+    }
+    assert.equal(calls, 0);
+  });
+
+  test('returns 503 when verify and confirm recovery service wiring is absent', async () => {
+    const app = await createApp({ logger: silentLogger });
+    apps.push(app);
+
+    const verify = await request(app)
+      .post('/auth/password-recovery/verify')
+      .send({ oobCode: 'valid-code' });
+    const confirm = await request(app)
+      .post('/auth/password-recovery/confirm')
+      .send({ oobCode: 'valid-code', newPassword: 'strong-password' });
+
+    assert.equal(verify.status, 503);
+    assert.equal(verify.body.error.code, 'RECOVERY_UNAVAILABLE');
+    assert.equal(confirm.status, 503);
+    assert.equal(confirm.body.error.code, 'RECOVERY_UNAVAILABLE');
   });
 
   test('maps verify public errors to HTTP status codes', async () => {

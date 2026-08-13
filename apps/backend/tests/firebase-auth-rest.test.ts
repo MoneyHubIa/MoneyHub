@@ -122,6 +122,45 @@ describe('Firebase Auth REST adapter', () => {
     );
   });
 
+  test('extracts the safe provider code before Firebase message details', async () => {
+    const cases = [
+      {
+        message: 'WEAK_PASSWORD : Password should be at least 6 characters',
+        providerCode: 'WEAK_PASSWORD'
+      },
+      {
+        message:
+          'PASSWORD_DOES_NOT_MEET_REQUIREMENTS : Password must contain an upper case character',
+        providerCode: 'PASSWORD_DOES_NOT_MEET_REQUIREMENTS'
+      },
+      {
+        message: 'INVALID_OOB_CODE : The action code is invalid',
+        providerCode: 'INVALID_OOB_CODE'
+      }
+    ];
+
+    for (const fixture of cases) {
+      const { client } = createClient({
+        fetchRequest: async () => new Response(JSON.stringify({
+          error: { message: fixture.message }
+        }), {
+          status: 400,
+          headers: { 'content-type': 'application/json' }
+        })
+      });
+
+      await assert.rejects(
+        () => client.confirmPasswordReset('code', 'new-password'),
+        (error: unknown) => {
+          assert.ok(error instanceof FirebaseAuthRestError);
+          assert.equal(error.providerCode, fixture.providerCode);
+          assert.doesNotMatch(error.message, /Password (?:should|must)/);
+          return true;
+        }
+      );
+    }
+  });
+
   test('aborts stalled request and reports provider timeout before outer guard expires', async () => {
     let aborted = false;
     let signal: AbortSignal | undefined;

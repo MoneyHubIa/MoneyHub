@@ -45,7 +45,7 @@ const passwordRecoveryInput = z.object({
 const passwordRecoveryCodeInput = z.object({
   oobCode: z.string().trim().min(1).max(4096)
 });
-const passwordRecoveryConfirmationInput = passwordRecoveryCodeInput.extend({
+const passwordRecoveryPasswordInput = z.object({
   newPassword: z.string().min(1).max(4096)
 });
 
@@ -246,14 +246,17 @@ export async function createApp(
         passwordRecoveryErrorResponse(
           response,
           400,
-          'INVALID_ACTION_CODE',
+          'INVALID_OR_EXPIRED_ACTION_CODE',
           'A valid password recovery code is required.'
         );
         return;
       }
 
       try {
-        await options.passwordRecovery?.verify({
+        if (!options.passwordRecovery) {
+          throw new PasswordRecoveryPublicError('RECOVERY_UNAVAILABLE');
+        }
+        await options.passwordRecovery.verify({
           oobCode: input.data.oobCode,
           requestId: String(response.locals.requestId)
         });
@@ -299,26 +302,35 @@ export async function createApp(
     }),
     express.json({ limit: '16kb' }),
     async (request, response) => {
-      const input = passwordRecoveryConfirmationInput.safeParse(request.body);
-      if (!input.success) {
-        const blankPassword =
-          typeof request.body?.newPassword !== 'string' ||
-          request.body.newPassword.length < 1;
+      const codeInput = passwordRecoveryCodeInput.safeParse(request.body);
+      if (!codeInput.success) {
         passwordRecoveryErrorResponse(
           response,
           400,
-          blankPassword ? 'INVALID_PASSWORD' : 'INVALID_ACTION_CODE',
-          blankPassword
-            ? 'A new password is required.'
-            : 'A valid password recovery code is required.'
+          'INVALID_OR_EXPIRED_ACTION_CODE',
+          'A valid password recovery code is required.'
+        );
+        return;
+      }
+
+      const passwordInput = passwordRecoveryPasswordInput.safeParse(request.body);
+      if (!passwordInput.success) {
+        passwordRecoveryErrorResponse(
+          response,
+          400,
+          'INVALID_PASSWORD',
+          'A new password is required.'
         );
         return;
       }
 
       try {
-        await options.passwordRecovery?.confirm({
-          oobCode: input.data.oobCode,
-          newPassword: input.data.newPassword,
+        if (!options.passwordRecovery) {
+          throw new PasswordRecoveryPublicError('RECOVERY_UNAVAILABLE');
+        }
+        await options.passwordRecovery.confirm({
+          oobCode: codeInput.data.oobCode,
+          newPassword: passwordInput.data.newPassword,
           requestId: String(response.locals.requestId)
         });
       } catch (error) {

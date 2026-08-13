@@ -40,8 +40,12 @@ async function providerCodeFromResponse(response: Response) {
         ? payload.error.message
         : undefined;
 
-    return typeof message === 'string' && PROVIDER_CODE_PATTERN.test(message)
-      ? message
+    const code = typeof message === 'string'
+      ? message.split(' : ', 1)[0]
+      : undefined;
+
+    return typeof code === 'string' && PROVIDER_CODE_PATTERN.test(code)
+      ? code
       : 'provider/unknown';
   } catch {
     return 'provider/unknown';
