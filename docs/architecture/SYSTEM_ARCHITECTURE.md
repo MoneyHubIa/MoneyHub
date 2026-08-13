@@ -60,13 +60,15 @@ services -> hooks -> state
   in response metadata, HTTP logs, GraphQL context, and recovery audits.
 - Firebase ID token verification for authenticated GraphQL operations.
 - Public password-recovery routes use 16 KiB body limits, 10-second Firebase
-  deadlines, secret-free audit events, and in-process sliding-window IP limits:
-  5 request operations and 10 verify or confirm operations per rolling
-  15 minutes. Stable public recovery codes are
-  `INVALID_OR_EXPIRED_ACTION_CODE`, `INVALID_PASSWORD`, `WEAK_PASSWORD`,
-  `RATE_LIMITED`, and `RECOVERY_UNAVAILABLE`.
-- A shared rate-limit store and reviewed trusted-proxy configuration remain
-  required before multi-instance Cloud Run deployment; this work stays in
-  EPIC-08.
+  deadlines, secret-free audit events, and three separate in-process
+  sliding-window IP-limit buckets per rolling 15 minutes: 5 initiation
+  requests, 10 verification requests, and 10 confirmation requests. Stable
+  public recovery codes are `INVALID_OR_EXPIRED_ACTION_CODE`,
+  `INVALID_PASSWORD`, `WEAK_PASSWORD`, `RATE_LIMITED`, and
+  `RECOVERY_UNAVAILABLE`.
+- A future shared rate-limit store must preserve those separate
+  initiation/verify/confirm buckets, and reviewed trusted-proxy configuration
+  remains required before multi-instance Cloud Run deployment; this work stays
+  in EPIC-08.
 - Security controls applied before feature development.
 - Tests required for critical paths.

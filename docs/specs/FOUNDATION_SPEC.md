@@ -2,9 +2,11 @@
 
 ## Status
 
-This specification defines the approved target foundation. The current REST and
-React/Vite scaffold remains operational. EPIC-01 stays Pending until the GraphQL
-backend and Expo app acceptance criteria below are implemented and verified.
+This specification defines the approved target foundation. The current
+repository uses the implemented Node.js GraphQL backend, public authentication
+REST endpoints, and universal Expo application. EPIC-01 is Done; this
+specification remains the foundation contract for the capabilities and
+acceptance criteria below.
 
 ## Objective
 

@@ -25,7 +25,10 @@ Plan GCP infrastructure, Expo build targets, Firebase configuration, password-re
 - PostgreSQL deploy target is Cloud SQL.
 - Secrets must be stored in Secret Manager.
 - Firebase client values may be public only when prefixed with `EXPO_PUBLIC_`.
-- Recovery rate limiting must use a shared store before multi-instance Cloud Run deploys.
+- Recovery rate limiting must use a shared store before multi-instance Cloud
+  Run deploys and must preserve three separate rolling 15-minute buckets: 5
+  initiation requests, 10 verification requests, and 10 confirmation requests
+  per real client IP.
 
 ## Feature-level Password Recovery Setup
 
@@ -39,9 +42,11 @@ tasks in this epic.
 
 Before a multi-instance Cloud Run deployment, replace the current process-local
 recovery rate-limit store with a shared store and test the exact
-trusted-proxy/X-Forwarded-For chain so the five-request limit applies per real
-client IP. The current in-process sliding-window limiter is not suitable for
-multiple Cloud Run instances. If production threat modeling requires timing-
-indistinguishable account lookup, introduce a durable asynchronous email-
-dispatch boundary; status/body parity alone cannot remove provider-latency
-differences safely in serverless execution.
+trusted-proxy/X-Forwarded-For chain so the separate 5/10/10 initiation,
+verification, and confirmation limits apply per real client IP. The current
+in-process sliding-window limiter is not suitable for multiple Cloud Run
+instances, and the shared store must keep those counters distinct rather than
+collapse them into one recovery bucket. If production threat modeling requires
+timing-indistinguishable account lookup, introduce a durable asynchronous
+email-dispatch boundary; status/body parity alone cannot remove provider-
+latency differences safely in serverless execution.

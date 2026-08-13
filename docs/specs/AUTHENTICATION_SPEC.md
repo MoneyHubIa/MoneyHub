@@ -126,6 +126,10 @@ Firebase does not expose the original verification timestamp, so `email_verified
 - Frontend recovery screens treat temporary verification or confirmation
   failures as retryable. Only invalid or expired action codes invalidate the
   link and send the user back to request a new one.
+- Frontend recovery error mapping treats both
+  `auth/network-request-failed` and `auth/recovery-unavailable` as retryable
+  temporary recovery failures. Neither code invalidates the link or changes
+  the requirement to let the user retry verification or confirmation.
 - After a successful password reset confirmation, the client signs out the
   local session before it offers navigation back to login.
 - Password recovery does not create or bootstrap local user or profile records.
