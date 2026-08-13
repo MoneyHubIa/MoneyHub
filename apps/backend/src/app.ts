@@ -14,6 +14,10 @@ import {
   type VerifyIdToken
 } from './auth.js';
 import {
+  PasswordRecoveryPublicError,
+  type PasswordRecoveryService
+} from './password-recovery.js';
+import {
   resolvers,
   typeDefs,
   unauthenticatedError,
@@ -32,16 +36,56 @@ type CreateAppOptions = {
   appUrl?: URL;
   frontendDistDir?: string;
   nodeEnvironment?: string;
-  passwordRecovery?: PasswordRecoveryRequester;
-};
-
-export type PasswordRecoveryRequester = {
-  request(input: { email: string; requestId: string }): Promise<void>;
+  passwordRecovery?: PasswordRecoveryService;
 };
 
 const passwordRecoveryInput = z.object({
   email: z.string().trim().email()
 });
+const passwordRecoveryCodeInput = z.object({
+  oobCode: z.string().trim().min(1).max(4096)
+});
+const passwordRecoveryConfirmationInput = passwordRecoveryCodeInput.extend({
+  newPassword: z.string().min(1).max(4096)
+});
+
+function rateLimitedResponse(
+  response: express.Response,
+  message: string
+) {
+  response.status(429).json({
+    success: false,
+    data: null,
+    error: {
+      code: 'RATE_LIMITED',
+      message,
+      details: null
+    },
+    meta: { requestId: response.locals.requestId }
+  });
+}
+
+function passwordRecoveryErrorResponse(
+  response: express.Response,
+  status: number,
+  code: string,
+  message: string
+) {
+  response.status(status).json({
+    success: false,
+    data: null,
+    error: {
+      code,
+      message,
+      details: null
+    },
+    meta: { requestId: response.locals.requestId }
+  });
+}
+
+function passwordRecoveryPublicErrorStatus(code: PasswordRecoveryPublicError['code']) {
+  return code === 'RECOVERY_UNAVAILABLE' ? 503 : 400;
+}
 
 function isLoopbackOrigin(origin: string): boolean {
   try {
@@ -164,7 +208,8 @@ export async function createApp(
       try {
         await options.passwordRecovery?.request({
           email: input.data.email,
-          requestId: String(response.locals.requestId)
+          requestId: String(response.locals.requestId),
+          userIp: request.ip
         });
       } catch {
         // The public response must not reveal account or provider state.
@@ -173,6 +218,130 @@ export async function createApp(
       response.status(202).json({
         success: true,
         data: { accepted: true },
+        error: null,
+        meta: { requestId: response.locals.requestId }
+      });
+    }
+  );
+
+  app.post(
+    '/auth/password-recovery/verify',
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      limit: 10,
+      standardHeaders: 'draft-7',
+      legacyHeaders: false,
+      handler: (_request, response) => {
+        rateLimitedResponse(response, 'Too many password recovery verification attempts.');
+      }
+    }),
+    express.json({ limit: '16kb' }),
+    async (request, response) => {
+      const input = passwordRecoveryCodeInput.safeParse(request.body);
+      if (!input.success) {
+        passwordRecoveryErrorResponse(
+          response,
+          400,
+          'INVALID_ACTION_CODE',
+          'A valid password recovery code is required.'
+        );
+        return;
+      }
+
+      try {
+        await options.passwordRecovery?.verify({
+          oobCode: input.data.oobCode,
+          requestId: String(response.locals.requestId)
+        });
+      } catch (error) {
+        if (error instanceof PasswordRecoveryPublicError) {
+          passwordRecoveryErrorResponse(
+            response,
+            passwordRecoveryPublicErrorStatus(error.code),
+            error.code,
+            'Password recovery code could not be verified.'
+          );
+          return;
+        }
+
+        passwordRecoveryErrorResponse(
+          response,
+          503,
+          'RECOVERY_UNAVAILABLE',
+          'Password recovery is temporarily unavailable.'
+        );
+        return;
+      }
+
+      response.status(200).json({
+        success: true,
+        data: { valid: true },
+        error: null,
+        meta: { requestId: response.locals.requestId }
+      });
+    }
+  );
+
+  app.post(
+    '/auth/password-recovery/confirm',
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      limit: 10,
+      standardHeaders: 'draft-7',
+      legacyHeaders: false,
+      handler: (_request, response) => {
+        rateLimitedResponse(response, 'Too many password recovery confirmation attempts.');
+      }
+    }),
+    express.json({ limit: '16kb' }),
+    async (request, response) => {
+      const input = passwordRecoveryConfirmationInput.safeParse(request.body);
+      if (!input.success) {
+        const blankPassword =
+          typeof request.body?.newPassword !== 'string' ||
+          request.body.newPassword.length < 1;
+        passwordRecoveryErrorResponse(
+          response,
+          400,
+          blankPassword ? 'INVALID_PASSWORD' : 'INVALID_ACTION_CODE',
+          blankPassword
+            ? 'A new password is required.'
+            : 'A valid password recovery code is required.'
+        );
+        return;
+      }
+
+      try {
+        await options.passwordRecovery?.confirm({
+          oobCode: input.data.oobCode,
+          newPassword: input.data.newPassword,
+          requestId: String(response.locals.requestId)
+        });
+      } catch (error) {
+        if (error instanceof PasswordRecoveryPublicError) {
+          passwordRecoveryErrorResponse(
+            response,
+            passwordRecoveryPublicErrorStatus(error.code),
+            error.code,
+            error.code === 'WEAK_PASSWORD'
+              ? 'New password does not meet requirements.'
+              : 'Password recovery could not be confirmed.'
+          );
+          return;
+        }
+
+        passwordRecoveryErrorResponse(
+          response,
+          503,
+          'RECOVERY_UNAVAILABLE',
+          'Password recovery is temporarily unavailable.'
+        );
+        return;
+      }
+
+      response.status(200).json({
+        success: true,
+        data: { confirmed: true },
         error: null,
         meta: { requestId: response.locals.requestId }
       });
