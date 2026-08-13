@@ -93,6 +93,12 @@ function passwordRecoveryUserIp(request: Request): string {
   return typeof request.ip === 'string' ? request.ip : '';
 }
 
+function requestIdFromHeader(rawRequestId: string | undefined) {
+  return rawRequestId && /^[A-Za-z0-9._-]{1,128}$/.test(rawRequestId)
+    ? rawRequestId
+    : crypto.randomUUID();
+}
+
 function createPasswordRecoveryRateLimit(options: Readonly<{
   limit: number;
   message: string;
@@ -186,7 +192,7 @@ export async function createApp(
     }
   }));
   app.use((request, response, next) => {
-    const requestId = request.header('x-request-id') || crypto.randomUUID();
+    const requestId = requestIdFromHeader(request.header('x-request-id'));
     response.locals.requestId = requestId;
     response.setHeader('x-request-id', requestId);
     next();

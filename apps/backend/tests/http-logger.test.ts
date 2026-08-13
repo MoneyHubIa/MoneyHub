@@ -71,6 +71,37 @@ describe('HTTP request logging', () => {
     await app.locals.stop?.();
   });
 
+  test('replaces a malicious request ID before response and logging', async () => {
+    const logs: RecordedLog[] = [];
+    const app = await testApp(logs);
+    const maliciousRequestId = `secret-token:${'x'.repeat(200)}`;
+    const response = await request(app)
+      .get('/health')
+      .set('x-request-id', maliciousRequestId);
+
+    assert.equal(response.status, 200);
+    assert.match(String(response.headers['x-request-id']), /^[0-9a-f-]{36}$/i);
+    assert.notEqual(response.headers['x-request-id'], maliciousRequestId);
+    assert.equal(logs.length, 1);
+    assert.equal(logs[0]?.event.requestId, response.headers['x-request-id']);
+    assert.equal(JSON.stringify(logs).includes('secret-token'), false);
+    await app.locals.stop?.();
+  });
+
+  test('accepts only bounded safe request IDs', async () => {
+    const logs: RecordedLog[] = [];
+    const app = await testApp(logs);
+    const safeRequestId = 'request_2026-08-13.trace-01';
+    const response = await request(app)
+      .get('/health')
+      .set('x-request-id', safeRequestId);
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers['x-request-id'], safeRequestId);
+    assert.equal(logs[0]?.event.requestId, safeRequestId);
+    await app.locals.stop?.();
+  });
+
   test('logs a successful anonymous GraphQL request', async () => {
     const logs: RecordedLog[] = [];
     const app = await testApp(logs);
