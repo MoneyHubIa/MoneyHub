@@ -22,8 +22,10 @@ graphql schema -> resolvers -> services -> repositories -> database
 - **Repositories:** isolate persistence and Cloud SQL PostgreSQL access.
 - **Database:** PostgreSQL managed by Google Cloud SQL.
 - **Firebase Auth REST adapter:** isolates backend password-recovery requests,
-  action-code verification, and password confirmation. Firebase sends recovery
-  email from its configured template.
+  action-code verification, and password confirmation, applies 10-second
+  abortable provider deadlines, and exposes only allowlisted provider codes to
+  recovery audit events. Firebase sends recovery email from its configured
+  template.
 
 ## Frontend Layers
 
@@ -36,6 +38,9 @@ services -> hooks -> state
 - Screens compose reusable React Native components.
 - Services isolate GraphQL, Firebase Auth, Firebase Analytics, and backend
   password-recovery calls.
+- The reset-password flow validates action codes through the backend before it
+  shows password fields and signs out the local session after a successful
+  confirmation.
 - Hooks contain reusable UI behavior and data loading.
 
 ## Analytics Strategy
@@ -50,11 +55,16 @@ services -> hooks -> state
 
 - Environment variables for all secrets and deployment-specific values.
 - Structured error handling in backend.
-- Request ID in logs and API errors.
+- A sanitized request ID is accepted from `x-request-id` only when it matches
+  `[A-Za-z0-9._-]{1,128}`; otherwise the backend generates a UUID and reuses it
+  in response metadata, HTTP logs, GraphQL context, and recovery audits.
 - Firebase ID token verification for authenticated GraphQL operations.
 - Public password-recovery routes use 16 KiB body limits, 10-second Firebase
   deadlines, secret-free audit events, and in-process sliding-window IP limits:
-  5 request operations and 10 verify or confirm operations per 15 minutes.
+  5 request operations and 10 verify or confirm operations per rolling
+  15 minutes. Stable public recovery codes are
+  `INVALID_OR_EXPIRED_ACTION_CODE`, `INVALID_PASSWORD`, `WEAK_PASSWORD`,
+  `RATE_LIMITED`, and `RECOVERY_UNAVAILABLE`.
 - A shared rate-limit store and reviewed trusted-proxy configuration remain
   required before multi-instance Cloud Run deployment; this work stays in
   EPIC-08.

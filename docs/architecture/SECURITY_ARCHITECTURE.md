@@ -10,6 +10,10 @@
   confirmation all pass through backend-owned Firebase Auth REST endpoints.
 - Verification email and password-recovery delivery remain managed by Firebase.
 - Firebase Email Enumeration Protection remains enabled for recovery requests.
+- Client `x-request-id` values are accepted only when they match
+  `[A-Za-z0-9._-]{1,128}`. Any other value is replaced with a generated UUID
+  before response metadata, HTTP logs, GraphQL context, and password-recovery
+  audit events use it.
 
 ## Authorization
 
@@ -30,6 +34,9 @@
 
 - Log authentication-adjacent events, profile changes, financial mutations, email triggers, and AI requests.
 - Audit logs must avoid storing raw secrets or full tokens.
-- Password recovery audit stores request ID, internal status, and SHA-256 of the
-  normalized email; it never stores raw email, password, `oobCode`, token, or a
-  complete action link.
+- Password recovery audit events may contain only `requestId`, internal
+  `status`, the SHA-256 hash of the normalized email for initiation events, and
+  an allowlisted provider code when one is safe to retain.
+- Password recovery audit must never store raw email, password, `oobCode`,
+  Firebase ID tokens, provider response bodies, full action links, or URLs that
+  contain `FIREBASE_WEB_API_KEY`.

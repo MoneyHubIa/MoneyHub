@@ -40,12 +40,13 @@ npm run dev:frontend
 Define the public application origin once in the repository root `.env`:
 
 ```dotenv
-APP_URL=http://192.168.1.8:3000
-FIREBASE_WEB_API_KEY=re_replace_me
+APP_URL=http://localhost:3000
+FIREBASE_WEB_API_KEY=your_firebase_web_api_key
 ```
 
 Copy `.env.example` for the complete local configuration shape. The backend
-will refuse to start without `APP_URL` and `FIREBASE_WEB_API_KEY`. In Firebase
+will refuse to start without `APP_URL` and `FIREBASE_WEB_API_KEY`. Firebase
+Authentication manages password-recovery email delivery. In Firebase
 Authentication, configure the password-reset action URL as
 `${APP_URL}/reset-password`, authorize the `APP_URL` domain, keep Email
 Enumeration Protection enabled, and update the password-reset email template to

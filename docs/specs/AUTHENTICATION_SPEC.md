@@ -91,27 +91,43 @@ Firebase does not expose the original verification timestamp, so `email_verified
 - All recovery operations pass through public MoneyHub backend REST endpoints;
   the frontend must not call Firebase password-recovery SDK methods directly.
 - `POST /auth/password-recovery` accepts an email. Syntactically valid input
-  always returns HTTP `202` with the same public result for known addresses,
-  unknown addresses, and provider failures.
+  always returns account-neutral HTTP `202` with the same public result for
+  known addresses, unknown addresses, and provider failures. Each recovery
+  route parses JSON bodies with a `16kb` limit.
 - `POST /auth/password-recovery/verify` accepts a non-empty `oobCode`. Invalid,
   expired, used, or malformed codes return HTTP `400`
-  `INVALID_OR_EXPIRED_ACTION_CODE`; other provider failures return HTTP `503`
-  `RECOVERY_UNAVAILABLE`.
+  `INVALID_OR_EXPIRED_ACTION_CODE`; too many attempts return
+  `429 RATE_LIMITED`; other provider failures or missing service wiring return
+  HTTP `503` `RECOVERY_UNAVAILABLE`.
 - `POST /auth/password-recovery/confirm` accepts `oobCode` and `newPassword`.
   Invalid action codes use `INVALID_OR_EXPIRED_ACTION_CODE`; invalid password
   input uses `INVALID_PASSWORD`; Firebase policy rejection uses `WEAK_PASSWORD`;
-  other provider failures use HTTP `503` `RECOVERY_UNAVAILABLE`.
+  too many attempts use `RATE_LIMITED`; other provider failures or missing
+  service wiring use HTTP `503` `RECOVERY_UNAVAILABLE`.
 - Firebase generates and delivers recovery action links and remains responsible
   for changing the credential. Firebase Console owns recovery email content and
-  the action URL targeting the MoneyHub `/reset-password` handler.
+  the action URL targeting the MoneyHub `/reset-password` handler. The backend
+  initiation request currently sends `continueUrl: ${APP_URL}/login` to
+  Firebase Auth REST.
+- The backend-owned Firebase Auth REST adapter aborts provider calls after
+  10 seconds and maps only allowlisted provider codes into recovery audit
+  events.
 - Request initiation permits 5 attempts per source IP per rolling 15 minutes.
   Verify and confirm each permit 10 attempts per source IP per rolling
   15 minutes. The current store is in-process; shared multi-instance enforcement
   and reviewed trusted-proxy configuration remain EPIC-08 deployment work.
-- Recovery operations are audited without raw email, password, `oobCode`, token,
-  provider response body, full action link, or Firebase API key. Client-provided
-  request IDs must match the bounded safe format or be replaced by a generated
-  UUID before logs and audit events.
+- Recovery operations are audited with only `requestId`, internal `status`, the
+  SHA-256 hash of the normalized email for initiation events, and an
+  allowlisted provider code when one is safe to retain. Raw email, password,
+  `oobCode`, token, provider response body, full action link, and Firebase API
+  key material are prohibited. Client-provided request IDs must match
+  `[A-Za-z0-9._-]{1,128}` or be replaced by a generated UUID before response
+  metadata, logs, GraphQL context, and recovery audit events use them.
+- Frontend recovery screens treat temporary verification or confirmation
+  failures as retryable. Only invalid or expired action codes invalidate the
+  link and send the user back to request a new one.
+- After a successful password reset confirmation, the client signs out the
+  local session before it offers navigation back to login.
 - Password recovery does not create or bootstrap local user or profile records.
 - TASK-019 and EPIC-02 remain open until a real Firebase smoke proves delivery,
   email content, the MoneyHub action URL, successful password change, code

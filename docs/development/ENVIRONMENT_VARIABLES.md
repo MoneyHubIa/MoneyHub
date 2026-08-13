@@ -15,6 +15,8 @@ Broad GCP and production provisioning remain pending in `EPIC-08`.
   against `APP_URL` from the Expo public configuration.
 - Password recovery uses relative `/auth/password-recovery` on production Web;
   development and native clients resolve it against `APP_URL`.
+- Firebase recovery emails must target the MoneyHub reset handler at
+  `${APP_URL}/reset-password`.
 
 ## Backend
 
@@ -55,13 +57,18 @@ Broad GCP and production provisioning remain pending in `EPIC-08`.
 - `APP_URL` and `FIREBASE_WEB_API_KEY` are validated when the backend starts.
 - Never log password-recovery request bodies, `oobCode`, `newPassword`, or URLs
   that contain `FIREBASE_WEB_API_KEY`.
+- Only accept a client `x-request-id` when it matches
+  `[A-Za-z0-9._-]{1,128}`; otherwise let the backend replace it with a UUID.
 
 ## Password Recovery Provider Setup
 
 - Set `FIREBASE_WEB_API_KEY` to the key used by Firebase Authentication REST
   password-reset calls.
-- Set the Firebase Authentication password-reset action URL to
+- Keep Firebase Authentication responsible for password-recovery email
+  delivery, and set its password-reset action URL to
   `${APP_URL}/reset-password`.
+- The backend recovery service currently sends
+  `continueUrl: ${APP_URL}/login` in Firebase Auth REST initiation requests.
 - Add the `APP_URL` domain to Firebase Authentication authorized domains.
 - Enable Firebase Email Enumeration Protection.
 - Update the Firebase password-reset email template so recovery links return to

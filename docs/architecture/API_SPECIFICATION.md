@@ -22,23 +22,34 @@ POST /auth/password-recovery/verify
 POST /auth/password-recovery/confirm
 ```
 
+- Recovery responses echo a sanitized `x-request-id` value in the response
+  header and `meta.requestId`. Only `[A-Za-z0-9._-]{1,128}` is accepted from
+  the client; any other value is replaced with a generated UUID.
+- All three public recovery endpoints parse JSON bodies with a `16kb` limit.
+- The backend-owned Firebase Auth REST adapter aborts provider requests after
+  10 seconds and maps provider failures to stable public error codes.
 - `POST /auth/password-recovery` accepts `{ "email": "user@example.com" }`.
-  Valid requests return HTTP `202` with `data.accepted: true` for known and
-  unknown accounts alike. Invalid email returns `400 INVALID_EMAIL`; more than
-  five requests per IP in 15 minutes returns `429 RATE_LIMITED`.
+  Valid requests always return account-neutral HTTP `202` with
+  `data.accepted: true` for known accounts, unknown accounts, and swallowed
+  provider failures alike. Invalid email returns `400 INVALID_EMAIL`; more than
+  five requests per IP in a rolling 15-minute sliding window returns
+  `429 RATE_LIMITED`.
 - `POST /auth/password-recovery/verify` accepts `{ "oobCode": "..." }`. Valid
   codes return HTTP `200` with `data.valid: true`. Missing, malformed, expired,
-  or used codes return `400 INVALID_OR_EXPIRED_ACTION_CODE`; provider outages
-  return `503 RECOVERY_UNAVAILABLE`.
+  or used codes return `400 INVALID_OR_EXPIRED_ACTION_CODE`; too many attempts
+  return `429 RATE_LIMITED`; provider outages or missing recovery-service
+  wiring return `503 RECOVERY_UNAVAILABLE`.
 - `POST /auth/password-recovery/confirm` accepts
   `{ "oobCode": "...", "newPassword": "..." }`. Success returns HTTP `200`
   with `data.confirmed: true`. Invalid or reused codes return
   `400 INVALID_OR_EXPIRED_ACTION_CODE`; Firebase password-policy rejection
-  returns `400 WEAK_PASSWORD`; provider outages return
-  `503 RECOVERY_UNAVAILABLE`.
+  returns `400 WEAK_PASSWORD`; invalid confirmation input returns
+  `400 INVALID_PASSWORD`; too many attempts return `429 RATE_LIMITED`; provider
+  outages or missing recovery-service wiring return `503 RECOVERY_UNAVAILABLE`.
 
-Both `verify` and `confirm` allow ten requests per IP in 15 minutes and return
-`429 RATE_LIMITED` after that limit.
+Both `verify` and `confirm` allow ten requests per IP in the same rolling
+15-minute in-process sliding window and return `429 RATE_LIMITED` after that
+limit.
 
 ## Initial Schema
 
@@ -67,8 +78,9 @@ type Query {
 - Backend authenticated operations require `Authorization: Bearer <Firebase ID token>`.
 - Profile, categories, cost centers, incomes, expenses, dashboard summary, agenda, and AI assistant operations will be added as GraphQL queries and mutations.
 - Password recovery uses backend-owned Firebase Auth REST endpoints for
-  request, action-code verification, and password confirmation. Email
-  verification continues to use Firebase delivery.
+  request, action-code verification, and password confirmation. Firebase
+  continues to deliver verification and password-recovery email from its
+  configured templates.
 
 ## API Rules
 
