@@ -31,10 +31,12 @@ async function recoveryApp(
       newPassword: string;
       requestId: string;
     }) => Promise<void>;
-  }
+  },
+  options: { now?: () => number } = {}
 ) {
   const app = await createApp({
     logger: silentLogger,
+    ...(options.now ? { passwordRecoveryRateLimitNow: options.now } : {}),
     passwordRecovery: {
       request: passwordRecovery.request ?? (async () => undefined),
       verify: passwordRecovery.verify ?? (async () => undefined),
@@ -147,6 +149,38 @@ describe('password recovery route', () => {
     assert.equal(limited.status, 429);
     assert.equal(limited.body.error.code, 'RATE_LIMITED');
     assert.equal(limited.body.meta.requestId, 'limited-request');
+  });
+
+  test('keeps late recovery attempts across the fifteen-minute boundary', async () => {
+    let now = 0;
+    const app = await recoveryApp({}, { now: () => now });
+
+    const first = await request(app)
+      .post('/auth/password-recovery')
+      .send({ email: 'person@example.com' });
+    assert.equal(first.status, 202);
+
+    now = 15 * 60 * 1000 - 1;
+    for (let attempt = 2; attempt <= 5; attempt += 1) {
+      const accepted = await request(app)
+        .post('/auth/password-recovery')
+        .send({ email: 'person@example.com' });
+      assert.equal(accepted.status, 202);
+    }
+    const beforeBoundary = await request(app)
+      .post('/auth/password-recovery')
+      .send({ email: 'person@example.com' });
+    assert.equal(beforeBoundary.status, 429);
+
+    now = 15 * 60 * 1000;
+    const oneExpired = await request(app)
+      .post('/auth/password-recovery')
+      .send({ email: 'person@example.com' });
+    assert.equal(oneExpired.status, 202);
+    const lateAttemptsRemain = await request(app)
+      .post('/auth/password-recovery')
+      .send({ email: 'person@example.com' });
+    assert.equal(lateAttemptsRemain.status, 429);
   });
 
   test('verifies valid recovery code', async () => {

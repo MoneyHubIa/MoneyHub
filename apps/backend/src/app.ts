@@ -17,6 +17,7 @@ import {
   PasswordRecoveryPublicError,
   type PasswordRecoveryService
 } from './password-recovery.js';
+import { createSlidingWindowRateLimiter } from './sliding-window-rate-limit.js';
 import {
   resolvers,
   typeDefs,
@@ -37,6 +38,7 @@ type CreateAppOptions = {
   frontendDistDir?: string;
   nodeEnvironment?: string;
   passwordRecovery?: PasswordRecoveryService;
+  passwordRecoveryRateLimitNow?: () => number;
 };
 
 const passwordRecoveryInput = z.object({
@@ -89,6 +91,38 @@ function passwordRecoveryPublicErrorStatus(code: PasswordRecoveryPublicError['co
 
 function passwordRecoveryUserIp(request: Request): string {
   return typeof request.ip === 'string' ? request.ip : '';
+}
+
+function createPasswordRecoveryRateLimit(options: Readonly<{
+  limit: number;
+  message: string;
+  now: (() => number) | undefined;
+}>) {
+  const windowMs = 15 * 60 * 1000;
+  const limiter = createSlidingWindowRateLimiter({
+    limit: options.limit,
+    windowMs,
+    ...(options.now ? { now: options.now } : {})
+  });
+
+  return ((request, response, next) => {
+    const result = limiter.consume(passwordRecoveryUserIp(request));
+    response.setHeader('RateLimit-Policy', `${options.limit};w=${windowMs / 1000}`);
+    response.setHeader(
+      'RateLimit',
+      `limit=${options.limit}, remaining=${result.remaining}`
+    );
+    if (!result.allowed) {
+      response.setHeader(
+        'Retry-After',
+        String(Math.max(1, Math.ceil(result.retryAfterMs / 1000)))
+      );
+      rateLimitedResponse(response, options.message);
+      return;
+    }
+
+    next();
+  }) satisfies express.RequestHandler;
 }
 
 function isLoopbackOrigin(origin: string): boolean {
@@ -174,23 +208,10 @@ export async function createApp(
 
   app.post(
     '/auth/password-recovery',
-    rateLimit({
-      windowMs: 15 * 60 * 1000,
+    createPasswordRecoveryRateLimit({
       limit: 5,
-      standardHeaders: 'draft-7',
-      legacyHeaders: false,
-      handler: (_request, response) => {
-        response.status(429).json({
-          success: false,
-          data: null,
-          error: {
-            code: 'RATE_LIMITED',
-            message: 'Too many password recovery requests.',
-            details: null
-          },
-          meta: { requestId: response.locals.requestId }
-        });
-      }
+      message: 'Too many password recovery requests.',
+      now: options.passwordRecoveryRateLimitNow
     }),
     express.json({ limit: '16kb' }),
     async (request, response) => {
@@ -230,14 +251,10 @@ export async function createApp(
 
   app.post(
     '/auth/password-recovery/verify',
-    rateLimit({
-      windowMs: 15 * 60 * 1000,
+    createPasswordRecoveryRateLimit({
       limit: 10,
-      standardHeaders: 'draft-7',
-      legacyHeaders: false,
-      handler: (_request, response) => {
-        rateLimitedResponse(response, 'Too many password recovery verification attempts.');
-      }
+      message: 'Too many password recovery verification attempts.',
+      now: options.passwordRecoveryRateLimitNow
     }),
     express.json({ limit: '16kb' }),
     async (request, response) => {
@@ -291,14 +308,10 @@ export async function createApp(
 
   app.post(
     '/auth/password-recovery/confirm',
-    rateLimit({
-      windowMs: 15 * 60 * 1000,
+    createPasswordRecoveryRateLimit({
       limit: 10,
-      standardHeaders: 'draft-7',
-      legacyHeaders: false,
-      handler: (_request, response) => {
-        rateLimitedResponse(response, 'Too many password recovery confirmation attempts.');
-      }
+      message: 'Too many password recovery confirmation attempts.',
+      now: options.passwordRecoveryRateLimitNow
     }),
     express.json({ limit: '16kb' }),
     async (request, response) => {
