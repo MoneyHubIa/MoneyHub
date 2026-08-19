@@ -13,7 +13,8 @@ import pg from 'pg';
 function createPrismaClient(databaseUrl: string): PrismaClient {
   const pool = new pg.Pool({
     connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false }
+    ssl: { rejectUnauthorized: false },
+    allowExitOnIdle: true
   });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });

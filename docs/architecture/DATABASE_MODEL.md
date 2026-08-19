@@ -7,7 +7,7 @@
 - User-owned financial tables include `user_id`, storing the Firebase UID.
 - Soft-deletable domain tables include `deleted_at`.
 - Monetary values use decimal-compatible database types.
-- PostgreSQL runs on Google Cloud SQL.
+- PostgreSQL runs on Supabase (managed PostgreSQL).
 
 ## Initial Tables
 

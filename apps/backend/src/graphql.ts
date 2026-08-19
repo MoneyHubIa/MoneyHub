@@ -8,6 +8,27 @@ import {
   type ProfileInput,
   type ProfileRepository
 } from './profile-management.js';
+import {
+  createCategory,
+  deleteCategory,
+  listMyCategories,
+  updateCategory,
+  type CategoryType,
+  type CreateCategoryInput,
+  type FinancialCategory,
+  type FinancialCategoryRepository,
+  type UpdateCategoryInput
+} from './financial-categories.js';
+import {
+  createCostCenter,
+  deleteCostCenter,
+  listMyCostCenters,
+  updateCostCenter,
+  type CostCenter,
+  type CostCenterRepository,
+  type CreateCostCenterInput,
+  type UpdateCostCenterInput
+} from './cost-centers.js';
 
 export type GraphQLContext = {
   requestId: string;
@@ -44,6 +65,61 @@ function profileRepository(): ProfileRepository {
   };
 }
 
+function financialCategoryRepository(): FinancialCategoryRepository {
+  const prisma = getPrismaClient();
+  const mapCategory = (cat: {
+    id: string;
+    userId: string;
+    name: string;
+    type: string;
+    color: string;
+    icon: string;
+    createdAt: Date;
+    updatedAt: Date;
+    deletedAt: Date | null;
+  }): FinancialCategory => ({
+    ...cat,
+    type: cat.type as CategoryType
+  });
+
+  return {
+    findMany: async ({ where }) => {
+      const items = await prisma.financialCategory.findMany({ where });
+      return items.map(mapCategory);
+    },
+    findUnique: async ({ where }) => {
+      const cat = await prisma.financialCategory.findUnique({ where });
+      return cat ? mapCategory(cat) : null;
+    },
+    create: async ({ data }) => {
+      const cat = await prisma.financialCategory.create({ data });
+      return mapCategory(cat);
+    },
+    update: async ({ where, data }) => {
+      const cat = await prisma.financialCategory.update({ where, data });
+      return mapCategory(cat);
+    }
+  };
+}
+
+function costCenterRepository(): CostCenterRepository {
+  const prisma = getPrismaClient();
+  return {
+    findMany: async ({ where }) => {
+      return prisma.costCenter.findMany({ where });
+    },
+    findUnique: async ({ where }) => {
+      return prisma.costCenter.findUnique({ where });
+    },
+    create: async ({ data }) => {
+      return prisma.costCenter.create({ data });
+    },
+    update: async ({ where, data }) => {
+      return prisma.costCenter.update({ where, data });
+    }
+  };
+}
+
 export const typeDefs = `#graphql
   type Health {
     status: String!
@@ -57,11 +133,61 @@ export const typeDefs = `#graphql
     DARK
   }
 
+  enum CategoryType {
+    INCOME
+    EXPENSE
+    BOTH
+  }
+
   type Profile {
     id: ID!
     fullName: String!
     preferredCurrency: String!
     theme: ProfileTheme!
+  }
+
+  type FinancialCategory {
+    id: ID!
+    name: String!
+    type: CategoryType!
+    color: String!
+    icon: String!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  input CreateCategoryInput {
+    name: String!
+    type: CategoryType = BOTH
+    color: String = "#4A5568"
+    icon: String = "tag"
+  }
+
+  input UpdateCategoryInput {
+    id: ID!
+    name: String
+    type: CategoryType
+    color: String
+    icon: String
+  }
+
+  type CostCenter {
+    id: ID!
+    name: String!
+    description: String
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  input CreateCostCenterInput {
+    name: String!
+    description: String
+  }
+
+  input UpdateCostCenterInput {
+    id: ID!
+    name: String
+    description: String
   }
 
   type AuthUser {
@@ -94,11 +220,19 @@ export const typeDefs = `#graphql
     health: Health!
     me: AuthUser
     myProfile: Profile!
+    myCategories(type: CategoryType): [FinancialCategory!]!
+    myCostCenters: [CostCenter!]!
   }
 
   type Mutation {
     bootstrapProfile(input: BootstrapProfileInput!): BootstrapProfilePayload!
     updateMyProfile(input: UpdateMyProfileInput!): Profile!
+    createCategory(input: CreateCategoryInput!): FinancialCategory!
+    updateCategory(input: UpdateCategoryInput!): FinancialCategory!
+    deleteCategory(id: ID!): Boolean!
+    createCostCenter(input: CreateCostCenterInput!): CostCenter!
+    updateCostCenter(input: UpdateCostCenterInput!): CostCenter!
+    deleteCostCenter(id: ID!): Boolean!
   }
 `;
 
@@ -122,6 +256,12 @@ export const resolvers = {
     },
     myProfile: (_parent: unknown, _args: unknown, context: GraphQLContext) => {
       return getMyProfile(context, profileRepository());
+    },
+    myCategories: (_parent: unknown, args: { type?: CategoryType }, context: GraphQLContext) => {
+      return listMyCategories(context, args.type, financialCategoryRepository());
+    },
+    myCostCenters: (_parent: unknown, _args: unknown, context: GraphQLContext) => {
+      return listMyCostCenters(context, costCenterRepository());
     }
   },
   Mutation: {
@@ -170,8 +310,6 @@ export const resolvers = {
         };
 
         if (existingProfile) {
-          // If we are simulating "identity email conflict", it would be handled 
-          // implicitly by the unique constraint on email in Prisma if another user has it.
           return {
             user: authUserObj,
             profile: existingProfile,
@@ -201,6 +339,48 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return updateMyProfile(context, args.input, profileRepository());
+    },
+    createCategory: (
+      _parent: unknown,
+      args: { input: CreateCategoryInput },
+      context: GraphQLContext
+    ) => {
+      return createCategory(context, args.input, financialCategoryRepository());
+    },
+    updateCategory: (
+      _parent: unknown,
+      args: { input: UpdateCategoryInput },
+      context: GraphQLContext
+    ) => {
+      return updateCategory(context, args.input, financialCategoryRepository());
+    },
+    deleteCategory: (
+      _parent: unknown,
+      args: { id: string },
+      context: GraphQLContext
+    ) => {
+      return deleteCategory(context, args.id, financialCategoryRepository());
+    },
+    createCostCenter: (
+      _parent: unknown,
+      args: { input: CreateCostCenterInput },
+      context: GraphQLContext
+    ) => {
+      return createCostCenter(context, args.input, costCenterRepository());
+    },
+    updateCostCenter: (
+      _parent: unknown,
+      args: { input: UpdateCostCenterInput },
+      context: GraphQLContext
+    ) => {
+      return updateCostCenter(context, args.input, costCenterRepository());
+    },
+    deleteCostCenter: (
+      _parent: unknown,
+      args: { id: string },
+      context: GraphQLContext
+    ) => {
+      return deleteCostCenter(context, args.id, costCenterRepository());
     }
   },
   AuthUser: {

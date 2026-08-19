@@ -15,7 +15,14 @@ model User {
   status          String    @default("ACTIVE") @db.VarChar(20)
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
-  profile         Profile?
+  profile               Profile?
+  categories            FinancialCategory[]
+  costCenters           CostCenter[]
+  incomes               Income[]
+  expenses              Expense[]
+  accountsPayable       AccountPayable[]
+  accountsReceivable    AccountReceivable[]
+  recurringTransactions RecurringTransaction[]
 
   @@map("users")
 }
@@ -31,4 +38,154 @@ model Profile {
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("profiles")
+}
+
+model FinancialCategory {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String   @db.VarChar(60)
+  type      String   @default("BOTH") @db.VarChar(20)
+  color     String   @default("#4A5568") @db.VarChar(20)
+  icon      String   @default("tag") @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  incomes           Income[]
+  expenses          Expense[]
+  accountsPayable   AccountPayable[]
+  accountsReceivable AccountReceivable[]
+  recurringTransactions RecurringTransaction[]
+
+  @@index([userId, deletedAt])
+  @@map("financial_categories")
+}
+
+model CostCenter {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  name        String    @db.VarChar(60)
+  description String?   @db.VarChar(255)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  incomes           Income[]
+  expenses          Expense[]
+  accountsPayable   AccountPayable[]
+  accountsReceivable AccountReceivable[]
+  recurringTransactions RecurringTransaction[]
+
+  @@index([userId, deletedAt])
+  @@map("cost_centers")
+}
+
+model Income {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String      @map("user_id") @db.Uuid
+  categoryId   String      @map("category_id") @db.Uuid
+  costCenterId String?     @map("cost_center_id") @db.Uuid
+  description  String      @db.VarChar(120)
+  amount       Decimal     @db.Decimal(12, 2)
+  occurredAt   DateTime    @map("occurred_at") @db.Timestamptz(3)
+  notes        String?     @db.VarChar(500)
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt    DateTime?   @map("deleted_at") @db.Timestamptz(3)
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   FinancialCategory @relation(fields: [categoryId], references: [id])
+  costCenter CostCenter?       @relation(fields: [costCenterId], references: [id])
+
+  @@index([userId, occurredAt, deletedAt])
+  @@map("incomes")
+}
+
+model Expense {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String      @map("user_id") @db.Uuid
+  categoryId   String      @map("category_id") @db.Uuid
+  costCenterId String?     @map("cost_center_id") @db.Uuid
+  description  String      @db.VarChar(120)
+  amount       Decimal     @db.Decimal(12, 2)
+  occurredAt   DateTime    @map("occurred_at") @db.Timestamptz(3)
+  notes        String?     @db.VarChar(500)
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt    DateTime?   @map("deleted_at") @db.Timestamptz(3)
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   FinancialCategory @relation(fields: [categoryId], references: [id])
+  costCenter CostCenter?       @relation(fields: [costCenterId], references: [id])
+
+  @@index([userId, occurredAt, deletedAt])
+  @@map("expenses")
+}
+
+model AccountPayable {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String      @map("user_id") @db.Uuid
+  categoryId   String      @map("category_id") @db.Uuid
+  costCenterId String?     @map("cost_center_id") @db.Uuid
+  description  String      @db.VarChar(120)
+  amount       Decimal     @db.Decimal(12, 2)
+  dueDate      DateTime    @map("due_date") @db.Timestamptz(3)
+  status       String      @default("PENDING") @db.VarChar(20)
+  paidAt       DateTime?   @map("paid_at") @db.Timestamptz(3)
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt    DateTime?   @map("deleted_at") @db.Timestamptz(3)
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   FinancialCategory @relation(fields: [categoryId], references: [id])
+  costCenter CostCenter?       @relation(fields: [costCenterId], references: [id])
+
+  @@index([userId, dueDate, deletedAt])
+  @@map("accounts_payable")
+}
+
+model AccountReceivable {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String      @map("user_id") @db.Uuid
+  categoryId   String      @map("category_id") @db.Uuid
+  costCenterId String?     @map("cost_center_id") @db.Uuid
+  description  String      @db.VarChar(120)
+  amount       Decimal     @db.Decimal(12, 2)
+  dueDate      DateTime    @map("due_date") @db.Timestamptz(3)
+  status       String      @default("PENDING") @db.VarChar(20)
+  receivedAt   DateTime?   @map("received_at") @db.Timestamptz(3)
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt    DateTime?   @map("deleted_at") @db.Timestamptz(3)
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   FinancialCategory @relation(fields: [categoryId], references: [id])
+  costCenter CostCenter?       @relation(fields: [costCenterId], references: [id])
+
+  @@index([userId, dueDate, deletedAt])
+  @@map("accounts_receivable")
+}
+
+model RecurringTransaction {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  type           String    @db.VarChar(20)
+  categoryId     String    @map("category_id") @db.Uuid
+  costCenterId   String?   @map("cost_center_id") @db.Uuid
+  description    String    @db.VarChar(120)
+  amount         Decimal   @db.Decimal(12, 2)
+  recurrenceRule String    @map("recurrence_rule") @db.VarChar(50)
+  startDate      DateTime  @map("start_date") @db.Timestamptz(3)
+  endDate        DateTime? @map("end_date") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   FinancialCategory @relation(fields: [categoryId], references: [id])
+  costCenter CostCenter?       @relation(fields: [costCenterId], references: [id])
+
+  @@index([userId])
+  @@map("recurring_transactions")
 }

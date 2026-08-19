@@ -23,6 +23,8 @@ import {
 } from 'react-native';
 import { useAuth } from '../providers/AuthProvider';
 import { ProfileSettings } from './ProfileSettings';
+import { FinancialCategories } from './FinancialCategories';
+import { CostCenters } from './CostCenters';
 
 const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -158,6 +160,10 @@ export function DashboardShell() {
           </>
         ) : activeSectionId === 'ajustes' ? (
           <ProfileSettings />
+        ) : activeSectionId === 'financeiro' ? (
+          <FinancialCategories />
+        ) : activeSectionId === 'contas' ? (
+          <CostCenters />
         ) : (
           <View style={styles.header}>
             <Text style={styles.eyebrow}>MoneyHub</Text>

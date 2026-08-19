@@ -20,12 +20,12 @@
 | TASK-016 | Prepare deploy checklist | Pending | EPIC-08 |
 | TASK-017 | Implement authenticated GraphQL profile bootstrap | Done | EPIC-02 |
 | TASK-018 | Implement logout and local Firebase session cleanup | Done | EPIC-02 |
-| TASK-019 | Implement password recovery with Firebase REST endpoints | In Progress (real smoke pending) | EPIC-02 |
+| TASK-019 | Implement password recovery with Firebase REST endpoints | Pending | EPIC-02 |
 | TASK-020 | Implement profile management | Done | EPIC-02 |
-| TASK-021 | Implement financial categories | Pending | EPIC-03 |
+| TASK-021 | Implement financial categories | Done | EPIC-03 |
 | TASK-022 | Implement income and expenses | Pending | EPIC-03 |
 | TASK-023 | Implement dashboard summary | Pending | EPIC-04 |
-| TASK-024 | Implement cost centers | Pending | EPIC-03 |
+| TASK-024 | Implement cost centers | Done | EPIC-03 |
 | TASK-025 | Implement accounts payable | Pending | EPIC-03 |
 | TASK-026 | Implement accounts receivable | Pending | EPIC-03 |
 | TASK-027 | Implement recurring transactions | Pending | EPIC-03 |
@@ -51,6 +51,7 @@
 | TASK-047 | Implement recurring events | Pending | EPIC-06 |
 | TASK-048 | Implement TypeScript GraphQL backend foundation | Done | EPIC-01 |
 | TASK-049 | Implement TypeScript Expo app foundation | Done | EPIC-01 |
+| TASK-050 | Migrate database from Cloud SQL to Supabase PostgreSQL | Done | EPIC-01 |
 
 `TASK-019` remains `In Progress (real smoke pending)`, and `EPIC-02` stays
 open until real Firebase smoke confirms delivery/content, MoneyHub action URL,

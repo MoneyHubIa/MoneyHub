@@ -19,8 +19,8 @@ graphql schema -> resolvers -> services -> repositories -> database
 - **GraphQL schema:** defines public queries, mutations, types, and auth boundaries.
 - **Resolvers:** parse request context and delegate to services.
 - **Services:** own business rules and orchestration.
-- **Repositories:** isolate persistence and Cloud SQL PostgreSQL access.
-- **Database:** PostgreSQL managed by Google Cloud SQL.
+- **Repositories:** isolate persistence and Supabase PostgreSQL access.
+- **Database:** PostgreSQL managed by Supabase.
 - **Firebase Auth REST adapter:** isolates backend password-recovery requests,
   action-code verification, and password confirmation, applies 10-second
   abortable provider deadlines, and exposes only allowlisted provider codes to

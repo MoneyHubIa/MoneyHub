@@ -17,7 +17,7 @@ Plan and implement secure account lifecycle with Firebase Auth, Firebase Admin t
 - [x] TASK-011 - Plan Firebase Analytics adapter.
 - [x] TASK-017 - Implement authenticated GraphQL profile bootstrap.
 - [x] TASK-018 - Implement logout and local Firebase session cleanup.
-- [ ] TASK-019 - Implement password recovery through Firebase REST endpoints (In Progress (real smoke pending)).
+- [ ] TASK-019 - Implement password recovery through Firebase REST endpoints (Pending).
 - [x] TASK-020 - Implement profile management.
 
 ## Tasks Detail

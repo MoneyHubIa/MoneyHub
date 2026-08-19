@@ -22,7 +22,7 @@ Plan GCP infrastructure, Expo build targets, Firebase configuration, password-re
 ## Technical Rules
 
 - Backend deploy target is Cloud Run.
-- PostgreSQL deploy target is Cloud SQL.
+- PostgreSQL deploy target is Supabase PostgreSQL.
 - Secrets must be stored in Secret Manager.
 - Firebase client values may be public only when prefixed with `EXPO_PUBLIC_`.
 - Recovery rate limiting must use a shared store before multi-instance Cloud
