@@ -49,6 +49,11 @@ import {
   type CreateExpenseInput,
   type UpdateExpenseInput
 } from './expenses.js';
+import {
+  getDashboardSummary,
+  type DashboardSummary,
+  type DashboardSummaryRepository
+} from './dashboard-summary.js';
 
 
 export type GraphQLContext = {
@@ -174,6 +179,43 @@ function expenseRepository(): ExpenseRepository {
     update: async ({ where, data }) => mapExpense(await prisma.expense.update({ where, data }))
   };
 }
+
+function dashboardSummaryRepository(): DashboardSummaryRepository {
+  const prisma = getPrismaClient();
+  return {
+    getIncomeSummary: async ({ userId, startDate, endDate }) => {
+      const result = await prisma.income.aggregate({
+        where: {
+          userId,
+          deletedAt: null,
+          occurredAt: { gte: startDate, lte: endDate }
+        },
+        _sum: { amount: true },
+        _count: { _all: true }
+      });
+      return {
+        sum: Number(result._sum.amount ?? 0),
+        count: result._count._all
+      };
+    },
+    getExpenseSummary: async ({ userId, startDate, endDate }) => {
+      const result = await prisma.expense.aggregate({
+        where: {
+          userId,
+          deletedAt: null,
+          occurredAt: { gte: startDate, lte: endDate }
+        },
+        _sum: { amount: true },
+        _count: { _all: true }
+      });
+      return {
+        sum: Number(result._sum.amount ?? 0),
+        count: result._count._all
+      };
+    }
+  };
+}
+
 
 
 export const typeDefs = `#graphql
@@ -334,6 +376,16 @@ export const typeDefs = `#graphql
     created: Boolean!
   }
 
+  type DashboardSummary {
+    totalIncome: String!
+    totalExpense: String!
+    netBalance: String!
+    incomeCount: Int!
+    expenseCount: Int!
+    month: Int!
+    year: Int!
+  }
+
   type Query {
     health: Health!
     me: AuthUser
@@ -342,6 +394,7 @@ export const typeDefs = `#graphql
     myCostCenters: [CostCenter!]!
     myIncomes: [Income!]!
     myExpenses: [Expense!]!
+    dashboardSummary(month: Int, year: Int): DashboardSummary!
   }
 
   type Mutation {
@@ -394,6 +447,13 @@ export const resolvers = {
     },
     myExpenses: (_parent: unknown, _args: unknown, context: GraphQLContext) => {
       return listMyExpenses(context, expenseRepository());
+    },
+    dashboardSummary: (
+      _parent: unknown,
+      args: { month?: number; year?: number },
+      context: GraphQLContext
+    ) => {
+      return getDashboardSummary(context, args, dashboardSummaryRepository());
     }
   },
   Mutation: {

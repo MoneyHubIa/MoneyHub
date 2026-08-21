@@ -94,15 +94,23 @@ export function Transactions() {
   }>(MY_TRANSACTIONS_QUERY);
 
   const [createIncome, { loading: creatingI }] = useMutation(CREATE_INCOME, {
+    refetchQueries: ['DashboardSummary', 'MyTransactions'],
     onCompleted: () => resetForm(),
     onError: (err) => setErrorMessage(err.message)
   });
   const [createExpense, { loading: creatingE }] = useMutation(CREATE_EXPENSE, {
+    refetchQueries: ['DashboardSummary', 'MyTransactions'],
     onCompleted: () => resetForm(),
     onError: (err) => setErrorMessage(err.message)
   });
-  const [deleteIncome] = useMutation(DELETE_INCOME, { onCompleted: () => refetch() });
-  const [deleteExpense] = useMutation(DELETE_EXPENSE, { onCompleted: () => refetch() });
+  const [deleteIncome] = useMutation(DELETE_INCOME, {
+    refetchQueries: ['DashboardSummary', 'MyTransactions'],
+    onCompleted: () => refetch()
+  });
+  const [deleteExpense] = useMutation(DELETE_EXPENSE, {
+    refetchQueries: ['DashboardSummary', 'MyTransactions'],
+    onCompleted: () => refetch()
+  });
 
   const resetForm = () => {
     setDescription('');

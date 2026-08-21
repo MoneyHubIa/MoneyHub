@@ -1,4 +1,5 @@
-import { useApolloClient } from '@apollo/client/react';
+import { gql } from '@apollo/client';
+import { useApolloClient, useQuery } from '@apollo/client/react';
 import { useRouter } from 'expo-router';
 import {
   BarChart3,
@@ -11,7 +12,7 @@ import {
   Target,
   WalletCards
 } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -40,6 +41,46 @@ const navigationItems = [
 
 type NavigationId = (typeof navigationItems)[number]['id'];
 
+const DASHBOARD_SUMMARY_QUERY = gql`
+  query DashboardSummary {
+    dashboardSummary {
+      totalIncome
+      totalExpense
+      netBalance
+      incomeCount
+      expenseCount
+      month
+      year
+    }
+    myProfile {
+      id
+      preferredCurrency
+    }
+  }
+`;
+
+type DashboardSummaryData = {
+  dashboardSummary?: {
+    totalIncome: string;
+    totalExpense: string;
+    netBalance: string;
+    incomeCount: number;
+    expenseCount: number;
+    month: number;
+    year: number;
+  };
+  myProfile?: {
+    id: string;
+    preferredCurrency: string;
+  };
+};
+
+function formatCurrency(amountStr: string | undefined, currency = 'BRL'): string {
+  const num = Number(amountStr ?? 0);
+  const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'R$';
+  return `${symbol} ${num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 export function DashboardShell() {
   const { width } = useWindowDimensions();
   const desktop = width >= 900;
@@ -49,6 +90,17 @@ export function DashboardShell() {
   const [activeSectionId, setActiveSectionId] =
     useState<NavigationId>('dashboard');
   const [loggingOut, setLoggingOut] = useState(false);
+  const { data: summaryData, loading: loadingSummary, refetch: refetchSummary } =
+    useQuery<DashboardSummaryData>(DASHBOARD_SUMMARY_QUERY, {
+      fetchPolicy: 'cache-and-network'
+    });
+
+  useEffect(() => {
+    if (activeSectionId === 'dashboard') {
+      refetchSummary?.();
+    }
+  }, [activeSectionId, refetchSummary]);
+
   const activeSection =
     navigationItems.find((item) => item.id === activeSectionId) ??
     navigationItems[0];
@@ -132,12 +184,54 @@ export function DashboardShell() {
             </View>
 
             <View accessibilityLabel="Resumo financeiro" style={styles.kpiGrid}>
-              {['Saldo previsto', 'Receitas do mes', 'Despesas do mes'].map((label) => (
-                <View key={label} style={styles.kpiCard}>
-                  <Text style={styles.kpiLabel}>{label}</Text>
-                  <Text style={styles.kpiValue}>R$ 0,00</Text>
-                </View>
-              ))}
+              <View style={styles.kpiCard}>
+                <Text style={styles.kpiLabel}>Saldo previsto</Text>
+                {loadingSummary && !summaryData?.dashboardSummary ? (
+                  <ActivityIndicator color="#0f766e" size="small" />
+                ) : (
+                  <Text
+                    style={[
+                      styles.kpiValue,
+                      Number(summaryData?.dashboardSummary?.netBalance ?? 0) >= 0
+                        ? styles.positiveValue
+                        : styles.negativeValue
+                    ]}
+                  >
+                    {formatCurrency(
+                      summaryData?.dashboardSummary?.netBalance,
+                      summaryData?.myProfile?.preferredCurrency
+                    )}
+                  </Text>
+                )}
+              </View>
+
+              <View style={styles.kpiCard}>
+                <Text style={styles.kpiLabel}>Receitas do mes</Text>
+                {loadingSummary && !summaryData?.dashboardSummary ? (
+                  <ActivityIndicator color="#059669" size="small" />
+                ) : (
+                  <Text style={[styles.kpiValue, styles.incomeValue]}>
+                    {formatCurrency(
+                      summaryData?.dashboardSummary?.totalIncome,
+                      summaryData?.myProfile?.preferredCurrency
+                    )}
+                  </Text>
+                )}
+              </View>
+
+              <View style={styles.kpiCard}>
+                <Text style={styles.kpiLabel}>Despesas do mes</Text>
+                {loadingSummary && !summaryData?.dashboardSummary ? (
+                  <ActivityIndicator color="#dc2626" size="small" />
+                ) : (
+                  <Text style={[styles.kpiValue, styles.expenseValue]}>
+                    {formatCurrency(
+                      summaryData?.dashboardSummary?.totalExpense,
+                      summaryData?.myProfile?.preferredCurrency
+                    )}
+                  </Text>
+                )}
+              </View>
             </View>
 
             <View style={styles.assistantPanel}>
@@ -208,6 +302,10 @@ const styles = StyleSheet.create({
   kpiCard: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 6, borderWidth: 1, flexBasis: 220, flexGrow: 1, gap: 8, minHeight: 110, padding: 18 },
   kpiLabel: { color: '#64748b', fontSize: 14 },
   kpiValue: { color: '#0f172a', fontSize: 24, fontWeight: '700' },
+  positiveValue: { color: '#059669' },
+  negativeValue: { color: '#dc2626' },
+  incomeValue: { color: '#059669' },
+  expenseValue: { color: '#dc2626' },
   assistantPanel: { alignItems: 'center', backgroundColor: '#ecfdf5', borderColor: '#a7f3d0', borderRadius: 6, borderWidth: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', padding: 20 },
   panelCopy: { gap: 4 },
   panelTitle: { color: '#0f172a', fontSize: 19, fontWeight: '700' },
