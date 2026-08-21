@@ -23,7 +23,7 @@
 | TASK-019 | Implement password recovery with Firebase REST endpoints | Pending | EPIC-02 |
 | TASK-020 | Implement profile management | Done | EPIC-02 |
 | TASK-021 | Implement financial categories | Done | EPIC-03 |
-| TASK-022 | Implement income and expenses | Pending | EPIC-03 |
+| TASK-022 | Implement income and expenses | Done | EPIC-03 |
 | TASK-023 | Implement dashboard summary | Pending | EPIC-04 |
 | TASK-024 | Implement cost centers | Done | EPIC-03 |
 | TASK-025 | Implement accounts payable | Pending | EPIC-03 |

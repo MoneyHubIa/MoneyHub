@@ -25,11 +25,13 @@ import { useAuth } from '../providers/AuthProvider';
 import { ProfileSettings } from './ProfileSettings';
 import { FinancialCategories } from './FinancialCategories';
 import { CostCenters } from './CostCenters';
+import { Transactions } from './Transactions';
 
 const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'financeiro', label: 'Financeiro', icon: WalletCards },
-  { id: 'contas', label: 'Contas', icon: CreditCard },
+  { id: 'transacoes', label: 'Transações', icon: WalletCards },
+  { id: 'financeiro', label: 'Categorias', icon: WalletCards },
+  { id: 'contas', label: 'Centros', icon: CreditCard },
   { id: 'metas', label: 'Metas', icon: Target },
   { id: 'agenda', label: 'Agenda', icon: CalendarDays },
   { id: 'ia', label: 'IA', icon: Bot },
@@ -162,6 +164,8 @@ export function DashboardShell() {
           <ProfileSettings />
         ) : activeSectionId === 'financeiro' ? (
           <FinancialCategories />
+        ) : activeSectionId === 'transacoes' ? (
+          <Transactions />
         ) : activeSectionId === 'contas' ? (
           <CostCenters />
         ) : (

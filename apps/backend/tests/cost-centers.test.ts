@@ -72,7 +72,7 @@ describe('cost centers', () => {
   test('lists cost centers for authenticated user', async () => {
     const result = await listMyCostCenters(verifiedContext(), createRepository());
     assert.equal(result.length, 1);
-    assert.equal(result[0].name, 'Pessoal');
+    assert.equal(result[0]?.name, 'Pessoal');
   });
 
   test('creates cost center with normalized input', async () => {
@@ -107,7 +107,7 @@ describe('cost centers', () => {
   });
 
   test('updates cost center for authenticated owner', async () => {
-    let updatedWhere: { id: string } | null = null;
+    let updatedWhere: { id: string } | null = null as { id: string } | null;
     const repository = createRepository({
       update: async ({ where, data }) => {
         updatedWhere = where;

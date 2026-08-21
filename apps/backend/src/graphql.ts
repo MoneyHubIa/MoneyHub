@@ -29,6 +29,27 @@ import {
   type CreateCostCenterInput,
   type UpdateCostCenterInput
 } from './cost-centers.js';
+import {
+  createIncome,
+  deleteIncome,
+  listMyIncomes,
+  updateIncome,
+  type Income,
+  type IncomeRepository,
+  type CreateIncomeInput,
+  type UpdateIncomeInput
+} from './incomes.js';
+import {
+  createExpense,
+  deleteExpense,
+  listMyExpenses,
+  updateExpense,
+  type Expense,
+  type ExpenseRepository,
+  type CreateExpenseInput,
+  type UpdateExpenseInput
+} from './expenses.js';
+
 
 export type GraphQLContext = {
   requestId: string;
@@ -120,6 +141,41 @@ function costCenterRepository(): CostCenterRepository {
   };
 }
 
+function incomeRepository(): IncomeRepository {
+  const prisma = getPrismaClient();
+  const mapIncome = (item: any): Income => ({
+    ...item,
+    amount: item.amount.toString()
+  });
+  return {
+    findMany: async ({ where }) => (await prisma.income.findMany({ where, orderBy: { occurredAt: 'desc' } })).map(mapIncome),
+    findUnique: async ({ where }) => {
+      const item = await prisma.income.findUnique({ where });
+      return item ? mapIncome(item) : null;
+    },
+    create: async ({ data }) => mapIncome(await prisma.income.create({ data })),
+    update: async ({ where, data }) => mapIncome(await prisma.income.update({ where, data }))
+  };
+}
+
+function expenseRepository(): ExpenseRepository {
+  const prisma = getPrismaClient();
+  const mapExpense = (item: any): Expense => ({
+    ...item,
+    amount: item.amount.toString()
+  });
+  return {
+    findMany: async ({ where }) => (await prisma.expense.findMany({ where, orderBy: { occurredAt: 'desc' } })).map(mapExpense),
+    findUnique: async ({ where }) => {
+      const item = await prisma.expense.findUnique({ where });
+      return item ? mapExpense(item) : null;
+    },
+    create: async ({ data }) => mapExpense(await prisma.expense.create({ data })),
+    update: async ({ where, data }) => mapExpense(await prisma.expense.update({ where, data }))
+  };
+}
+
+
 export const typeDefs = `#graphql
   type Health {
     status: String!
@@ -190,6 +246,68 @@ export const typeDefs = `#graphql
     description: String
   }
 
+  type Income {
+    id: ID!
+    categoryId: ID!
+    costCenterId: ID
+    description: String!
+    amount: String!
+    occurredAt: String!
+    notes: String
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  input CreateIncomeInput {
+    categoryId: ID!
+    costCenterId: ID
+    description: String!
+    amount: String!
+    occurredAt: String!
+    notes: String
+  }
+
+  input UpdateIncomeInput {
+    id: ID!
+    categoryId: ID
+    costCenterId: ID
+    description: String
+    amount: String
+    occurredAt: String
+    notes: String
+  }
+
+  type Expense {
+    id: ID!
+    categoryId: ID!
+    costCenterId: ID
+    description: String!
+    amount: String!
+    occurredAt: String!
+    notes: String
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  input CreateExpenseInput {
+    categoryId: ID!
+    costCenterId: ID
+    description: String!
+    amount: String!
+    occurredAt: String!
+    notes: String
+  }
+
+  input UpdateExpenseInput {
+    id: ID!
+    categoryId: ID
+    costCenterId: ID
+    description: String
+    amount: String
+    occurredAt: String
+    notes: String
+  }
+
   type AuthUser {
     id: ID!
     email: String!
@@ -222,6 +340,8 @@ export const typeDefs = `#graphql
     myProfile: Profile!
     myCategories(type: CategoryType): [FinancialCategory!]!
     myCostCenters: [CostCenter!]!
+    myIncomes: [Income!]!
+    myExpenses: [Expense!]!
   }
 
   type Mutation {
@@ -233,6 +353,12 @@ export const typeDefs = `#graphql
     createCostCenter(input: CreateCostCenterInput!): CostCenter!
     updateCostCenter(input: UpdateCostCenterInput!): CostCenter!
     deleteCostCenter(id: ID!): Boolean!
+    createIncome(input: CreateIncomeInput!): Income!
+    updateIncome(input: UpdateIncomeInput!): Income!
+    deleteIncome(id: ID!): Boolean!
+    createExpense(input: CreateExpenseInput!): Expense!
+    updateExpense(input: UpdateExpenseInput!): Expense!
+    deleteExpense(id: ID!): Boolean!
   }
 `;
 
@@ -262,6 +388,12 @@ export const resolvers = {
     },
     myCostCenters: (_parent: unknown, _args: unknown, context: GraphQLContext) => {
       return listMyCostCenters(context, costCenterRepository());
+    },
+    myIncomes: (_parent: unknown, _args: unknown, context: GraphQLContext) => {
+      return listMyIncomes(context, incomeRepository());
+    },
+    myExpenses: (_parent: unknown, _args: unknown, context: GraphQLContext) => {
+      return listMyExpenses(context, expenseRepository());
     }
   },
   Mutation: {
@@ -381,6 +513,48 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return deleteCostCenter(context, args.id, costCenterRepository());
+    },
+    createIncome: (
+      _parent: unknown,
+      args: { input: CreateIncomeInput },
+      context: GraphQLContext
+    ) => {
+      return createIncome(context, args.input, incomeRepository());
+    },
+    updateIncome: (
+      _parent: unknown,
+      args: { input: UpdateIncomeInput },
+      context: GraphQLContext
+    ) => {
+      return updateIncome(context, args.input, incomeRepository());
+    },
+    deleteIncome: (
+      _parent: unknown,
+      args: { id: string },
+      context: GraphQLContext
+    ) => {
+      return deleteIncome(context, args.id, incomeRepository());
+    },
+    createExpense: (
+      _parent: unknown,
+      args: { input: CreateExpenseInput },
+      context: GraphQLContext
+    ) => {
+      return createExpense(context, args.input, expenseRepository());
+    },
+    updateExpense: (
+      _parent: unknown,
+      args: { input: UpdateExpenseInput },
+      context: GraphQLContext
+    ) => {
+      return updateExpense(context, args.input, expenseRepository());
+    },
+    deleteExpense: (
+      _parent: unknown,
+      args: { id: string },
+      context: GraphQLContext
+    ) => {
+      return deleteExpense(context, args.id, expenseRepository());
     }
   },
   AuthUser: {

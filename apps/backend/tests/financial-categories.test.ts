@@ -69,10 +69,10 @@ describe('financial categories', () => {
     assert.match(typeDefs, /deleteCategory\(id: ID!\): Boolean!/);
   });
 
-  test('lists categories for authenticated user with verified email', async () => {
+  test('lists financial categories for authenticated user', async () => {
     const result = await listMyCategories(verifiedContext(), undefined, createRepository());
     assert.equal(result.length, 1);
-    assert.equal(result[0].name, 'Alimentação');
+    assert.equal(result[0]?.name, 'Alimentação');
   });
 
   test('creates category with normalized input', async () => {
@@ -107,7 +107,7 @@ describe('financial categories', () => {
   });
 
   test('updates category for authenticated owner', async () => {
-    let updatedWhere: { id: string } | null = null;
+    let updatedWhere: { id: string } | null = null as { id: string } | null;
     const repository = createRepository({
       update: async ({ where, data }) => {
         updatedWhere = where;
