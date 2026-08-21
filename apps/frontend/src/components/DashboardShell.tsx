@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import {
   BarChart3,
   Bot,
+  CalendarClock,
   CalendarDays,
   CreditCard,
   LayoutDashboard,
@@ -27,10 +28,12 @@ import { ProfileSettings } from './ProfileSettings';
 import { FinancialCategories } from './FinancialCategories';
 import { CostCenters } from './CostCenters';
 import { Transactions } from './Transactions';
+import { AccountsPayable } from './AccountsPayable';
 
 const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'transacoes', label: 'Transações', icon: WalletCards },
+  { id: 'a_pagar', label: 'A Pagar', icon: CalendarClock },
   { id: 'financeiro', label: 'Categorias', icon: WalletCards },
   { id: 'contas', label: 'Centros', icon: CreditCard },
   { id: 'metas', label: 'Metas', icon: Target },
@@ -260,6 +263,8 @@ export function DashboardShell() {
           <FinancialCategories />
         ) : activeSectionId === 'transacoes' ? (
           <Transactions />
+        ) : activeSectionId === 'a_pagar' ? (
+          <AccountsPayable />
         ) : activeSectionId === 'contas' ? (
           <CostCenters />
         ) : (

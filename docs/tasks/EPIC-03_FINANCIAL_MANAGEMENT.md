@@ -14,11 +14,19 @@ Implement categories, cost centers, income, expenses, accounts payable, accounts
 - [x] TASK-021 — Implement financial categories.
 - [x] TASK-022 — Implement income and expenses.
 - [x] TASK-024 — Implement cost centers.
-- [ ] TASK-025 — Implement accounts payable.
+- [x] TASK-025 — Implement accounts payable.
 - [ ] TASK-026 — Implement accounts receivable.
 - [ ] TASK-027 — Implement recurring transactions.
 
 ## Tasks Detail
+
+### TASK-025 - Implement accounts payable
+
+## Status
+Done
+
+## Completion Review
+The backend implements Prisma `AccountPayable` persistence, GraphQL schema types, enum `AccountPayableStatus`, query `myAccountsPayable(status)` and mutations (`createAccountPayable`, `updateAccountPayable`, `markAccountPayablePaid`, `deleteAccountPayable`). Resolvers enforce user authentication, validation, and multi-tenant isolation. The Expo app provides an `AccountsPayable` UI screen in `DashboardShell` allowing scheduling, status filtering (Todas, Pendentes, Pagas), quick payment settlement ("Dar Baixa"), and soft deletion.
 
 ### TASK-022 - Implement income and expenses
 

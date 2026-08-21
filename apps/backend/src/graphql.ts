@@ -54,6 +54,18 @@ import {
   type DashboardSummary,
   type DashboardSummaryRepository
 } from './dashboard-summary.js';
+import {
+  createAccountPayable,
+  deleteAccountPayable,
+  listMyAccountsPayable,
+  markAccountPayablePaid,
+  updateAccountPayable,
+  type AccountPayable,
+  type AccountPayableRepository,
+  type AccountPayableStatus,
+  type CreateAccountPayableInput,
+  type UpdateAccountPayableInput
+} from './accounts-payable.js';
 
 
 export type GraphQLContext = {
@@ -215,6 +227,41 @@ function dashboardSummaryRepository(): DashboardSummaryRepository {
     }
   };
 }
+
+function accountPayableRepository(): AccountPayableRepository {
+  const prisma = getPrismaClient();
+  const mapAccountPayable = (item: any): AccountPayable => ({
+    ...item,
+    amount: item.amount.toString(),
+    dueDate: item.dueDate instanceof Date ? item.dueDate.toISOString() : item.dueDate,
+    paidAt: item.paidAt ? (item.paidAt instanceof Date ? item.paidAt.toISOString() : item.paidAt) : null,
+    createdAt: item.createdAt instanceof Date ? item.createdAt.toISOString() : item.createdAt,
+    updatedAt: item.updatedAt instanceof Date ? item.updatedAt.toISOString() : item.updatedAt
+  });
+  return {
+    findMany: async ({ where }) => (await prisma.accountPayable.findMany({ where, orderBy: { dueDate: 'asc' } })).map(mapAccountPayable),
+    findUnique: async ({ where }) => {
+      const item = await prisma.accountPayable.findUnique({ where });
+      return item ? mapAccountPayable(item) : null;
+    },
+    create: async ({ data }) => mapAccountPayable(await prisma.accountPayable.create({ data })),
+    update: async ({ where, data }) => mapAccountPayable(await prisma.accountPayable.update({ where, data })),
+    createExpenseFromPayable: async ({ data }) => {
+      await prisma.expense.create({
+        data: {
+          userId: data.userId,
+          categoryId: data.categoryId,
+          costCenterId: data.costCenterId ?? null,
+          description: data.description,
+          amount: data.amount,
+          occurredAt: data.occurredAt,
+          notes: data.notes ?? null
+        }
+      });
+    }
+  };
+}
+
 
 
 
@@ -386,6 +433,47 @@ export const typeDefs = `#graphql
     year: Int!
   }
 
+  enum AccountPayableStatus {
+    PENDING
+    PAID
+    OVERDUE
+    CANCELLED
+  }
+
+  type AccountPayable {
+    id: ID!
+    userId: ID!
+    categoryId: ID!
+    costCenterId: ID
+    description: String!
+    amount: String!
+    dueDate: String!
+    status: AccountPayableStatus!
+    paidAt: String
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  input CreateAccountPayableInput {
+    categoryId: ID!
+    costCenterId: ID
+    description: String!
+    amount: String!
+    dueDate: String!
+    status: AccountPayableStatus
+  }
+
+  input UpdateAccountPayableInput {
+    id: ID!
+    categoryId: ID
+    costCenterId: ID
+    description: String
+    amount: String
+    dueDate: String
+    status: AccountPayableStatus
+    paidAt: String
+  }
+
   type Query {
     health: Health!
     me: AuthUser
@@ -394,6 +482,7 @@ export const typeDefs = `#graphql
     myCostCenters: [CostCenter!]!
     myIncomes: [Income!]!
     myExpenses: [Expense!]!
+    myAccountsPayable(status: AccountPayableStatus): [AccountPayable!]!
     dashboardSummary(month: Int, year: Int): DashboardSummary!
   }
 
@@ -412,6 +501,10 @@ export const typeDefs = `#graphql
     createExpense(input: CreateExpenseInput!): Expense!
     updateExpense(input: UpdateExpenseInput!): Expense!
     deleteExpense(id: ID!): Boolean!
+    createAccountPayable(input: CreateAccountPayableInput!): AccountPayable!
+    updateAccountPayable(input: UpdateAccountPayableInput!): AccountPayable!
+    markAccountPayablePaid(id: ID!, paidAt: String): AccountPayable!
+    deleteAccountPayable(id: ID!): Boolean!
   }
 `;
 
@@ -447,6 +540,13 @@ export const resolvers = {
     },
     myExpenses: (_parent: unknown, _args: unknown, context: GraphQLContext) => {
       return listMyExpenses(context, expenseRepository());
+    },
+    myAccountsPayable: (
+      _parent: unknown,
+      args: { status?: AccountPayableStatus },
+      context: GraphQLContext
+    ) => {
+      return listMyAccountsPayable(context, args.status, accountPayableRepository());
     },
     dashboardSummary: (
       _parent: unknown,
@@ -615,6 +715,34 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return deleteExpense(context, args.id, expenseRepository());
+    },
+    createAccountPayable: (
+      _parent: unknown,
+      args: { input: CreateAccountPayableInput },
+      context: GraphQLContext
+    ) => {
+      return createAccountPayable(context, args.input, accountPayableRepository());
+    },
+    updateAccountPayable: (
+      _parent: unknown,
+      args: { input: UpdateAccountPayableInput },
+      context: GraphQLContext
+    ) => {
+      return updateAccountPayable(context, args.input, accountPayableRepository());
+    },
+    markAccountPayablePaid: (
+      _parent: unknown,
+      args: { id: string; paidAt?: string },
+      context: GraphQLContext
+    ) => {
+      return markAccountPayablePaid(context, args, accountPayableRepository());
+    },
+    deleteAccountPayable: (
+      _parent: unknown,
+      args: { id: string },
+      context: GraphQLContext
+    ) => {
+      return deleteAccountPayable(context, args, accountPayableRepository());
     }
   },
   AuthUser: {
