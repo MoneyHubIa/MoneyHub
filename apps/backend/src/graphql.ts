@@ -1,6 +1,7 @@
 import { GraphQLError } from 'graphql';
 import type { AuthContext } from './auth.js';
 import { getPrismaClient } from './database.js';
+import type { Expense as PrismaExpense, Income as PrismaIncome } from './generated/prisma/client.js';
 import {
   getMyProfile,
   updateMyProfile,
@@ -48,6 +49,10 @@ import {
   type CreateExpenseInput,
   type UpdateExpenseInput
 } from './expenses.js';
+import {
+  getDashboardSummary,
+  type DashboardSummaryRepository
+} from './dashboard-summary.js';
 
 
 export type GraphQLContext = {
@@ -142,7 +147,7 @@ function costCenterRepository(): CostCenterRepository {
 
 function incomeRepository(): IncomeRepository {
   const prisma = getPrismaClient();
-  const mapIncome = (item: Omit<Income, 'amount'> & { amount: { toString(): string } }): Income => ({
+  const mapIncome = (item: PrismaIncome): Income => ({
     ...item,
     amount: item.amount.toString()
   });
@@ -159,7 +164,7 @@ function incomeRepository(): IncomeRepository {
 
 function expenseRepository(): ExpenseRepository {
   const prisma = getPrismaClient();
-  const mapExpense = (item: Omit<Expense, 'amount'> & { amount: { toString(): string } }): Expense => ({
+  const mapExpense = (item: PrismaExpense): Expense => ({
     ...item,
     amount: item.amount.toString()
   });
@@ -173,6 +178,43 @@ function expenseRepository(): ExpenseRepository {
     update: async ({ where, data }) => mapExpense(await prisma.expense.update({ where, data }))
   };
 }
+
+function dashboardSummaryRepository(): DashboardSummaryRepository {
+  const prisma = getPrismaClient();
+  return {
+    getIncomeSummary: async ({ userId, startDate, endDate }) => {
+      const result = await prisma.income.aggregate({
+        where: {
+          userId,
+          deletedAt: null,
+          occurredAt: { gte: startDate, lte: endDate }
+        },
+        _sum: { amount: true },
+        _count: { _all: true }
+      });
+      return {
+        sum: Number(result._sum.amount ?? 0),
+        count: result._count._all
+      };
+    },
+    getExpenseSummary: async ({ userId, startDate, endDate }) => {
+      const result = await prisma.expense.aggregate({
+        where: {
+          userId,
+          deletedAt: null,
+          occurredAt: { gte: startDate, lte: endDate }
+        },
+        _sum: { amount: true },
+        _count: { _all: true }
+      });
+      return {
+        sum: Number(result._sum.amount ?? 0),
+        count: result._count._all
+      };
+    }
+  };
+}
+
 
 
 export const typeDefs = `#graphql
@@ -333,6 +375,16 @@ export const typeDefs = `#graphql
     created: Boolean!
   }
 
+  type DashboardSummary {
+    totalIncome: String!
+    totalExpense: String!
+    netBalance: String!
+    incomeCount: Int!
+    expenseCount: Int!
+    month: Int!
+    year: Int!
+  }
+
   type Query {
     health: Health!
     me: AuthUser
@@ -341,6 +393,7 @@ export const typeDefs = `#graphql
     myCostCenters: [CostCenter!]!
     myIncomes: [Income!]!
     myExpenses: [Expense!]!
+    dashboardSummary(month: Int, year: Int): DashboardSummary!
   }
 
   type Mutation {
@@ -393,6 +446,13 @@ export const resolvers = {
     },
     myExpenses: (_parent: unknown, _args: unknown, context: GraphQLContext) => {
       return listMyExpenses(context, expenseRepository());
+    },
+    dashboardSummary: (
+      _parent: unknown,
+      args: { month?: number; year?: number },
+      context: GraphQLContext
+    ) => {
+      return getDashboardSummary(context, args, dashboardSummaryRepository());
     }
   },
   Mutation: {

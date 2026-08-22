@@ -32,6 +32,25 @@ jest.mock('expo-router', () => ({
 jest.mock('@apollo/client/react', () => ({
   useApolloClient: () => ({
     clearStore: jest.fn()
+  }),
+  useQuery: () => ({
+    data: {
+      dashboardSummary: {
+        totalIncome: '5000.00',
+        totalExpense: '1800.00',
+        netBalance: '3200.00',
+        incomeCount: 2,
+        expenseCount: 4,
+        month: 8,
+        year: 2026
+      },
+      myProfile: {
+        id: 'profile-1',
+        preferredCurrency: 'BRL'
+      }
+    },
+    loading: false,
+    refetch: jest.fn()
   })
 }));
 
@@ -42,7 +61,11 @@ describe('MoneyHub dashboard shell', () => {
     expect(screen.getByText('MoneyHub')).toBeOnTheScreen();
     expect(screen.getByText('Dashboard financeiro')).toBeOnTheScreen();
     expect(screen.getByText('Saldo previsto')).toBeOnTheScreen();
-    expect(screen.getAllByText('R$ 0,00')).toHaveLength(3);
+    expect(screen.getByText('R$ 3.200,00')).toBeOnTheScreen();
+    expect(screen.getByText('Receitas do mes')).toBeOnTheScreen();
+    expect(screen.getByText('R$ 5.000,00')).toBeOnTheScreen();
+    expect(screen.getByText('Despesas do mes')).toBeOnTheScreen();
+    expect(screen.getByText('R$ 1.800,00')).toBeOnTheScreen();
   });
 
   test('changes the active section from the navigation', async () => {

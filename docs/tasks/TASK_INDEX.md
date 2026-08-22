@@ -24,7 +24,7 @@
 | TASK-020 | Implement profile management | Done | EPIC-02 |
 | TASK-021 | Implement financial categories | Done | EPIC-03 |
 | TASK-022 | Implement income and expenses | Done | EPIC-03 |
-| TASK-023 | Implement dashboard summary | Pending | EPIC-04 |
+| TASK-023 | Implement dashboard summary | Done | EPIC-04 |
 | TASK-024 | Implement cost centers | Done | EPIC-03 |
 | TASK-025 | Implement accounts payable | Pending | EPIC-03 |
 | TASK-026 | Implement accounts receivable | Pending | EPIC-03 |
