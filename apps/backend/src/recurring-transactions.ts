@@ -337,18 +337,19 @@ export async function updateRecurringTransaction(
     );
   }
 
+  const data: Parameters<RecurringTransactionRepository['update']>[0]['data'] = {};
+  if (input.type !== undefined) data.type = input.type;
+  if (input.categoryId !== undefined) data.categoryId = input.categoryId;
+  if (input.costCenterId !== undefined) data.costCenterId = input.costCenterId;
+  if (input.description !== undefined) data.description = input.description.trim();
+  if (formattedAmount !== undefined) data.amount = formattedAmount;
+  if (input.recurrenceRule !== undefined) data.recurrenceRule = input.recurrenceRule;
+  if (startDate !== undefined) data.startDate = startDate;
+  if (endDate !== undefined) data.endDate = endDate;
+
   return repository.update({
     where: { id: input.id },
-    data: {
-      type: input.type,
-      categoryId: input.categoryId,
-      costCenterId: input.costCenterId === undefined ? undefined : input.costCenterId,
-      description: input.description?.trim(),
-      amount: formattedAmount,
-      recurrenceRule: input.recurrenceRule,
-      startDate,
-      endDate
-    }
+    data
   });
 }
 

@@ -234,6 +234,29 @@ describe('recurring transactions', () => {
     assert.equal(updated.amount, '2800.00');
   });
 
+  test('omits undefined fields from partial recurring transaction updates', async () => {
+    const repo = createRepository();
+    const originalUpdate = repo.update;
+    let updateData: Parameters<RecurringTransactionRepository['update']>[0]['data'] | undefined;
+    repo.update = async (args) => {
+      updateData = args.data;
+      return originalUpdate(args);
+    };
+
+    await updateRecurringTransaction(
+      verifiedContext(),
+      {
+        id: 'rec-1',
+        description: 'Aluguel Coworking'
+      },
+      repo
+    );
+
+    assert.deepEqual(updateData, {
+      description: 'Aluguel Coworking'
+    });
+  });
+
   test('deletes recurring transaction', async () => {
     const repo = createRepository();
     const success = await deleteRecurringTransaction(verifiedContext(), 'rec-1', repo);

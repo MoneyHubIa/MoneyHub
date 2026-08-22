@@ -1,4 +1,5 @@
 import { GraphQLError } from 'graphql';
+import type { Prisma } from './generated/prisma/client.js';
 import type { AuthContext } from './auth.js';
 import { getPrismaClient } from './database.js';
 import {
@@ -358,18 +359,19 @@ function recurringTransactionRepository(): RecurringTransactionRepository {
       return mapRecurring(item);
     },
     update: async ({ where, data }) => {
+      const updateData: Prisma.RecurringTransactionUncheckedUpdateInput = {};
+      if (data.type !== undefined) updateData.type = data.type;
+      if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
+      if (data.costCenterId !== undefined) updateData.costCenterId = data.costCenterId;
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.amount !== undefined) updateData.amount = data.amount;
+      if (data.recurrenceRule !== undefined) updateData.recurrenceRule = data.recurrenceRule;
+      if (data.startDate !== undefined) updateData.startDate = data.startDate;
+      if (data.endDate !== undefined) updateData.endDate = data.endDate;
+
       const item = await prisma.recurringTransaction.update({
         where,
-        data: {
-          type: data.type,
-          categoryId: data.categoryId,
-          costCenterId: data.costCenterId !== undefined ? data.costCenterId : undefined,
-          description: data.description,
-          amount: data.amount,
-          recurrenceRule: data.recurrenceRule,
-          startDate: data.startDate,
-          endDate: data.endDate !== undefined ? data.endDate : undefined
-        }
+        data: updateData
       });
       return mapRecurring(item);
     },
@@ -1052,7 +1054,7 @@ export const resolvers = {
       args: { id: string },
       context: GraphQLContext
     ) => {
-      return deleteAccountReceivable(context, args.id, accountReceivableRepository());
+      return deleteAccountReceivable(context, args, accountReceivableRepository());
     },
     createRecurringTransaction: (
       _parent: unknown,

@@ -116,6 +116,13 @@ type CostCenter = {
   description?: string | null;
 };
 
+type ProcessRecurringTransactionsData = {
+  processRecurringTransactions: {
+    generatedPayables: number;
+    generatedReceivables: number;
+  };
+};
+
 export function RecurringTransactions() {
   const [type, setType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
   const [description, setDescription] = useState('');
@@ -160,7 +167,7 @@ export function RecurringTransactions() {
     onError: (err) => setErrorMessage(err.message)
   });
 
-  const [processRecurring, { loading: processing }] = useMutation(PROCESS_RECURRING_TRANSACTIONS, {
+  const [processRecurring, { loading: processing }] = useMutation<ProcessRecurringTransactionsData>(PROCESS_RECURRING_TRANSACTIONS, {
     refetchQueries: ['MyRecurringTransactions', 'MyAccountsPayable', 'MyAccountsReceivable', 'DashboardSummary'],
     onCompleted: (res) => {
       const p = res?.processRecurringTransactions?.generatedPayables ?? 0;
@@ -475,7 +482,7 @@ export function RecurringTransactions() {
                 onPress={() => setCostCenterId('')}
                 style={[styles.tagOption, costCenterId === '' && styles.tagOptionSelectedGeneric]}
               >
-                <Text style={[styles.tagOptionText, costCenterId === '' && styles.tagOptionTextActive]}>
+                <Text style={[styles.tagOptionText, costCenterId === '' && styles.typeOptionTextActive]}>
                   Nenhum
                 </Text>
               </Pressable>
@@ -485,7 +492,7 @@ export function RecurringTransactions() {
                   onPress={() => setCostCenterId(cc.id)}
                   style={[styles.tagOption, costCenterId === cc.id && styles.tagOptionSelectedGeneric]}
                 >
-                  <Text style={[styles.tagOptionText, costCenterId === cc.id && styles.tagOptionTextActive]}>
+                  <Text style={[styles.tagOptionText, costCenterId === cc.id && styles.typeOptionTextActive]}>
                     {cc.name}
                   </Text>
                 </Pressable>
