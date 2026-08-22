@@ -6,7 +6,6 @@ import {
   CalendarClock,
   CheckCircle2,
   Clock,
-  DollarSign,
   PlusCircle,
   Tag,
   Trash2
@@ -22,9 +21,9 @@ import {
   View
 } from 'react-native';
 
-const MY_ACCOUNTS_PAYABLE_QUERY = gql`
-  query MyAccountsPayable($status: AccountPayableStatus) {
-    myAccountsPayable(status: $status) {
+const MY_ACCOUNTS_RECEIVABLE_QUERY = gql`
+  query MyAccountsReceivable($status: AccountReceivableStatus) {
+    myAccountsReceivable(status: $status) {
       id
       categoryId
       costCenterId
@@ -32,7 +31,7 @@ const MY_ACCOUNTS_PAYABLE_QUERY = gql`
       amount
       dueDate
       status
-      paidAt
+      receivedAt
       createdAt
     }
     myCategories {
@@ -53,9 +52,9 @@ const MY_ACCOUNTS_PAYABLE_QUERY = gql`
   }
 `;
 
-const CREATE_ACCOUNT_PAYABLE = gql`
-  mutation CreateAccountPayable($input: CreateAccountPayableInput!) {
-    createAccountPayable(input: $input) {
+const CREATE_ACCOUNT_RECEIVABLE = gql`
+  mutation CreateAccountReceivable($input: CreateAccountReceivableInput!) {
+    createAccountReceivable(input: $input) {
       id
       description
       amount
@@ -65,34 +64,34 @@ const CREATE_ACCOUNT_PAYABLE = gql`
   }
 `;
 
-const MARK_ACCOUNT_PAYABLE_PAID = gql`
-  mutation MarkAccountPayablePaid($id: ID!, $paidAt: String) {
-    markAccountPayablePaid(id: $id, paidAt: $paidAt) {
+const MARK_ACCOUNT_RECEIVABLE_RECEIVED = gql`
+  mutation MarkAccountReceivableReceived($id: ID!, $receivedAt: String) {
+    markAccountReceivableReceived(id: $id, receivedAt: $receivedAt) {
       id
       status
-      paidAt
+      receivedAt
     }
   }
 `;
 
-const DELETE_ACCOUNT_PAYABLE = gql`
-  mutation DeleteAccountPayable($id: ID!) {
-    deleteAccountPayable(id: $id)
+const DELETE_ACCOUNT_RECEIVABLE = gql`
+  mutation DeleteAccountReceivable($id: ID!) {
+    deleteAccountReceivable(id: $id)
   }
 `;
 
 import { formatCurrency, formatDate, getDatePlaceholder, parseRegionalDateToISO } from '../utils/formatters';
 import { DatePickerInput } from './DatePickerInput';
 
-export type AccountPayableItem = {
+export type AccountReceivableItem = {
   id: string;
   categoryId: string;
   costCenterId?: string | null;
   description: string;
   amount: string;
   dueDate: string;
-  status: 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED';
-  paidAt?: string | null;
+  status: 'PENDING' | 'RECEIVED' | 'OVERDUE' | 'CANCELLED';
+  receivedAt?: string | null;
   createdAt: string;
 };
 
@@ -109,7 +108,7 @@ type CostCenter = {
   description?: string | null;
 };
 
-export function AccountsPayable() {
+export function AccountsReceivable() {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState(() => {
@@ -121,35 +120,35 @@ export function AccountsPayable() {
   });
   const [categoryId, setCategoryId] = useState('');
   const [costCenterId, setCostCenterId] = useState('');
-  const [activeStatusFilter, setActiveStatusFilter] = useState<'ALL' | 'PENDING' | 'PAID'>('ALL');
+  const [activeStatusFilter, setActiveStatusFilter] = useState<'ALL' | 'PENDING' | 'RECEIVED'>('ALL');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const queryStatus = activeStatusFilter === 'ALL' ? undefined : activeStatusFilter;
 
   const { data, loading, refetch } = useQuery<{
-    myAccountsPayable: AccountPayableItem[];
+    myAccountsReceivable: AccountReceivableItem[];
     myCategories: Category[];
     myCostCenters: CostCenter[];
     myProfile?: { id: string; preferredCurrency: string };
-  }>(MY_ACCOUNTS_PAYABLE_QUERY, {
+  }>(MY_ACCOUNTS_RECEIVABLE_QUERY, {
     variables: { status: queryStatus },
     fetchPolicy: 'cache-and-network'
   });
 
-  const [createPayable, { loading: creating }] = useMutation(CREATE_ACCOUNT_PAYABLE, {
-    refetchQueries: ['MyAccountsPayable', 'DashboardSummary'],
+  const [createReceivable, { loading: creating }] = useMutation(CREATE_ACCOUNT_RECEIVABLE, {
+    refetchQueries: ['MyAccountsReceivable', 'DashboardSummary', 'MyIncomes'],
     onCompleted: () => resetForm(),
     onError: (err) => setErrorMessage(err.message)
   });
 
-  const [markPaid, { loading: markingPaid }] = useMutation(MARK_ACCOUNT_PAYABLE_PAID, {
-    refetchQueries: ['MyAccountsPayable', 'DashboardSummary'],
+  const [markReceived, { loading: markingReceived }] = useMutation(MARK_ACCOUNT_RECEIVABLE_RECEIVED, {
+    refetchQueries: ['MyAccountsReceivable', 'DashboardSummary', 'MyIncomes'],
     onCompleted: () => refetch(),
     onError: (err) => setErrorMessage(err.message)
   });
 
-  const [deletePayable] = useMutation(DELETE_ACCOUNT_PAYABLE, {
-    refetchQueries: ['MyAccountsPayable', 'DashboardSummary'],
+  const [deleteReceivable] = useMutation(DELETE_ACCOUNT_RECEIVABLE, {
+    refetchQueries: ['MyAccountsReceivable', 'DashboardSummary', 'MyIncomes'],
     onCompleted: () => refetch(),
     onError: (err) => setErrorMessage(err.message)
   });
@@ -176,7 +175,6 @@ export function AccountsPayable() {
       setErrorMessage('Selecione uma categoria.');
       return;
     }
-
     const isoDueDate = parseRegionalDateToISO(dueDate, currency);
     if (!isoDueDate) {
       setErrorMessage('Informe uma data de vencimento válida.');
@@ -185,7 +183,7 @@ export function AccountsPayable() {
 
     setErrorMessage(null);
 
-    await createPayable({
+    await createReceivable({
       variables: {
         input: {
           description: description.trim(),
@@ -199,9 +197,9 @@ export function AccountsPayable() {
     });
   };
 
-  const items = data?.myAccountsPayable ?? [];
+  const items = data?.myAccountsReceivable ?? [];
   const categories = (data?.myCategories ?? []).filter(
-    (c) => c.type === 'EXPENSE' || c.type === 'BOTH'
+    (c) => c.type === 'INCOME' || c.type === 'BOTH'
   );
   const costCenters = data?.myCostCenters ?? [];
   const currency = data?.myProfile?.preferredCurrency ?? 'BRL';
@@ -218,23 +216,23 @@ export function AccountsPayable() {
     .reduce((acc, curr) => acc + Number(curr.amount), 0);
 
   const countPending = items.filter((i) => i.status === 'PENDING').length;
-  const countPaid = items.filter((i) => i.status === 'PAID').length;
+  const countReceived = items.filter((i) => i.status === 'RECEIVED').length;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>Obrigações Financeiras</Text>
+        <Text style={styles.eyebrow}>Receitas Previstas</Text>
         <Text accessibilityRole="header" style={styles.title}>
-          Contas a Pagar
+          Contas a Receber
         </Text>
         <Text style={styles.subtitle}>
-          Gerencie compromissos financeiros, vencimentos e dê baixa em pagamentos efetuados.
+          Gerencie previsões de recebimento, prazos e confirme a baixa dos valores recebidos.
         </Text>
       </View>
 
       <View style={styles.kpiRow}>
         <View style={styles.kpiCard}>
-          <Text style={styles.kpiLabel}>Total a Pagar (Pendente)</Text>
+          <Text style={styles.kpiLabel}>Total a Receber (Pendente)</Text>
           <Text style={[styles.kpiValue, styles.pendingAmount]}>
             {formatCurrency(totalPending.toString(), currency)}
           </Text>
@@ -244,13 +242,13 @@ export function AccountsPayable() {
           <Text style={styles.kpiValue}>{countPending}</Text>
         </View>
         <View style={styles.kpiCard}>
-          <Text style={styles.kpiLabel}>Contas Pagas</Text>
-          <Text style={[styles.kpiValue, styles.paidCount]}>{countPaid}</Text>
+          <Text style={styles.kpiLabel}>Contas Recebidas</Text>
+          <Text style={[styles.kpiValue, styles.receivedCount]}>{countReceived}</Text>
         </View>
       </View>
 
       <View style={styles.formCard}>
-        <Text style={styles.formTitle}>Agendar Nova Conta a Pagar</Text>
+        <Text style={styles.formTitle}>Agendar Nova Conta a Receber</Text>
 
         {errorMessage ? (
           <View style={styles.errorBox}>
@@ -262,9 +260,9 @@ export function AccountsPayable() {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Descrição</Text>
           <TextInput
-            accessibilityLabel="Descrição da conta a pagar"
+            accessibilityLabel="Descrição da conta a receber"
             onChangeText={setDescription}
-            placeholder="Ex: Aluguel do escritório, Fornecedor X"
+            placeholder="Ex: Fatura Cliente Y, Consultoria mensal"
             placeholderTextColor="#94a3b8"
             style={styles.input}
             value={description}
@@ -275,7 +273,7 @@ export function AccountsPayable() {
           <View style={[styles.inputGroup, { flex: 1 }]}>
             <Text style={styles.label}>Valor ({currency})</Text>
             <TextInput
-              accessibilityLabel="Valor da conta a pagar"
+              accessibilityLabel="Valor da conta a receber"
               keyboardType="decimal-pad"
               onChangeText={setAmount}
               placeholder="0,00"
@@ -297,10 +295,10 @@ export function AccountsPayable() {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Categoria de Despesa</Text>
+          <Text style={styles.label}>Categoria de Receita</Text>
           {categories.length === 0 ? (
             <Text style={styles.emptyCategoriesText}>
-              Nenhuma categoria de despesa encontrada. Cadastre uma categoria na aba Categorias.
+              Nenhuma categoria de receita encontrada. Cadastre uma categoria na aba Categorias.
             </Text>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagSelector}>
@@ -366,7 +364,7 @@ export function AccountsPayable() {
           ) : (
             <>
               <PlusCircle color="#ffffff" size={18} />
-              <Text style={styles.submitButtonText}>Agendar Conta a Pagar</Text>
+              <Text style={styles.submitButtonText}>Agendar Conta a Receber</Text>
             </>
           )}
         </Pressable>
@@ -377,7 +375,7 @@ export function AccountsPayable() {
           <Text style={styles.listTitle}>Contas Agendadas</Text>
 
           <View style={styles.filterTabs}>
-            {(['ALL', 'PENDING', 'PAID'] as const).map((tab) => (
+            {(['ALL', 'PENDING', 'RECEIVED'] as const).map((tab) => (
               <Pressable
                 key={tab}
                 onPress={() => setActiveStatusFilter(tab)}
@@ -389,7 +387,7 @@ export function AccountsPayable() {
                     activeStatusFilter === tab && styles.filterTabTextActive
                   ]}
                 >
-                  {tab === 'ALL' ? 'Todas' : tab === 'PENDING' ? 'Pendentes' : 'Pagas'}
+                  {tab === 'ALL' ? 'Todas' : tab === 'PENDING' ? 'Pendentes' : 'Recebidas'}
                 </Text>
               </Pressable>
             ))}
@@ -401,13 +399,13 @@ export function AccountsPayable() {
         ) : items.length === 0 ? (
           <View style={styles.emptyCard}>
             <CalendarClock color="#94a3b8" size={36} />
-            <Text style={styles.emptyText}>Nenhuma conta a pagar encontrada.</Text>
+            <Text style={styles.emptyText}>Nenhuma conta a receber encontrada.</Text>
           </View>
         ) : (
           <View style={styles.itemsList}>
             {items.map((item) => {
               const cat = categories.find((c) => c.id === item.categoryId);
-              const isPaid = item.status === 'PAID';
+              const isReceived = item.status === 'RECEIVED';
 
               return (
                 <View key={item.id} style={styles.itemCard}>
@@ -417,10 +415,10 @@ export function AccountsPayable() {
                       <View
                         style={[
                           styles.statusBadge,
-                          isPaid ? styles.statusBadgePaid : styles.statusBadgePending
+                          isReceived ? styles.statusBadgeReceived : styles.statusBadgePending
                         ]}
                       >
-                        {isPaid ? (
+                        {isReceived ? (
                           <CheckCircle2 color="#059669" size={12} />
                         ) : (
                           <Clock color="#d97706" size={12} />
@@ -428,10 +426,10 @@ export function AccountsPayable() {
                         <Text
                           style={[
                             styles.statusText,
-                            isPaid ? styles.statusTextPaid : styles.statusTextPending
+                            isReceived ? styles.statusTextReceived : styles.statusTextPending
                           ]}
                         >
-                          {isPaid ? 'Pago' : 'Pendente'}
+                          {isReceived ? 'Recebido' : 'Pendente'}
                         </Text>
                       </View>
                     </View>
@@ -456,21 +454,21 @@ export function AccountsPayable() {
                     </Text>
 
                     <View style={styles.actionButtonsRow}>
-                      {!isPaid ? (
+                      {!isReceived ? (
                         <Pressable
                           accessibilityRole="button"
-                          disabled={markingPaid}
-                          onPress={() => markPaid({ variables: { id: item.id } })}
-                          style={styles.payButton}
+                          disabled={markingReceived}
+                          onPress={() => markReceived({ variables: { id: item.id } })}
+                          style={styles.receiveButton}
                         >
                           <CheckCircle2 color="#ffffff" size={14} />
-                          <Text style={styles.payButtonText}>Dar Baixa</Text>
+                          <Text style={styles.receiveButtonText}>Dar Baixa</Text>
                         </Pressable>
                       ) : null}
 
                       <Pressable
                         accessibilityRole="button"
-                        onPress={() => deletePayable({ variables: { id: item.id } })}
+                        onPress={() => deleteReceivable({ variables: { id: item.id } })}
                         style={styles.deleteButton}
                       >
                         <Trash2 color="#dc2626" size={16} />
@@ -497,8 +495,8 @@ const styles = StyleSheet.create({
   kpiCard: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, flex: 1, minWidth: 160, padding: 16 },
   kpiLabel: { color: '#64748b', fontSize: 13 },
   kpiValue: { color: '#0f172a', fontSize: 22, fontWeight: '700', marginTop: 4 },
-  pendingAmount: { color: '#dc2626' },
-  paidCount: { color: '#059669' },
+  pendingAmount: { color: '#059669' },
+  receivedCount: { color: '#059669' },
   formCard: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, gap: 14, padding: 20 },
   formTitle: { color: '#0f172a', fontSize: 18, fontWeight: '700' },
   errorBox: { alignItems: 'center', backgroundColor: '#fef2f2', borderColor: '#fecaca', borderRadius: 6, borderWidth: 1, flexDirection: 'row', gap: 8, padding: 10 },
@@ -533,19 +531,19 @@ const styles = StyleSheet.create({
   itemDescription: { color: '#0f172a', fontSize: 16, fontWeight: '600' },
   statusBadge: { alignItems: 'center', borderRadius: 4, flexDirection: 'row', gap: 4, paddingHorizontal: 6, paddingVertical: 2 },
   statusBadgePending: { backgroundColor: '#fef3c7' },
-  statusBadgePaid: { backgroundColor: '#dcfce7' },
+  statusBadgeReceived: { backgroundColor: '#dcfce7' },
   statusText: { fontSize: 11, fontWeight: '700' },
   statusTextPending: { color: '#b45309' },
-  statusTextPaid: { color: '#15803d' },
+  statusTextReceived: { color: '#15803d' },
   itemMetaRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   itemMeta: { alignItems: 'center', flexDirection: 'row', gap: 4 },
   metaText: { color: '#64748b', fontSize: 12 },
   catBadge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   catBadgeText: { fontSize: 11, fontWeight: '600' },
   itemActions: { alignItems: 'flex-end', gap: 8 },
-  itemAmount: { color: '#dc2626', fontSize: 17, fontWeight: '700' },
+  itemAmount: { color: '#059669', fontSize: 17, fontWeight: '700' },
   actionButtonsRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-  payButton: { alignItems: 'center', backgroundColor: '#059669', borderRadius: 4, flexDirection: 'row', gap: 4, paddingHorizontal: 10, paddingVertical: 6 },
-  payButtonText: { color: '#ffffff', fontSize: 12, fontWeight: '600' },
+  receiveButton: { alignItems: 'center', backgroundColor: '#059669', borderRadius: 4, flexDirection: 'row', gap: 4, paddingHorizontal: 10, paddingVertical: 6 },
+  receiveButtonText: { color: '#ffffff', fontSize: 12, fontWeight: '600' },
   deleteButton: { padding: 4 }
 });

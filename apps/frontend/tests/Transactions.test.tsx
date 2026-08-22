@@ -68,9 +68,9 @@ describe('Transactions Component', () => {
 
     expect(screen.getByRole('header', { name: 'Transações' })).toBeOnTheScreen();
     expect(screen.getByText('Salário')).toBeOnTheScreen();
-    expect(screen.getByText('+ R$ 5000.00')).toBeOnTheScreen();
+    expect(screen.getByText('+ R$ 5.000,00')).toBeOnTheScreen();
     expect(screen.getByText('Mercado')).toBeOnTheScreen();
-    expect(screen.getByText('- R$ 450.00')).toBeOnTheScreen();
+    expect(screen.getByText('- R$ 450,00')).toBeOnTheScreen();
   });
 
   test('creates a new expense when form is filled', async () => {

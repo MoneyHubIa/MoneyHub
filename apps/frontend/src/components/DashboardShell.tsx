@@ -7,6 +7,7 @@ import {
   CalendarClock,
   CalendarDays,
   CreditCard,
+  HandCoins,
   LayoutDashboard,
   LogOut,
   Settings,
@@ -20,6 +21,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   useWindowDimensions,
   View
 } from 'react-native';
@@ -29,11 +31,13 @@ import { FinancialCategories } from './FinancialCategories';
 import { CostCenters } from './CostCenters';
 import { Transactions } from './Transactions';
 import { AccountsPayable } from './AccountsPayable';
+import { AccountsReceivable } from './AccountsReceivable';
 
 const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'transacoes', label: 'Transações', icon: WalletCards },
   { id: 'a_pagar', label: 'A Pagar', icon: CalendarClock },
+  { id: 'a_receber', label: 'A Receber', icon: HandCoins },
   { id: 'financeiro', label: 'Categorias', icon: WalletCards },
   { id: 'contas', label: 'Centros', icon: CreditCard },
   { id: 'metas', label: 'Metas', icon: Target },
@@ -78,11 +82,7 @@ type DashboardSummaryData = {
   };
 };
 
-function formatCurrency(amountStr: string | undefined, currency = 'BRL'): string {
-  const num = Number(amountStr ?? 0);
-  const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'R$';
-  return `${symbol} ${num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
+import { formatCurrency } from '../utils/formatters';
 
 export function DashboardShell() {
   const { width } = useWindowDimensions();
@@ -265,6 +265,8 @@ export function DashboardShell() {
           <Transactions />
         ) : activeSectionId === 'a_pagar' ? (
           <AccountsPayable />
+        ) : activeSectionId === 'a_receber' ? (
+          <AccountsReceivable />
         ) : activeSectionId === 'contas' ? (
           <CostCenters />
         ) : (

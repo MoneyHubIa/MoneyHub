@@ -66,6 +66,19 @@ import {
   type CreateAccountPayableInput,
   type UpdateAccountPayableInput
 } from './accounts-payable.js';
+import {
+  createAccountReceivable,
+  deleteAccountReceivable,
+  listMyAccountsReceivable,
+  markAccountReceivableReceived,
+  updateAccountReceivable,
+  type AccountReceivable,
+  type AccountReceivableRepository,
+  type AccountReceivableStatus,
+  type CreateAccountReceivableInput,
+  type UpdateAccountReceivableInput
+} from './accounts-receivable.js';
+
 
 
 export type GraphQLContext = {
@@ -248,6 +261,40 @@ function accountPayableRepository(): AccountPayableRepository {
     update: async ({ where, data }) => mapAccountPayable(await prisma.accountPayable.update({ where, data })),
     createExpenseFromPayable: async ({ data }) => {
       await prisma.expense.create({
+        data: {
+          userId: data.userId,
+          categoryId: data.categoryId,
+          costCenterId: data.costCenterId ?? null,
+          description: data.description,
+          amount: data.amount,
+          occurredAt: data.occurredAt,
+          notes: data.notes ?? null
+        }
+      });
+    }
+  };
+}
+
+function accountReceivableRepository(): AccountReceivableRepository {
+  const prisma = getPrismaClient();
+  const mapAccountReceivable = (item: any): AccountReceivable => ({
+    ...item,
+    amount: item.amount.toString(),
+    dueDate: item.dueDate instanceof Date ? item.dueDate.toISOString() : item.dueDate,
+    receivedAt: item.receivedAt ? (item.receivedAt instanceof Date ? item.receivedAt.toISOString() : item.receivedAt) : null,
+    createdAt: item.createdAt instanceof Date ? item.createdAt.toISOString() : item.createdAt,
+    updatedAt: item.updatedAt instanceof Date ? item.updatedAt.toISOString() : item.updatedAt
+  });
+  return {
+    findMany: async ({ where }) => (await prisma.accountReceivable.findMany({ where, orderBy: { dueDate: 'asc' } })).map(mapAccountReceivable),
+    findUnique: async ({ where }) => {
+      const item = await prisma.accountReceivable.findUnique({ where });
+      return item ? mapAccountReceivable(item) : null;
+    },
+    create: async ({ data }) => mapAccountReceivable(await prisma.accountReceivable.create({ data })),
+    update: async ({ where, data }) => mapAccountReceivable(await prisma.accountReceivable.update({ where, data })),
+    createIncomeFromReceivable: async ({ data }) => {
+      await prisma.income.create({
         data: {
           userId: data.userId,
           categoryId: data.categoryId,
@@ -474,6 +521,47 @@ export const typeDefs = `#graphql
     paidAt: String
   }
 
+  enum AccountReceivableStatus {
+    PENDING
+    RECEIVED
+    OVERDUE
+    CANCELLED
+  }
+
+  type AccountReceivable {
+    id: ID!
+    userId: ID!
+    categoryId: ID!
+    costCenterId: ID
+    description: String!
+    amount: String!
+    dueDate: String!
+    status: AccountReceivableStatus!
+    receivedAt: String
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  input CreateAccountReceivableInput {
+    categoryId: ID!
+    costCenterId: ID
+    description: String!
+    amount: String!
+    dueDate: String!
+    status: AccountReceivableStatus
+  }
+
+  input UpdateAccountReceivableInput {
+    id: ID!
+    categoryId: ID
+    costCenterId: ID
+    description: String
+    amount: String
+    dueDate: String
+    status: AccountReceivableStatus
+    receivedAt: String
+  }
+
   type Query {
     health: Health!
     me: AuthUser
@@ -483,6 +571,7 @@ export const typeDefs = `#graphql
     myIncomes: [Income!]!
     myExpenses: [Expense!]!
     myAccountsPayable(status: AccountPayableStatus): [AccountPayable!]!
+    myAccountsReceivable(status: AccountReceivableStatus): [AccountReceivable!]!
     dashboardSummary(month: Int, year: Int): DashboardSummary!
   }
 
@@ -505,6 +594,10 @@ export const typeDefs = `#graphql
     updateAccountPayable(input: UpdateAccountPayableInput!): AccountPayable!
     markAccountPayablePaid(id: ID!, paidAt: String): AccountPayable!
     deleteAccountPayable(id: ID!): Boolean!
+    createAccountReceivable(input: CreateAccountReceivableInput!): AccountReceivable!
+    updateAccountReceivable(input: UpdateAccountReceivableInput!): AccountReceivable!
+    markAccountReceivableReceived(id: ID!, receivedAt: String): AccountReceivable!
+    deleteAccountReceivable(id: ID!): Boolean!
   }
 `;
 
@@ -547,6 +640,13 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return listMyAccountsPayable(context, args.status, accountPayableRepository());
+    },
+    myAccountsReceivable: (
+      _parent: unknown,
+      args: { status?: AccountReceivableStatus },
+      context: GraphQLContext
+    ) => {
+      return listMyAccountsReceivable(context, args.status, accountReceivableRepository());
     },
     dashboardSummary: (
       _parent: unknown,
@@ -743,6 +843,34 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return deleteAccountPayable(context, args, accountPayableRepository());
+    },
+    createAccountReceivable: (
+      _parent: unknown,
+      args: { input: CreateAccountReceivableInput },
+      context: GraphQLContext
+    ) => {
+      return createAccountReceivable(context, args.input, accountReceivableRepository());
+    },
+    updateAccountReceivable: (
+      _parent: unknown,
+      args: { input: UpdateAccountReceivableInput },
+      context: GraphQLContext
+    ) => {
+      return updateAccountReceivable(context, args.input, accountReceivableRepository());
+    },
+    markAccountReceivableReceived: (
+      _parent: unknown,
+      args: { id: string; receivedAt?: string },
+      context: GraphQLContext
+    ) => {
+      return markAccountReceivableReceived(context, args, accountReceivableRepository());
+    },
+    deleteAccountReceivable: (
+      _parent: unknown,
+      args: { id: string },
+      context: GraphQLContext
+    ) => {
+      return deleteAccountReceivable(context, args, accountReceivableRepository());
     }
   },
   AuthUser: {
