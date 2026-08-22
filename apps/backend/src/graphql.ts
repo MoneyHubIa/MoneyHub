@@ -24,7 +24,6 @@ import {
   deleteCostCenter,
   listMyCostCenters,
   updateCostCenter,
-  type CostCenter,
   type CostCenterRepository,
   type CreateCostCenterInput,
   type UpdateCostCenterInput
@@ -143,7 +142,7 @@ function costCenterRepository(): CostCenterRepository {
 
 function incomeRepository(): IncomeRepository {
   const prisma = getPrismaClient();
-  const mapIncome = (item: any): Income => ({
+  const mapIncome = (item: Omit<Income, 'amount'> & { amount: { toString(): string } }): Income => ({
     ...item,
     amount: item.amount.toString()
   });
@@ -160,7 +159,7 @@ function incomeRepository(): IncomeRepository {
 
 function expenseRepository(): ExpenseRepository {
   const prisma = getPrismaClient();
-  const mapExpense = (item: any): Expense => ({
+  const mapExpense = (item: Omit<Expense, 'amount'> & { amount: { toString(): string } }): Expense => ({
     ...item,
     amount: item.amount.toString()
   });
