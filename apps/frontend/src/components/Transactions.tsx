@@ -97,6 +97,7 @@ export function Transactions() {
     myIncomes: TransactionItem[];
     myExpenses: TransactionItem[];
     myCategories: Category[];
+    myProfile?: { id: string; preferredCurrency: string };
   }>(MY_TRANSACTIONS_QUERY);
 
   const [createIncome, { loading: creatingI }] = useMutation(CREATE_INCOME, {
