@@ -2,6 +2,7 @@ import { GraphQLError } from 'graphql';
 import type { Prisma } from './generated/prisma/client.js';
 import type { AuthContext } from './auth.js';
 import { getPrismaClient } from './database.js';
+import type { Expense as PrismaExpense, Income as PrismaIncome } from './generated/prisma/client.js';
 import {
   getMyProfile,
   updateMyProfile,
@@ -25,7 +26,6 @@ import {
   deleteCostCenter,
   listMyCostCenters,
   updateCostCenter,
-  type CostCenter,
   type CostCenterRepository,
   type CreateCostCenterInput,
   type UpdateCostCenterInput
@@ -52,7 +52,6 @@ import {
 } from './expenses.js';
 import {
   getDashboardSummary,
-  type DashboardSummary,
   type DashboardSummaryRepository
 } from './dashboard-summary.js';
 import {
@@ -188,7 +187,7 @@ function costCenterRepository(): CostCenterRepository {
 
 function incomeRepository(): IncomeRepository {
   const prisma = getPrismaClient();
-  const mapIncome = (item: any): Income => ({
+  const mapIncome = (item: PrismaIncome): Income => ({
     ...item,
     amount: item.amount.toString()
   });
@@ -205,7 +204,7 @@ function incomeRepository(): IncomeRepository {
 
 function expenseRepository(): ExpenseRepository {
   const prisma = getPrismaClient();
-  const mapExpense = (item: any): Expense => ({
+  const mapExpense = (item: PrismaExpense): Expense => ({
     ...item,
     amount: item.amount.toString()
   });
