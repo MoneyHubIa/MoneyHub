@@ -12,13 +12,21 @@ Implement categories, cost centers, income, expenses, accounts payable, accounts
 ## Initial Tasks
 
 - [x] TASK-021 — Implement financial categories.
-- [ ] TASK-022 — Implement income and expenses.
+- [x] TASK-022 — Implement income and expenses.
 - [x] TASK-024 — Implement cost centers.
 - [ ] TASK-025 — Implement accounts payable.
 - [ ] TASK-026 — Implement accounts receivable.
 - [ ] TASK-027 — Implement recurring transactions.
 
 ## Tasks Detail
+
+### TASK-022 - Implement income and expenses
+
+## Status
+Done
+
+## Completion Review
+The backend implements Prisma `Income` and `Expense` storage, GraphQL schema types, queries (`myIncomes`, `myExpenses`), and mutations (`createIncome`, `updateIncome`, `deleteIncome` and equivalent for expenses). Resolvers verify `user_id` context and email verification. The Expo app provides a unified `Transactions` UI in `DashboardShell` to create and list incomes and expenses, using Apollo Client.
 
 ### TASK-021 - Implement financial categories
 
