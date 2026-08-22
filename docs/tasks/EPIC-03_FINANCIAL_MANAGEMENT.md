@@ -1,7 +1,7 @@
 # EPIC-03 — Financial Management
 
 ## Status
-In Progress
+Done
 
 ## Feature
 Financial records.
@@ -16,9 +16,17 @@ Implement categories, cost centers, income, expenses, accounts payable, accounts
 - [x] TASK-024 — Implement cost centers.
 - [x] TASK-025 — Implement accounts payable.
 - [x] TASK-026 — Implement accounts receivable.
-- [ ] TASK-027 — Implement recurring transactions.
+- [x] TASK-027 — Implement recurring transactions.
 
 ## Tasks Detail
+
+### TASK-027 - Implement recurring transactions
+
+## Status
+Done
+
+## Completion Review
+The backend implements Prisma `RecurringTransaction` persistence, GraphQL schema types, enums `RecurringType` (`EXPENSE`, `INCOME`) and `RecurrenceRule` (`MONTHLY`, `WEEKLY`, `YEARLY`), query `myRecurringTransactions`, and mutations (`createRecurringTransaction`, `updateRecurringTransaction`, `deleteRecurringTransaction`, `processRecurringTransactions`). When a recurrence rule is created, the system automatically schedules the initial `AccountPayable` (for expenses) or `AccountReceivable` (for income) in `PENDING` status with regional date support. The `processRecurringTransactions` mutation automatically evaluates past/upcoming intervals to generate missing occurrences without duplicating records. The Expo app provides a `RecurringTransactions` UI screen with monthly KPIs, responsive creation form, frequency selection, DatePickerInput with interactive calendar picker, and direct sync processing.
 
 ### TASK-026 - Implement accounts receivable
 

@@ -28,7 +28,7 @@
 | TASK-024 | Implement cost centers | Done | EPIC-03 |
 | TASK-025 | Implement accounts payable | Done | EPIC-03 |
 | TASK-026 | Implement accounts receivable | Done | EPIC-03 |
-| TASK-027 | Implement recurring transactions | Pending | EPIC-03 |
+| TASK-027 | Implement recurring transactions | Done | EPIC-03 |
 | TASK-028 | Implement cash-flow chart data | Pending | EPIC-04 |
 | TASK-029 | Implement category analysis | Pending | EPIC-04 |
 | TASK-030 | Implement period comparison | Pending | EPIC-04 |

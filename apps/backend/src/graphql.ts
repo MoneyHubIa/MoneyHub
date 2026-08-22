@@ -1,4 +1,5 @@
 import { GraphQLError } from 'graphql';
+import type { Prisma } from './generated/prisma/client.js';
 import type { AuthContext } from './auth.js';
 import { getPrismaClient } from './database.js';
 import type { Expense as PrismaExpense, Income as PrismaIncome } from './generated/prisma/client.js';
@@ -77,6 +78,20 @@ import {
   type CreateAccountReceivableInput,
   type UpdateAccountReceivableInput
 } from './accounts-receivable.js';
+import {
+  createRecurringTransaction,
+  deleteRecurringTransaction,
+  listMyRecurringTransactions,
+  processRecurringTransactions,
+  updateRecurringTransaction,
+  type CreateRecurringTransactionInput,
+  type ProcessRecurringResult,
+  type RecurrenceRule,
+  type RecurringTransaction,
+  type RecurringTransactionRepository,
+  type RecurringType,
+  type UpdateRecurringTransactionInput
+} from './recurring-transactions.js';
 
 
 
@@ -308,8 +323,111 @@ function accountReceivableRepository(): AccountReceivableRepository {
   };
 }
 
+function recurringTransactionRepository(): RecurringTransactionRepository {
+  const prisma = getPrismaClient();
+  const mapRecurring = (item: any): RecurringTransaction => ({
+    ...item,
+    amount: item.amount.toString(),
+    type: item.type as RecurringType,
+    recurrenceRule: item.recurrenceRule as RecurrenceRule
+  });
 
+  return {
+    findMany: async ({ where }) => {
+      const items = await prisma.recurringTransaction.findMany({ where });
+      return items.map(mapRecurring);
+    },
+    findUnique: async ({ where }) => {
+      const item = await prisma.recurringTransaction.findUnique({ where });
+      return item ? mapRecurring(item) : null;
+    },
+    create: async ({ data }) => {
+      const item = await prisma.recurringTransaction.create({
+        data: {
+          userId: data.userId,
+          type: data.type,
+          categoryId: data.categoryId,
+          costCenterId: data.costCenterId ?? null,
+          description: data.description,
+          amount: data.amount,
+          recurrenceRule: data.recurrenceRule,
+          startDate: data.startDate,
+          endDate: data.endDate ?? null
+        }
+      });
+      return mapRecurring(item);
+    },
+    update: async ({ where, data }) => {
+      const updateData: Prisma.RecurringTransactionUncheckedUpdateInput = {};
+      if (data.type !== undefined) updateData.type = data.type;
+      if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
+      if (data.costCenterId !== undefined) updateData.costCenterId = data.costCenterId;
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.amount !== undefined) updateData.amount = data.amount;
+      if (data.recurrenceRule !== undefined) updateData.recurrenceRule = data.recurrenceRule;
+      if (data.startDate !== undefined) updateData.startDate = data.startDate;
+      if (data.endDate !== undefined) updateData.endDate = data.endDate;
 
+      const item = await prisma.recurringTransaction.update({
+        where,
+        data: updateData
+      });
+      return mapRecurring(item);
+    },
+    delete: async ({ where }) => {
+      const item = await prisma.recurringTransaction.delete({ where });
+      return mapRecurring(item);
+    },
+    createPayable: async ({ data }) => {
+      await prisma.accountPayable.create({
+        data: {
+          userId: data.userId,
+          categoryId: data.categoryId,
+          costCenterId: data.costCenterId ?? null,
+          description: data.description,
+          amount: data.amount,
+          dueDate: data.dueDate,
+          status: data.status
+        }
+      });
+    },
+    createReceivable: async ({ data }) => {
+      await prisma.accountReceivable.create({
+        data: {
+          userId: data.userId,
+          categoryId: data.categoryId,
+          costCenterId: data.costCenterId ?? null,
+          description: data.description,
+          amount: data.amount,
+          dueDate: data.dueDate,
+          status: data.status
+        }
+      });
+    },
+    findExistingPayables: async ({ where }) => {
+      return prisma.accountPayable.findMany({
+        where: {
+          userId: where.userId,
+          description: where.description,
+          dueDate: where.dueDate,
+          deletedAt: where.deletedAt
+        },
+        select: { id: true }
+      });
+    },
+    findExistingReceivables: async ({ where }) => {
+      return prisma.accountReceivable.findMany({
+        where: {
+          userId: where.userId,
+          description: where.description,
+          dueDate: where.dueDate,
+          deletedAt: where.deletedAt
+        },
+        select: { id: true }
+      });
+    }
+  };
+}
 
 export const typeDefs = `#graphql
   type Health {
@@ -561,6 +679,60 @@ export const typeDefs = `#graphql
     receivedAt: String
   }
 
+  enum RecurringType {
+    EXPENSE
+    INCOME
+  }
+
+  enum RecurrenceRule {
+    MONTHLY
+    WEEKLY
+    YEARLY
+  }
+
+  type RecurringTransaction {
+    id: ID!
+    userId: ID!
+    type: RecurringType!
+    categoryId: ID!
+    costCenterId: ID
+    description: String!
+    amount: String!
+    recurrenceRule: RecurrenceRule!
+    startDate: String!
+    endDate: String
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  input CreateRecurringTransactionInput {
+    type: RecurringType!
+    categoryId: ID!
+    costCenterId: ID
+    description: String!
+    amount: String!
+    recurrenceRule: RecurrenceRule!
+    startDate: String!
+    endDate: String
+  }
+
+  input UpdateRecurringTransactionInput {
+    id: ID!
+    type: RecurringType
+    categoryId: ID
+    costCenterId: ID
+    description: String
+    amount: String
+    recurrenceRule: RecurrenceRule
+    startDate: String
+    endDate: String
+  }
+
+  type ProcessRecurringResult {
+    generatedPayables: Int!
+    generatedReceivables: Int!
+  }
+
   type Query {
     health: Health!
     me: AuthUser
@@ -571,6 +743,7 @@ export const typeDefs = `#graphql
     myExpenses: [Expense!]!
     myAccountsPayable(status: AccountPayableStatus): [AccountPayable!]!
     myAccountsReceivable(status: AccountReceivableStatus): [AccountReceivable!]!
+    myRecurringTransactions: [RecurringTransaction!]!
     dashboardSummary(month: Int, year: Int): DashboardSummary!
   }
 
@@ -597,6 +770,10 @@ export const typeDefs = `#graphql
     updateAccountReceivable(input: UpdateAccountReceivableInput!): AccountReceivable!
     markAccountReceivableReceived(id: ID!, receivedAt: String): AccountReceivable!
     deleteAccountReceivable(id: ID!): Boolean!
+    createRecurringTransaction(input: CreateRecurringTransactionInput!): RecurringTransaction!
+    updateRecurringTransaction(input: UpdateRecurringTransactionInput!): RecurringTransaction!
+    deleteRecurringTransaction(id: ID!): Boolean!
+    processRecurringTransactions: ProcessRecurringResult!
   }
 `;
 
@@ -646,6 +823,13 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return listMyAccountsReceivable(context, args.status, accountReceivableRepository());
+    },
+    myRecurringTransactions: (
+      _parent: unknown,
+      _args: unknown,
+      context: GraphQLContext
+    ) => {
+      return listMyRecurringTransactions(context, recurringTransactionRepository());
     },
     dashboardSummary: (
       _parent: unknown,
@@ -870,7 +1054,45 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return deleteAccountReceivable(context, args, accountReceivableRepository());
+    },
+    createRecurringTransaction: (
+      _parent: unknown,
+      args: { input: CreateRecurringTransactionInput },
+      context: GraphQLContext
+    ) => {
+      return createRecurringTransaction(context, args.input, recurringTransactionRepository());
+    },
+    updateRecurringTransaction: (
+      _parent: unknown,
+      args: { input: UpdateRecurringTransactionInput },
+      context: GraphQLContext
+    ) => {
+      return updateRecurringTransaction(context, args.input, recurringTransactionRepository());
+    },
+    deleteRecurringTransaction: (
+      _parent: unknown,
+      args: { id: string },
+      context: GraphQLContext
+    ) => {
+      return deleteRecurringTransaction(context, args.id, recurringTransactionRepository());
+    },
+    processRecurringTransactions: (
+      _parent: unknown,
+      _args: unknown,
+      context: GraphQLContext
+    ) => {
+      return processRecurringTransactions(context, recurringTransactionRepository());
     }
+  },
+  RecurringTransaction: {
+    startDate: (parent: RecurringTransaction) =>
+      parent.startDate instanceof Date ? parent.startDate.toISOString() : parent.startDate,
+    endDate: (parent: RecurringTransaction) =>
+      parent.endDate instanceof Date ? parent.endDate.toISOString() : parent.endDate,
+    createdAt: (parent: RecurringTransaction) =>
+      parent.createdAt instanceof Date ? parent.createdAt.toISOString() : parent.createdAt,
+    updatedAt: (parent: RecurringTransaction) =>
+      parent.updatedAt instanceof Date ? parent.updatedAt.toISOString() : parent.updatedAt
   },
   AuthUser: {
     profile: async (_parent: unknown, _args: unknown, context: GraphQLContext) => {
