@@ -15,10 +15,18 @@ Implement categories, cost centers, income, expenses, accounts payable, accounts
 - [x] TASK-022 — Implement income and expenses.
 - [x] TASK-024 — Implement cost centers.
 - [x] TASK-025 — Implement accounts payable.
-- [ ] TASK-026 — Implement accounts receivable.
+- [x] TASK-026 — Implement accounts receivable.
 - [ ] TASK-027 — Implement recurring transactions.
 
 ## Tasks Detail
+
+### TASK-026 - Implement accounts receivable
+
+## Status
+Done
+
+## Completion Review
+The backend implements Prisma `AccountReceivable` persistence, GraphQL schema types, enum `AccountReceivableStatus`, query `myAccountsReceivable(status)` and mutations (`createAccountReceivable`, `updateAccountReceivable`, `markAccountReceivableReceived`, `deleteAccountReceivable`). Resolvers enforce user authentication, validation, and multi-tenant isolation. Receiving a payment via `markAccountReceivableReceived` generates an `Income` transaction (`[Recebido] <descrição>`) to keep cash flow and dashboard KPI metrics in sync. The Expo app provides an `AccountsReceivable` UI screen in `DashboardShell` allowing scheduling, status filtering (Todas, Pendentes, Recebidas), quick receipt settlement ("Dar Baixa"), and soft deletion.
 
 ### TASK-025 - Implement accounts payable
 

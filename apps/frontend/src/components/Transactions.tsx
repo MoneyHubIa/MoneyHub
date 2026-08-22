@@ -33,8 +33,14 @@ const MY_TRANSACTIONS_QUERY = gql`
       type
       color
     }
+    myProfile {
+      id
+      preferredCurrency
+    }
   }
 `;
+
+import { formatCurrency, formatDate } from '../utils/formatters';
 
 const CREATE_INCOME = gql`
   mutation CreateIncome($input: CreateIncomeInput!) {
@@ -91,6 +97,7 @@ export function Transactions() {
     myIncomes: TransactionItem[];
     myExpenses: TransactionItem[];
     myCategories: Category[];
+    myProfile?: { id: string; preferredCurrency: string };
   }>(MY_TRANSACTIONS_QUERY);
 
   const [createIncome, { loading: creatingI }] = useMutation(CREATE_INCOME, {
@@ -156,6 +163,8 @@ export function Transactions() {
     (c) => c.type === type || c.type === 'BOTH'
   );
 
+  const currency = data?.myProfile?.preferredCurrency ?? 'BRL';
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -201,7 +210,7 @@ export function Transactions() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Valor (R$)</Text>
+          <Text style={styles.label}>Valor ({currency})</Text>
           <TextInput
             accessibilityLabel="Valor da transação"
             keyboardType="numeric"
@@ -273,14 +282,17 @@ export function Transactions() {
                     )}
                     <View>
                       <Text style={styles.tDesc}>{t.description}</Text>
-                      <Text style={[styles.tCat, { color: cat?.color || '#64748b' }]}>
-                        {cat?.name || 'Sem categoria'}
-                      </Text>
+                      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                        <Text style={[styles.tCat, { color: cat?.color || '#64748b' }]}>
+                          {cat?.name || 'Sem categoria'}
+                        </Text>
+                        <Text style={{ color: '#94a3b8', fontSize: 12 }}>• {formatDate(t.occurredAt, currency)}</Text>
+                      </View>
                     </View>
                   </View>
                   <View style={styles.tRight}>
                     <Text style={[styles.tAmount, isIncome ? styles.amountIn : styles.amountOut]}>
-                      {isIncome ? '+' : '-'} R$ {Number(t.amount).toFixed(2)}
+                      {isIncome ? '+' : '-'} {formatCurrency(t.amount, currency)}
                     </Text>
                     <Pressable onPress={() => handleDelete(t.id, t.__typename)}>
                       <Trash2 color="#ef4444" size={16} />
