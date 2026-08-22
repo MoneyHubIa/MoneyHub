@@ -10,6 +10,7 @@ import {
   HandCoins,
   LayoutDashboard,
   LogOut,
+  Repeat,
   Settings,
   Target,
   WalletCards
@@ -32,12 +33,14 @@ import { CostCenters } from './CostCenters';
 import { Transactions } from './Transactions';
 import { AccountsPayable } from './AccountsPayable';
 import { AccountsReceivable } from './AccountsReceivable';
+import { RecurringTransactions } from './RecurringTransactions';
 
 const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'transacoes', label: 'Transações', icon: WalletCards },
   { id: 'a_pagar', label: 'A Pagar', icon: CalendarClock },
   { id: 'a_receber', label: 'A Receber', icon: HandCoins },
+  { id: 'recorrencias', label: 'Recorrências', icon: Repeat },
   { id: 'financeiro', label: 'Categorias', icon: WalletCards },
   { id: 'contas', label: 'Centros', icon: CreditCard },
   { id: 'metas', label: 'Metas', icon: Target },
@@ -267,6 +270,8 @@ export function DashboardShell() {
           <AccountsPayable />
         ) : activeSectionId === 'a_receber' ? (
           <AccountsReceivable />
+        ) : activeSectionId === 'recorrencias' ? (
+          <RecurringTransactions />
         ) : activeSectionId === 'contas' ? (
           <CostCenters />
         ) : (
