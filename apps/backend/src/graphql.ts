@@ -104,6 +104,12 @@ import {
   type CategoryAnalysisInput,
   type CategoryAnalysisResult
 } from './category-analysis.js';
+import {
+  periodComparisonRepository,
+  getPeriodComparison,
+  type PeriodComparisonInput,
+  type PeriodComparisonResult
+} from './period-comparison.js';
 
 
 
@@ -671,6 +677,41 @@ export const typeDefs = `#graphql
     items: [CategoryAnalysisItem!]!
   }
 
+  input PeriodComparisonInput {
+    baseMonth: Int
+    baseYear: Int
+    comparisonMonth: Int
+    comparisonYear: Int
+  }
+
+  type PeriodMetrics {
+    month: Int!
+    year: Int!
+    label: String!
+    totalIncome: String!
+    totalExpense: String!
+    netBalance: String!
+    savingsRate: Float!
+    incomeCount: Int!
+    expenseCount: Int!
+  }
+
+  type PeriodComparisonDelta {
+    incomeDelta: String!
+    incomePercentage: Float!
+    expenseDelta: String!
+    expensePercentage: Float!
+    netBalanceDelta: String!
+    netBalancePercentage: Float!
+    savingsRateDelta: Float!
+  }
+
+  type PeriodComparisonResult {
+    basePeriod: PeriodMetrics!
+    comparisonPeriod: PeriodMetrics!
+    delta: PeriodComparisonDelta!
+  }
+
   enum AccountPayableStatus {
     PENDING
     PAID
@@ -821,6 +862,7 @@ export const typeDefs = `#graphql
     dashboardSummary(month: Int, year: Int): DashboardSummary!
     cashFlow(input: CashFlowInput): CashFlowResult!
     categoryAnalysis(input: CategoryAnalysisInput): CategoryAnalysisResult!
+    periodComparison(input: PeriodComparisonInput): PeriodComparisonResult!
   }
 
   type Mutation {
@@ -927,6 +969,13 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return getCategoryAnalysis(context, args.input, categoryAnalysisRepository());
+    },
+    periodComparison: (
+      _parent: unknown,
+      args: { input?: PeriodComparisonInput },
+      context: GraphQLContext
+    ) => {
+      return getPeriodComparison(context, args.input, periodComparisonRepository());
     }
   },
   Mutation: {

@@ -1,7 +1,7 @@
 # EPIC-04 — Dashboards and Indicators
 
 ## Status
-Pending
+Done
 
 ## Feature
 Dashboard.
@@ -14,9 +14,17 @@ Create financial KPIs, comparative charts, cash-flow summaries, overdue accounts
 - [x] TASK-023 — Implement dashboard summary.
 - [x] TASK-028 — Implement cash-flow chart data.
 - [x] TASK-029 — Implement category analysis.
-- [ ] TASK-030 — Implement period comparison.
+- [x] TASK-030 — Implement period comparison.
 
 ## Tasks Detail
+
+### TASK-030 - Implement period comparison
+
+## Status
+Done
+
+## Completion Review
+The backend implements GraphQL query `periodComparison(input: PeriodComparisonInput)` aggregating user income and expense metrics across any two selected periods (e.g. Month over Month or Year over Year). It computes monetary differences, percentage changes (safe from zero-division), net balance evolution, and savings rate (taxa de economia) variation in percentage points. The Expo frontend integrates a `PeriodComparison` component into `DashboardShell` with quick MoM/YoY toggle controls and 4 responsive comparison cards equipped with intelligent color-coded delta badges.
 
 ### TASK-029 - Implement category analysis
 

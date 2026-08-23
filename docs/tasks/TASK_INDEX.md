@@ -31,7 +31,7 @@
 | TASK-027 | Implement recurring transactions | Done | EPIC-03 |
 | TASK-028 | Implement cash-flow chart data | Done | EPIC-04 |
 | TASK-029 | Implement category analysis | Done | EPIC-04 |
-| TASK-030 | Implement period comparison | Pending | EPIC-04 |
+| TASK-030 | Implement period comparison | Done | EPIC-04 |
 | TASK-031 | Implement AI prompt registry | Pending | EPIC-05 |
 | TASK-032 | Implement LLM adapter contract | Pending | EPIC-05 |
 | TASK-033 | Implement AI conversation logging | Pending | EPIC-05 |

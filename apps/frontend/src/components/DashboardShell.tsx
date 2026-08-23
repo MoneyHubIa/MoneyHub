@@ -36,6 +36,7 @@ import { AccountsReceivable } from './AccountsReceivable';
 import { RecurringTransactions } from './RecurringTransactions';
 import { CashFlowChart } from './CashFlowChart';
 import { CategoryAnalysis } from './CategoryAnalysis';
+import { PeriodComparison } from './PeriodComparison';
 
 const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -260,6 +261,10 @@ export function DashboardShell() {
             />
 
             <CategoryAnalysis
+              preferredCurrency={summaryData?.myProfile?.preferredCurrency}
+            />
+
+            <PeriodComparison
               preferredCurrency={summaryData?.myProfile?.preferredCurrency}
             />
           </>
