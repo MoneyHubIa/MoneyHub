@@ -88,16 +88,9 @@ export function VerifyEmailScreen() {
               Verifique seu e-mail
             </Text>
             <Text style={styles.subtitle}>
-              Para garantir a segurança da sua conta e acessar seus dados financeiros, confirme seu endereço de e-mail.
+              Para garantir a segurança da sua conta e acessar seus dados financeiros, confirme seu endereço de e-mail através do link que enviamos.
             </Text>
           </View>
-
-          {user?.email ? (
-            <View style={styles.emailContainer}>
-              <Text style={styles.emailLabel}>E-mail cadastrado:</Text>
-              <Text style={styles.emailValue}>{user.email}</Text>
-            </View>
-          ) : null}
 
           {feedback ? (
             <View
@@ -240,25 +233,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center'
-  },
-  emailContainer: {
-    alignItems: 'center',
-    backgroundColor: '#f1f5f9',
-    borderRadius: 8,
-    gap: 4,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    width: '100%'
-  },
-  emailLabel: {
-    color: '#64748b',
-    fontSize: 12,
-    fontWeight: '500'
-  },
-  emailValue: {
-    color: '#0f172a',
-    fontSize: 15,
-    fontWeight: '600'
   },
   feedbackBox: {
     alignItems: 'center',

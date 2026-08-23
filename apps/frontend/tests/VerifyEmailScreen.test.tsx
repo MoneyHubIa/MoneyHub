@@ -29,7 +29,7 @@ describe('VerifyEmailScreen', () => {
     );
 
     expect(screen.getByRole('header', { name: 'Verifique seu e-mail' })).toBeOnTheScreen();
-    expect(screen.getByText('teste@moneyhub.com')).toBeOnTheScreen();
+    expect(screen.queryByText('teste@moneyhub.com')).not.toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Já verifiquei meu e-mail' })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Reenviar e-mail de confirmação' })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Sair / Entrar com outra conta' })).toBeOnTheScreen();
