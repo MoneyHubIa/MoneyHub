@@ -34,6 +34,7 @@ import { Transactions } from './Transactions';
 import { AccountsPayable } from './AccountsPayable';
 import { AccountsReceivable } from './AccountsReceivable';
 import { RecurringTransactions } from './RecurringTransactions';
+import { CashFlowChart } from './CashFlowChart';
 
 const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -253,12 +254,9 @@ export function DashboardShell() {
               </Pressable>
             </View>
 
-            <View accessibilityLabel="Indicadores" style={styles.chartPlaceholder}>
-              <BarChart3 color="#0f766e" size={40} />
-              <Text style={styles.placeholderText}>
-                Os graficos serao conectados aos dados financeiros nas proximas tasks.
-              </Text>
-            </View>
+            <CashFlowChart
+              preferredCurrency={summaryData?.myProfile?.preferredCurrency}
+            />
           </>
         ) : activeSectionId === 'ajustes' ? (
           <ProfileSettings />

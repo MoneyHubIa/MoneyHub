@@ -17,22 +17,36 @@ const ME_QUERY = gql`
 export default function AuthenticatedLayout() {
   const router = useRouter();
   const { loading: authLoading, user } = useAuth();
-  const { data, loading: apolloLoading } = useQuery<{ me: { id: string; needsProfileBootstrap: boolean } }>(ME_QUERY, { skip: !user });
+  const isEmailVerified = Boolean(user?.emailVerified);
+  const { data, loading: apolloLoading } = useQuery<{ me: { id: string; needsProfileBootstrap: boolean } }>(
+    ME_QUERY,
+    { skip: !user || !isEmailVerified }
+  );
   const pathname = usePathname();
 
-  const isInitialLoading = apolloLoading && !data;
+  const isInitialLoading = isEmailVerified && apolloLoading && !data;
   const needsBootstrap = data?.me?.needsProfileBootstrap;
   const isOnboarding = pathname.includes('onboarding');
+  const isVerifyEmail = pathname.includes('verify-email');
 
   useEffect(() => {
-    if (authLoading || apolloLoading || !user) return;
+    if (authLoading || !user) return;
+
+    if (!isEmailVerified) {
+      if (!isVerifyEmail) {
+        router.replace('/verify-email' as Href);
+      }
+      return;
+    }
+
+    if (apolloLoading) return;
 
     if (needsBootstrap && !isOnboarding) {
       router.replace('/onboarding' as Href);
-    } else if (needsBootstrap === false && isOnboarding) {
+    } else if (needsBootstrap === false && (isOnboarding || isVerifyEmail)) {
       router.replace('/(app)');
     }
-  }, [authLoading, apolloLoading, user, needsBootstrap, isOnboarding, router]);
+  }, [authLoading, apolloLoading, user, isEmailVerified, needsBootstrap, isOnboarding, isVerifyEmail, router]);
 
   if (authLoading || (user && isInitialLoading)) return <LoadingScreen />;
   if (!user) return <Redirect href="/(auth)/login" />;

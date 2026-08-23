@@ -65,6 +65,45 @@ describe('Firebase Auth REST adapter', () => {
     });
   });
 
+  test('requestPasswordReset retries without continueUrl if rejected with UNAUTHORIZED_DOMAIN', async () => {
+    let callCount = 0;
+    const { client, requests } = createClient({
+      fetchRequest: async () => {
+        callCount++;
+        if (callCount === 1) {
+          return new Response(
+            JSON.stringify({
+              error: { message: 'UNAUTHORIZED_DOMAIN : Domain not allowlisted by project' }
+            }),
+            { status: 400, headers: { 'content-type': 'application/json' } }
+          );
+        }
+        return okResponse();
+      }
+    });
+
+    await client.requestPasswordReset({
+      email: 'user@example.com',
+      continueUrl: 'http://192.168.1.18:3000/login',
+      userIp: '203.0.113.9'
+    });
+
+    assert.equal(requests.length, 2);
+    assert.deepEqual(JSON.parse(String(requests[0]?.init?.body)), {
+      requestType: 'PASSWORD_RESET',
+      email: 'user@example.com',
+      continueUrl: 'http://192.168.1.18:3000/login',
+      canHandleCodeInApp: false,
+      userIp: '203.0.113.9'
+    });
+    assert.deepEqual(JSON.parse(String(requests[1]?.init?.body)), {
+      requestType: 'PASSWORD_RESET',
+      email: 'user@example.com',
+      canHandleCodeInApp: false,
+      userIp: '203.0.113.9'
+    });
+  });
+
   test('verifyPasswordResetCode posts only oobCode to resetPassword endpoint', async () => {
     const { client, requests } = createClient();
 

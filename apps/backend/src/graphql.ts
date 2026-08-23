@@ -92,6 +92,12 @@ import {
   type RecurringType,
   type UpdateRecurringTransactionInput
 } from './recurring-transactions.js';
+import {
+  cashFlowRepository,
+  getCashFlow,
+  type CashFlowInput,
+  type CashFlowResult
+} from './cash-flow.js';
 
 
 
@@ -597,6 +603,39 @@ export const typeDefs = `#graphql
     year: Int!
   }
 
+  enum CashFlowGranularity {
+    DAILY
+    MONTHLY
+  }
+
+  input CashFlowInput {
+    granularity: CashFlowGranularity
+    year: Int
+    month: Int
+    monthsCount: Int
+  }
+
+  type CashFlowDataPoint {
+    label: String!
+    date: String!
+    income: String!
+    expense: String!
+    net: String!
+    accumulatedBalance: String!
+  }
+
+  type CashFlowTotals {
+    totalIncome: String!
+    totalExpense: String!
+    netBalance: String!
+  }
+
+  type CashFlowResult {
+    granularity: CashFlowGranularity!
+    dataPoints: [CashFlowDataPoint!]!
+    totals: CashFlowTotals!
+  }
+
   enum AccountPayableStatus {
     PENDING
     PAID
@@ -745,6 +784,7 @@ export const typeDefs = `#graphql
     myAccountsReceivable(status: AccountReceivableStatus): [AccountReceivable!]!
     myRecurringTransactions: [RecurringTransaction!]!
     dashboardSummary(month: Int, year: Int): DashboardSummary!
+    cashFlow(input: CashFlowInput): CashFlowResult!
   }
 
   type Mutation {
@@ -837,6 +877,13 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return getDashboardSummary(context, args, dashboardSummaryRepository());
+    },
+    cashFlow: (
+      _parent: unknown,
+      args: { input?: CashFlowInput },
+      context: GraphQLContext
+    ) => {
+      return getCashFlow(context, args.input, cashFlowRepository());
     }
   },
   Mutation: {
@@ -855,7 +902,9 @@ export const resolvers = {
       const prisma = getPrismaClient();
 
       return prisma.$transaction(async (tx) => {
-        const existingUser = await tx.user.findUnique({ where: { firebaseUid: context.auth!.uid } });
+        const existingUser =
+          (await tx.user.findUnique({ where: { firebaseUid: context.auth!.uid } })) ??
+          (await tx.user.findUnique({ where: { email: context.auth!.email } }));
         let emailVerifiedAt = existingUser?.emailVerifiedAt ?? null;
         if (!context.auth!.emailVerified) {
           emailVerifiedAt = null;
@@ -863,19 +912,23 @@ export const resolvers = {
           emailVerifiedAt = new Date();
         }
 
-        const upsertedUser = await tx.user.upsert({
-          where: { firebaseUid: context.auth!.uid },
-          create: {
-            firebaseUid: context.auth!.uid,
-            email: context.auth!.email,
-            emailVerifiedAt,
-            status: 'ACTIVE'
-          },
-          update: {
-            email: context.auth!.email,
-            emailVerifiedAt
-          }
-        });
+        const upsertedUser = existingUser
+          ? await tx.user.update({
+              where: { id: existingUser.id },
+              data: {
+                firebaseUid: context.auth!.uid,
+                email: context.auth!.email,
+                emailVerifiedAt
+              }
+            })
+          : await tx.user.create({
+              data: {
+                firebaseUid: context.auth!.uid,
+                email: context.auth!.email,
+                emailVerifiedAt,
+                status: 'ACTIVE'
+              }
+            });
 
         const existingProfile = await tx.profile.findUnique({ where: { userId: upsertedUser.id } });
         const authUserObj = {
