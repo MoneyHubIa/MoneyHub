@@ -98,6 +98,12 @@ import {
   type CashFlowInput,
   type CashFlowResult
 } from './cash-flow.js';
+import {
+  categoryAnalysisRepository,
+  getCategoryAnalysis,
+  type CategoryAnalysisInput,
+  type CategoryAnalysisResult
+} from './category-analysis.js';
 
 
 
@@ -636,6 +642,35 @@ export const typeDefs = `#graphql
     totals: CashFlowTotals!
   }
 
+  enum CategoryAnalysisType {
+    EXPENSE
+    INCOME
+  }
+
+  input CategoryAnalysisInput {
+    type: CategoryAnalysisType
+    month: Int
+    year: Int
+  }
+
+  type CategoryAnalysisItem {
+    categoryId: ID!
+    categoryName: String!
+    categoryColor: String!
+    categoryIcon: String!
+    totalAmount: String!
+    percentage: Float!
+    transactionCount: Int!
+  }
+
+  type CategoryAnalysisResult {
+    type: CategoryAnalysisType!
+    month: Int!
+    year: Int!
+    totalAmount: String!
+    items: [CategoryAnalysisItem!]!
+  }
+
   enum AccountPayableStatus {
     PENDING
     PAID
@@ -785,6 +820,7 @@ export const typeDefs = `#graphql
     myRecurringTransactions: [RecurringTransaction!]!
     dashboardSummary(month: Int, year: Int): DashboardSummary!
     cashFlow(input: CashFlowInput): CashFlowResult!
+    categoryAnalysis(input: CategoryAnalysisInput): CategoryAnalysisResult!
   }
 
   type Mutation {
@@ -884,6 +920,13 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return getCashFlow(context, args.input, cashFlowRepository());
+    },
+    categoryAnalysis: (
+      _parent: unknown,
+      args: { input?: CategoryAnalysisInput },
+      context: GraphQLContext
+    ) => {
+      return getCategoryAnalysis(context, args.input, categoryAnalysisRepository());
     }
   },
   Mutation: {

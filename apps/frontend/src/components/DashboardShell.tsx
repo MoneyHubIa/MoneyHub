@@ -35,6 +35,7 @@ import { AccountsPayable } from './AccountsPayable';
 import { AccountsReceivable } from './AccountsReceivable';
 import { RecurringTransactions } from './RecurringTransactions';
 import { CashFlowChart } from './CashFlowChart';
+import { CategoryAnalysis } from './CategoryAnalysis';
 
 const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -255,6 +256,10 @@ export function DashboardShell() {
             </View>
 
             <CashFlowChart
+              preferredCurrency={summaryData?.myProfile?.preferredCurrency}
+            />
+
+            <CategoryAnalysis
               preferredCurrency={summaryData?.myProfile?.preferredCurrency}
             />
           </>

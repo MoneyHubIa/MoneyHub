@@ -13,10 +13,18 @@ Create financial KPIs, comparative charts, cash-flow summaries, overdue accounts
 
 - [x] TASK-023 — Implement dashboard summary.
 - [x] TASK-028 — Implement cash-flow chart data.
-- [ ] TASK-029 — Implement category analysis.
+- [x] TASK-029 — Implement category analysis.
 - [ ] TASK-030 — Implement period comparison.
 
 ## Tasks Detail
+
+### TASK-029 - Implement category analysis
+
+## Status
+Done
+
+## Completion Review
+The backend implements GraphQL query `categoryAnalysis(input: CategoryAnalysisInput)` aggregating active user transactions by category for a given month and type (`EXPENSE` or `INCOME`). It calculates percentages relative to the total, transaction counts, and sorts categories in descending order of volume. The Expo frontend integrates a `CategoryAnalysis` component with a type switcher (`Despesas` / `Receitas`), multi-colored proportional distribution stacked bar, and a ranked list with badges, transaction counts, and currency formatters.
 
 ### TASK-028 - Implement cash-flow chart data
 
