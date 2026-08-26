@@ -91,14 +91,35 @@ export function createFirebaseAuthRestClient(
   }
 
   return {
-    requestPasswordReset(input) {
-      return post('accounts:sendOobCode', {
+    async requestPasswordReset(input) {
+      const payload: Record<string, string | boolean> = {
         requestType: 'PASSWORD_RESET',
         email: input.email,
-        continueUrl: input.continueUrl,
         canHandleCodeInApp: false,
         userIp: input.userIp
-      });
+      };
+      if (input.continueUrl) {
+        payload.continueUrl = input.continueUrl;
+      }
+
+      try {
+        await post('accounts:sendOobCode', payload);
+      } catch (error) {
+        if (
+          error instanceof FirebaseAuthRestError &&
+          error.providerCode === 'UNAUTHORIZED_DOMAIN' &&
+          input.continueUrl
+        ) {
+          await post('accounts:sendOobCode', {
+            requestType: 'PASSWORD_RESET',
+            email: input.email,
+            canHandleCodeInApp: false,
+            userIp: input.userIp
+          });
+          return;
+        }
+        throw error;
+      }
     },
     verifyPasswordResetCode(oobCode) {
       return post('accounts:resetPassword', { oobCode });

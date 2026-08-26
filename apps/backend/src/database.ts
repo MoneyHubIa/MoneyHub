@@ -41,10 +41,15 @@ export function getIdentityRepository(): IdentityRepository {
 
   return {
     synchronizeExistingIdentity: async (identity) => {
-      const existing = await prisma!.user.findUnique({
-        where: { firebaseUid: identity.uid },
-        include: { profile: { select: { id: true } } }
-      });
+      const existing =
+        (await prisma!.user.findUnique({
+          where: { firebaseUid: identity.uid },
+          include: { profile: { select: { id: true } } }
+        })) ??
+        (await prisma!.user.findUnique({
+          where: { email: identity.email },
+          include: { profile: { select: { id: true } } }
+        }));
 
       if (!existing) {
         return null;
@@ -61,6 +66,7 @@ export function getIdentityRepository(): IdentityRepository {
       const user = await prisma!.user.update({
         where: { id: existing.id },
         data: {
+          firebaseUid: identity.uid,
           email: identity.email,
           emailVerifiedAt
         },
