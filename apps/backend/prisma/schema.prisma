@@ -23,6 +23,7 @@ model User {
   accountsPayable       AccountPayable[]
   accountsReceivable    AccountReceivable[]
   recurringTransactions RecurringTransaction[]
+  calendarEvents        CalendarEvent[]
 
   @@map("users")
 }
@@ -188,4 +189,20 @@ model RecurringTransaction {
 
   @@index([userId])
   @@map("recurring_transactions")
+}
+
+model CalendarEvent {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  title             String    @db.VarChar(120)
+  scheduledDate     DateTime  @map("scheduled_date") @db.Date
+  recurrenceRule    String?   @map("recurrence_rule") @db.VarChar(20)
+  recurrenceEndDate DateTime? @map("recurrence_end_date") @db.Date
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scheduledDate])
+  @@map("calendar_events")
 }

@@ -2,7 +2,11 @@ import { GraphQLError } from 'graphql';
 import type { Prisma } from './generated/prisma/client.js';
 import type { AuthContext } from './auth.js';
 import { getPrismaClient } from './database.js';
-import type { Expense as PrismaExpense, Income as PrismaIncome } from './generated/prisma/client.js';
+import type {
+  CalendarEvent as PrismaCalendarEvent,
+  Expense as PrismaExpense,
+  Income as PrismaIncome
+} from './generated/prisma/client.js';
 import {
   getMyProfile,
   updateMyProfile,
@@ -92,6 +96,18 @@ import {
   type RecurringType,
   type UpdateRecurringTransactionInput
 } from './recurring-transactions.js';
+import {
+  createCalendarEvent,
+  deleteCalendarEvent,
+  listMyAgenda,
+  updateCalendarEvent,
+  type AgendaItem,
+  type AgendaRangeInput,
+  type CalendarEvent,
+  type CalendarEventRepository,
+  type CreateCalendarEventInput,
+  type UpdateCalendarEventInput
+} from './calendar-events.js';
 import {
   cashFlowRepository,
   getCashFlow,
@@ -444,6 +460,45 @@ function recurringTransactionRepository(): RecurringTransactionRepository {
         select: { id: true }
       });
     }
+  };
+}
+
+function calendarEventRepository(): CalendarEventRepository {
+  const prisma = getPrismaClient();
+  const mapCalendarEvent = (item: PrismaCalendarEvent): CalendarEvent => ({
+    ...item,
+    recurrenceRule: item.recurrenceRule as CalendarEvent['recurrenceRule']
+  });
+
+  return {
+    findMany: async ({ where }) =>
+      (await prisma.calendarEvent.findMany({ where, orderBy: { scheduledDate: 'asc' } })).map(mapCalendarEvent),
+    findUnique: async ({ where }) => {
+      const item = await prisma.calendarEvent.findUnique({ where });
+      return item ? mapCalendarEvent(item) : null;
+    },
+    create: async ({ data }) => mapCalendarEvent(await prisma.calendarEvent.create({ data })),
+    update: async ({ where, data }) => {
+      const updateData: Prisma.CalendarEventUncheckedUpdateInput = {};
+      if (data.title !== undefined) updateData.title = data.title;
+      if (data.scheduledDate !== undefined) updateData.scheduledDate = data.scheduledDate;
+      if (data.recurrenceRule !== undefined) updateData.recurrenceRule = data.recurrenceRule;
+      if (data.recurrenceEndDate !== undefined) updateData.recurrenceEndDate = data.recurrenceEndDate;
+      return mapCalendarEvent(await prisma.calendarEvent.update({ where, data: updateData }));
+    },
+    delete: async ({ where }) => mapCalendarEvent(await prisma.calendarEvent.delete({ where })),
+    findPendingPayables: async ({ where }) =>
+      (await prisma.accountPayable.findMany({
+        where,
+        select: { id: true, description: true, dueDate: true, status: true },
+        orderBy: { dueDate: 'asc' }
+      })).map((item) => ({ ...item, status: 'PENDING' as const })),
+    findPendingReceivables: async ({ where }) =>
+      (await prisma.accountReceivable.findMany({
+        where,
+        select: { id: true, description: true, dueDate: true, status: true },
+        orderBy: { dueDate: 'asc' }
+      })).map((item) => ({ ...item, status: 'PENDING' as const }))
   };
 }
 
@@ -848,6 +903,50 @@ export const typeDefs = `#graphql
     generatedReceivables: Int!
   }
 
+  type CalendarEvent {
+    id: ID!
+    title: String!
+    scheduledDate: String!
+    recurrenceRule: RecurrenceRule
+    recurrenceEndDate: String
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  enum AgendaItemSource {
+    EVENT
+    PAYABLE
+    RECEIVABLE
+  }
+
+  type AgendaItem {
+    id: ID!
+    source: AgendaItemSource!
+    title: String!
+    scheduledDate: String!
+    status: String!
+  }
+
+  input AgendaRangeInput {
+    startDate: String!
+    endDate: String!
+  }
+
+  input CreateCalendarEventInput {
+    title: String!
+    scheduledDate: String!
+    recurrenceRule: RecurrenceRule
+    recurrenceEndDate: String
+  }
+
+  input UpdateCalendarEventInput {
+    id: ID!
+    title: String
+    scheduledDate: String
+    recurrenceRule: RecurrenceRule
+    recurrenceEndDate: String
+  }
+
   type Query {
     health: Health!
     me: AuthUser
@@ -859,6 +958,7 @@ export const typeDefs = `#graphql
     myAccountsPayable(status: AccountPayableStatus): [AccountPayable!]!
     myAccountsReceivable(status: AccountReceivableStatus): [AccountReceivable!]!
     myRecurringTransactions: [RecurringTransaction!]!
+    myAgenda(input: AgendaRangeInput!): [AgendaItem!]!
     dashboardSummary(month: Int, year: Int): DashboardSummary!
     cashFlow(input: CashFlowInput): CashFlowResult!
     categoryAnalysis(input: CategoryAnalysisInput): CategoryAnalysisResult!
@@ -892,6 +992,9 @@ export const typeDefs = `#graphql
     updateRecurringTransaction(input: UpdateRecurringTransactionInput!): RecurringTransaction!
     deleteRecurringTransaction(id: ID!): Boolean!
     processRecurringTransactions: ProcessRecurringResult!
+    createCalendarEvent(input: CreateCalendarEventInput!): CalendarEvent!
+    updateCalendarEvent(input: UpdateCalendarEventInput!): CalendarEvent!
+    deleteCalendarEvent(id: ID!): Boolean!
   }
 `;
 
@@ -948,6 +1051,13 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return listMyRecurringTransactions(context, recurringTransactionRepository());
+    },
+    myAgenda: (
+      _parent: unknown,
+      args: { input: AgendaRangeInput },
+      context: GraphQLContext
+    ) => {
+      return listMyAgenda(context, args.input, calendarEventRepository());
     },
     dashboardSummary: (
       _parent: unknown,
@@ -1227,7 +1337,37 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return processRecurringTransactions(context, recurringTransactionRepository());
+    },
+    createCalendarEvent: (
+      _parent: unknown,
+      args: { input: CreateCalendarEventInput },
+      context: GraphQLContext
+    ) => {
+      return createCalendarEvent(context, args.input, calendarEventRepository());
+    },
+    updateCalendarEvent: (
+      _parent: unknown,
+      args: { input: UpdateCalendarEventInput },
+      context: GraphQLContext
+    ) => {
+      return updateCalendarEvent(context, args.input, calendarEventRepository());
+    },
+    deleteCalendarEvent: (
+      _parent: unknown,
+      args: { id: string },
+      context: GraphQLContext
+    ) => {
+      return deleteCalendarEvent(context, args.id, calendarEventRepository());
     }
+  },
+  CalendarEvent: {
+    scheduledDate: (parent: CalendarEvent) => parent.scheduledDate.toISOString(),
+    recurrenceEndDate: (parent: CalendarEvent) => parent.recurrenceEndDate?.toISOString() ?? null,
+    createdAt: (parent: CalendarEvent) => parent.createdAt.toISOString(),
+    updatedAt: (parent: CalendarEvent) => parent.updatedAt.toISOString()
+  },
+  AgendaItem: {
+    scheduledDate: (parent: AgendaItem) => parent.scheduledDate.toISOString()
   },
   RecurringTransaction: {
     startDate: (parent: RecurringTransaction) =>
