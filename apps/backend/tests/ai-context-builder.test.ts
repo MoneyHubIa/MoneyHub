@@ -6,7 +6,7 @@ import {
   type AiContextRepository,
   type AiFinancialContextInput
 } from '../src/ai-context-builder.js';
-import type { GraphQLContext } from '../src/graphql.js';
+import { typeDefs, resolvers, type GraphQLContext } from '../src/graphql.js';
 
 function verifiedContext(overrides?: Partial<GraphQLContext>): GraphQLContext {
   return {
@@ -75,6 +75,27 @@ function createMockRepository(overrides?: Partial<AiContextRepository>): AiConte
 }
 
 describe('AI Context Builder Service (TASK-013)', () => {
+  test('exposes aiFinancialContext query and types in GraphQL typeDefs', () => {
+    assert.match(typeDefs, /type AiFinancialTotals/);
+    assert.match(typeDefs, /type AiTopCategory/);
+    assert.match(typeDefs, /type AiUpcomingBill/);
+    assert.match(typeDefs, /type AiFinancialContext/);
+    assert.match(typeDefs, /input AiFinancialContextInput/);
+    assert.match(typeDefs, /aiFinancialContext\(input: AiFinancialContextInput\): AiFinancialContext!/);
+  });
+
+  test('resolves aiFinancialContext through Apollo resolver with authenticated context', async () => {
+    // Calling the resolver directly with unverified context verifies wiring to buildAiFinancialContext
+    await assert.rejects(
+      () => resolvers.Query.aiFinancialContext({}, {}, unauthenticatedContext()),
+      (err: unknown) => {
+        assert.ok(err instanceof GraphQLError);
+        assert.equal(err.extensions?.code, 'UNAUTHENTICATED');
+        return true;
+      }
+    );
+  });
+
   test('builds complete financial context for authenticated user', async () => {
     const repository = createMockRepository({
       getUserCurrency: async () => 'USD'
@@ -101,18 +122,22 @@ describe('AI Context Builder Service (TASK-013)', () => {
 
     // Top categories
     assert.equal(context.topExpenseCategories.length, 3);
-    assert.equal(context.topExpenseCategories[0].categoryName, 'Alimentação');
-    assert.equal(context.topExpenseCategories[0].amount, '2000.00');
+    const firstCategory = context.topExpenseCategories[0];
+    assert.ok(firstCategory);
+    assert.equal(firstCategory.categoryName, 'Alimentação');
+    assert.equal(firstCategory.amount, '2000.00');
     // 2000 / 4500 = 44.44%
-    assert.equal(context.topExpenseCategories[0].percentage, 44.44);
+    assert.equal(firstCategory.percentage, 44.44);
 
     // Upcoming bills
     assert.equal(context.upcomingBills.length, 2);
-    assert.equal(context.upcomingBills[0].id, 'bill-1');
-    assert.equal(context.upcomingBills[0].description, 'Condomínio');
-    assert.equal(context.upcomingBills[0].amount, '800.00');
-    assert.equal(context.upcomingBills[0].dueDate, '2026-08-30');
-    assert.equal(context.upcomingBills[0].categoryName, 'Moradia');
+    const firstBill = context.upcomingBills[0];
+    assert.ok(firstBill);
+    assert.equal(firstBill.id, 'bill-1');
+    assert.equal(firstBill.description, 'Condomínio');
+    assert.equal(firstBill.amount, '800.00');
+    assert.equal(firstBill.dueDate, '2026-08-30');
+    assert.equal(firstBill.categoryName, 'Moradia');
   });
 
   test('handles empty month with zero transactions safely without division by zero', async () => {

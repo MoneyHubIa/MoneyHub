@@ -110,6 +110,11 @@ import {
   type PeriodComparisonInput,
   type PeriodComparisonResult
 } from './period-comparison.js';
+import {
+  aiContextRepository,
+  buildAiFinancialContext,
+  type AiFinancialContextInput
+} from './ai-context-builder.js';
 
 
 
@@ -712,6 +717,45 @@ export const typeDefs = `#graphql
     delta: PeriodComparisonDelta!
   }
 
+  type AiFinancialTotals {
+    income: String!
+    expenses: String!
+    balance: String!
+  }
+
+  type AiTopCategory {
+    categoryName: String!
+    amount: String!
+    percentage: Float!
+    color: String
+    icon: String
+  }
+
+  type AiUpcomingBill {
+    id: ID!
+    description: String!
+    amount: String!
+    dueDate: String!
+    categoryName: String
+  }
+
+  type AiFinancialContext {
+    version: String!
+    period: String!
+    currency: String!
+    generatedAt: String!
+    totals: AiFinancialTotals!
+    topExpenseCategories: [AiTopCategory!]!
+    upcomingBills: [AiUpcomingBill!]!
+    goals: [String!]!
+  }
+
+  input AiFinancialContextInput {
+    month: Int
+    year: Int
+    billsDaysAhead: Int
+  }
+
   enum AccountPayableStatus {
     PENDING
     PAID
@@ -863,6 +907,7 @@ export const typeDefs = `#graphql
     cashFlow(input: CashFlowInput): CashFlowResult!
     categoryAnalysis(input: CategoryAnalysisInput): CategoryAnalysisResult!
     periodComparison(input: PeriodComparisonInput): PeriodComparisonResult!
+    aiFinancialContext(input: AiFinancialContextInput): AiFinancialContext!
   }
 
   type Mutation {
@@ -976,6 +1021,13 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return getPeriodComparison(context, args.input, periodComparisonRepository());
+    },
+    aiFinancialContext: (
+      _parent: unknown,
+      args: { input?: AiFinancialContextInput },
+      context: GraphQLContext
+    ) => {
+      return buildAiFinancialContext(context, args.input, aiContextRepository());
     }
   },
   Mutation: {

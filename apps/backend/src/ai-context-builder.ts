@@ -13,8 +13,8 @@ export type AiTopCategory = {
   categoryName: string;
   amount: string;
   percentage: number;
-  color?: string | null;
-  icon?: string | null;
+  color?: string | null | undefined;
+  icon?: string | null | undefined;
 };
 
 export type AiUpcomingBill = {
@@ -22,7 +22,7 @@ export type AiUpcomingBill = {
   description: string;
   amount: string;
   dueDate: string;
-  categoryName?: string | null;
+  categoryName?: string | null | undefined;
 };
 
 export type AiFinancialContext = {
@@ -74,11 +74,10 @@ export type AiContextRepository = {
   ): Promise<RawUpcomingBill[]>;
 };
 
-export function aiContextRepository(): AiContextRepository {
-  const prisma = getPrismaClient();
-
+export function aiContextRepository(prismaGetter = getPrismaClient): AiContextRepository {
   return {
     async getUserCurrency(userId: string): Promise<string> {
+      const prisma = prismaGetter();
       const profile = await prisma.profile.findUnique({
         where: { userId },
         select: { preferredCurrency: true }
@@ -87,6 +86,7 @@ export function aiContextRepository(): AiContextRepository {
     },
 
     async getTotals(userId: string, startDate: Date, endDate: Date) {
+      const prisma = prismaGetter();
       const [incomes, expenses] = await Promise.all([
         prisma.income.findMany({
           where: {
@@ -121,6 +121,7 @@ export function aiContextRepository(): AiContextRepository {
       endDate: Date,
       limit: number
     ): Promise<RawTopCategory[]> {
+      const prisma = prismaGetter();
       const expenses = await prisma.expense.findMany({
         where: {
           userId,
@@ -171,6 +172,7 @@ export function aiContextRepository(): AiContextRepository {
       toDate: Date,
       limit: number
     ): Promise<RawUpcomingBill[]> {
+      const prisma = prismaGetter();
       const bills = await prisma.accountPayable.findMany({
         where: {
           userId,
@@ -255,8 +257,8 @@ export async function buildAiFinancialContext(
       categoryName: cat.categoryName,
       amount: cat.amount.toFixed(2),
       percentage,
-      color: cat.color,
-      icon: cat.icon
+      color: cat.color ?? null,
+      icon: cat.icon ?? null
     };
   });
 
@@ -265,7 +267,7 @@ export async function buildAiFinancialContext(
     description: bill.description,
     amount: bill.amount.toFixed(2),
     dueDate: bill.dueDate.toISOString().slice(0, 10),
-    categoryName: bill.categoryName
+    categoryName: bill.categoryName ?? null
   }));
 
   const periodStr = `${year}-${String(month).padStart(2, '0')}`;
