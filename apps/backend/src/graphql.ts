@@ -478,6 +478,7 @@ function calendarEventRepository(): CalendarEventRepository {
   const mapCalendarEvent = (item: PrismaCalendarEvent): CalendarEvent => ({
     ...item,
     recurrenceRule: item.recurrenceRule as CalendarEvent['recurrenceRule'],
+    notes: item.notes ?? null,
     reminderOffsetDays: item.reminderOffsetDays as ReminderOffsetDays
   });
 
@@ -495,6 +496,7 @@ function calendarEventRepository(): CalendarEventRepository {
       if (data.scheduledDate !== undefined) updateData.scheduledDate = data.scheduledDate;
       if (data.recurrenceRule !== undefined) updateData.recurrenceRule = data.recurrenceRule;
       if (data.recurrenceEndDate !== undefined) updateData.recurrenceEndDate = data.recurrenceEndDate;
+      if (data.notes !== undefined) updateData.notes = data.notes;
       if (data.reminderOffsetDays !== undefined) updateData.reminderOffsetDays = data.reminderOffsetDays;
       return mapCalendarEvent(await prisma.calendarEvent.update({ where, data: updateData }));
     },
@@ -997,6 +999,7 @@ export const typeDefs = `#graphql
     scheduledDate: String!
     recurrenceRule: RecurrenceRule
     recurrenceEndDate: String
+    notes: String
     reminderOffsetDays: Int
     createdAt: String!
     updatedAt: String!
@@ -1014,6 +1017,7 @@ export const typeDefs = `#graphql
     title: String!
     scheduledDate: String!
     status: String!
+    notes: String
   }
 
   input AgendaRangeInput {
@@ -1026,6 +1030,7 @@ export const typeDefs = `#graphql
     scheduledDate: String!
     recurrenceRule: RecurrenceRule
     recurrenceEndDate: String
+    notes: String
     reminderOffsetDays: Int
   }
 
@@ -1035,6 +1040,7 @@ export const typeDefs = `#graphql
     scheduledDate: String
     recurrenceRule: RecurrenceRule
     recurrenceEndDate: String
+    notes: String
     reminderOffsetDays: Int
   }
 
@@ -1491,11 +1497,13 @@ export const resolvers = {
   CalendarEvent: {
     scheduledDate: (parent: CalendarEvent) => parent.scheduledDate.toISOString().slice(0, 10),
     recurrenceEndDate: (parent: CalendarEvent) => parent.recurrenceEndDate?.toISOString().slice(0, 10) ?? null,
+    notes: (parent: CalendarEvent) => parent.notes ?? null,
     createdAt: (parent: CalendarEvent) => parent.createdAt.toISOString(),
     updatedAt: (parent: CalendarEvent) => parent.updatedAt.toISOString()
   },
   AgendaItem: {
-    scheduledDate: (parent: AgendaItem) => parent.scheduledDate.toISOString().slice(0, 10)
+    scheduledDate: (parent: AgendaItem) => parent.scheduledDate.toISOString().slice(0, 10),
+    notes: (parent: AgendaItem) => parent.notes ?? null
   },
   Notification: {
     occurrenceDate: (parent: Notification) => parent.occurrenceDate.toISOString().slice(0, 10),

@@ -129,10 +129,14 @@ describe('calendar events', () => {
   test('exposes Agenda GraphQL contract', () => {
     assert.match(typeDefs, /type CalendarEvent/);
     assert.match(typeDefs, /type AgendaItem/);
+    assert.match(typeDefs, /type CalendarEvent[\s\S]*notes: String/);
+    assert.match(typeDefs, /type AgendaItem[\s\S]*notes: String/);
     assert.match(typeDefs, /myAgenda\(input: AgendaRangeInput!\): \[AgendaItem!\]!/);
     assert.match(typeDefs, /createCalendarEvent\(input: CreateCalendarEventInput!\): CalendarEvent!/);
     assert.match(typeDefs, /updateCalendarEvent\(input: UpdateCalendarEventInput!\): CalendarEvent!/);
     assert.match(typeDefs, /deleteCalendarEvent\(id: ID!\): Boolean!/);
+    assert.match(typeDefs, /input CreateCalendarEventInput[\s\S]*notes: String/);
+    assert.match(typeDefs, /input UpdateCalendarEventInput[\s\S]*notes: String/);
   });
 
   test('serializes Agenda GraphQL dates without ISO datetime suffixes', () => {
@@ -172,6 +176,52 @@ describe('calendar events', () => {
     assert.equal(result.title, 'Revisar fluxo de caixa');
     assert.equal(result.scheduledDate.toISOString(), '2026-08-18T00:00:00.000Z');
     assert.equal(result.recurrenceRule, null);
+  });
+
+  test('persists, reads, and updates normalized event notes', async () => {
+    const repository = createRepository();
+    const created = await createCalendarEvent(
+      verifiedContext(),
+      {
+        title: 'Preparar reuniÃ£o',
+        scheduledDate: '2026-08-18',
+        notes: '  Levar relatÃ³rio de caixa.  '
+      },
+      repository
+    );
+
+    assert.equal(created.notes, 'Levar relatÃ³rio de caixa.');
+    const agenda = await listMyAgenda(
+      verifiedContext(),
+      { startDate: '2026-08-01', endDate: '2026-08-31' },
+      repository
+    );
+    assert.equal(
+      agenda.find((item) => item.id.startsWith(`EVENT:${created.id}:`))?.notes,
+      'Levar relatÃ³rio de caixa.'
+    );
+
+    const updated = await updateCalendarEvent(
+      verifiedContext(),
+      { id: created.id, notes: 'Enviar pauta antes.' },
+      repository
+    );
+    assert.equal(updated.notes, 'Enviar pauta antes.');
+    assert.equal(resolvers.CalendarEvent.notes(updated), 'Enviar pauta antes.');
+  });
+
+  test('rejects event notes longer than 500 characters', async () => {
+    await assert.rejects(
+      () => createCalendarEvent(
+        verifiedContext(),
+        { title: 'Evento extenso', scheduledDate: '2026-08-18', notes: 'x'.repeat(501) },
+        createRepository()
+      ),
+      (error) => {
+        expectCode(error, 'BAD_USER_INPUT');
+        return true;
+      }
+    );
   });
 
   test('updates entire recurrence series for owner', async () => {

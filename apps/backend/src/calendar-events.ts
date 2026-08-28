@@ -13,6 +13,7 @@ export type CalendarEvent = {
   scheduledDate: Date;
   recurrenceRule: CalendarRecurrenceRule | null;
   recurrenceEndDate: Date | null;
+  notes?: string | null;
   reminderOffsetDays?: ReminderOffsetDays;
   createdAt: Date;
   updatedAt: Date;
@@ -24,6 +25,7 @@ export type AgendaItem = {
   title: string;
   scheduledDate: Date;
   status: 'SCHEDULED' | 'PENDING';
+  notes?: string | null;
 };
 
 export type CreateCalendarEventInput = {
@@ -31,6 +33,7 @@ export type CreateCalendarEventInput = {
   scheduledDate: string;
   recurrenceRule?: CalendarRecurrenceRule | null;
   recurrenceEndDate?: string | null;
+  notes?: string | null;
   reminderOffsetDays?: number | null;
 };
 
@@ -40,6 +43,7 @@ export type UpdateCalendarEventInput = {
   scheduledDate?: string;
   recurrenceRule?: CalendarRecurrenceRule | null;
   recurrenceEndDate?: string | null;
+  notes?: string | null;
   reminderOffsetDays?: number | null;
 };
 
@@ -65,7 +69,7 @@ export type CalendarEventRepository = {
   }): Promise<CalendarEvent>;
   update(args: {
     where: { id: string };
-    data: Partial<Pick<CalendarEvent, 'title' | 'scheduledDate' | 'recurrenceRule' | 'recurrenceEndDate' | 'reminderOffsetDays'>>;
+    data: Partial<Pick<CalendarEvent, 'title' | 'scheduledDate' | 'recurrenceRule' | 'recurrenceEndDate' | 'notes' | 'reminderOffsetDays'>>;
   }): Promise<CalendarEvent>;
   delete(args: { where: { id: string } }): Promise<CalendarEvent>;
   findPendingPayables(args: {
@@ -151,6 +155,14 @@ function validateTitle(raw: string): string {
   return title;
 }
 
+function validateNotes(raw: string | null | undefined): string | null {
+  const notes = raw?.trim() || null;
+  if (notes && notes.length > 500) {
+    throw calendarError('Notes cannot exceed 500 characters.');
+  }
+  return notes;
+}
+
 function validateRecurrence(
   rule: CalendarRecurrenceRule | null | undefined,
   endDate: Date | null | undefined,
@@ -180,10 +192,11 @@ export async function createCalendarEvent(
     ? parseLocalDate(input.recurrenceEndDate, 'Recurrence end date')
     : null;
   validateRecurrence(recurrenceRule, recurrenceEndDate, scheduledDate);
+  const notes = validateNotes(input.notes);
   const reminderOffsetDays = validateReminderOffsetDays(input.reminderOffsetDays);
 
   return repository.create({
-    data: { userId, title, scheduledDate, recurrenceRule, recurrenceEndDate, reminderOffsetDays }
+    data: { userId, title, scheduledDate, recurrenceRule, recurrenceEndDate, notes, reminderOffsetDays }
   });
 }
 
@@ -218,6 +231,7 @@ export async function updateCalendarEvent(
   if (input.scheduledDate !== undefined) data.scheduledDate = scheduledDate;
   if (input.recurrenceRule !== undefined) data.recurrenceRule = recurrenceRule;
   if (input.recurrenceEndDate !== undefined) data.recurrenceEndDate = recurrenceEndDate;
+  if (input.notes !== undefined) data.notes = validateNotes(input.notes);
   if (input.reminderOffsetDays !== undefined) {
     data.reminderOffsetDays = validateReminderOffsetDays(input.reminderOffsetDays);
   }
@@ -265,7 +279,8 @@ export async function listMyAgenda(
       source: 'EVENT' as const,
       title: event.title,
       scheduledDate,
-      status: 'SCHEDULED' as const
+      status: 'SCHEDULED' as const,
+      notes: event.notes ?? null
     }))
   );
   const payableItems = payables.map((item) => ({
@@ -273,14 +288,16 @@ export async function listMyAgenda(
     source: 'PAYABLE' as const,
     title: item.description,
     scheduledDate: item.dueDate,
-    status: 'PENDING' as const
+    status: 'PENDING' as const,
+    notes: null
   }));
   const receivableItems = receivables.map((item) => ({
     id: `RECEIVABLE:${item.id}`,
     source: 'RECEIVABLE' as const,
     title: item.description,
     scheduledDate: item.dueDate,
-    status: 'PENDING' as const
+    status: 'PENDING' as const,
+    notes: null
   }));
 
   return [...eventItems, ...payableItems, ...receivableItems].sort(

@@ -201,6 +201,7 @@ model CalendarEvent {
   scheduledDate     DateTime  @map("scheduled_date") @db.Date
   recurrenceRule    String?   @map("recurrence_rule") @db.VarChar(20)
   recurrenceEndDate DateTime? @map("recurrence_end_date") @db.Date
+  notes             String?   @db.VarChar(500)
   reminderOffsetDays Int? @map("reminder_offset_days") @db.SmallInt
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
