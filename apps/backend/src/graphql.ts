@@ -474,7 +474,7 @@ function calendarEventRepository(): CalendarEventRepository {
     findMany: async ({ where }) =>
       (await prisma.calendarEvent.findMany({ where, orderBy: { scheduledDate: 'asc' } })).map(mapCalendarEvent),
     findUnique: async ({ where }) => {
-      const item = await prisma.calendarEvent.findUnique({ where });
+      const item = await prisma.calendarEvent.findFirst({ where });
       return item ? mapCalendarEvent(item) : null;
     },
     create: async ({ data }) => mapCalendarEvent(await prisma.calendarEvent.create({ data })),
@@ -1361,13 +1361,13 @@ export const resolvers = {
     }
   },
   CalendarEvent: {
-    scheduledDate: (parent: CalendarEvent) => parent.scheduledDate.toISOString(),
-    recurrenceEndDate: (parent: CalendarEvent) => parent.recurrenceEndDate?.toISOString() ?? null,
+    scheduledDate: (parent: CalendarEvent) => parent.scheduledDate.toISOString().slice(0, 10),
+    recurrenceEndDate: (parent: CalendarEvent) => parent.recurrenceEndDate?.toISOString().slice(0, 10) ?? null,
     createdAt: (parent: CalendarEvent) => parent.createdAt.toISOString(),
     updatedAt: (parent: CalendarEvent) => parent.updatedAt.toISOString()
   },
   AgendaItem: {
-    scheduledDate: (parent: AgendaItem) => parent.scheduledDate.toISOString()
+    scheduledDate: (parent: AgendaItem) => parent.scheduledDate.toISOString().slice(0, 10)
   },
   RecurringTransaction: {
     startDate: (parent: RecurringTransaction) =>

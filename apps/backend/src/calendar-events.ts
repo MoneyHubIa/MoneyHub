@@ -55,7 +55,7 @@ export type CalendarEventRepository = {
   findMany(args: {
     where: { userId: string; scheduledDate: { lte: Date } };
   }): Promise<CalendarEvent[]>;
-  findUnique(args: { where: { id: string } }): Promise<CalendarEvent | null>;
+  findUnique(args: { where: { id: string; userId: string } }): Promise<CalendarEvent | null>;
   create(args: {
     data: Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>;
   }): Promise<CalendarEvent>;
@@ -104,16 +104,15 @@ function daysInUtcMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
 }
 
-function nextOccurrence(value: Date, rule: CalendarRecurrenceRule): Date {
+function nextOccurrence(value: Date, rule: CalendarRecurrenceRule, anchorDay: number): Date {
   if (rule === 'WEEKLY') {
     return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate() + 7));
   }
 
-  const currentDay = value.getUTCDate();
   const targetYear = rule === 'YEARLY' ? value.getUTCFullYear() + 1 : value.getUTCFullYear();
   const targetMonth = rule === 'YEARLY' ? value.getUTCMonth() : value.getUTCMonth() + 1;
   return new Date(
-    Date.UTC(targetYear, targetMonth, Math.min(currentDay, daysInUtcMonth(targetYear, targetMonth)))
+    Date.UTC(targetYear, targetMonth, Math.min(anchorDay, daysInUtcMonth(targetYear, targetMonth)))
   );
 }
 
@@ -130,11 +129,12 @@ export function calendarEventOccurrences(
 
   const occurrences: Date[] = [];
   let current = new Date(event.scheduledDate);
+  const anchorDay = event.scheduledDate.getUTCDate();
   const recurrenceEnd = event.recurrenceEndDate ?? rangeEnd;
 
   while (current <= rangeEnd && current <= recurrenceEnd) {
     if (current >= rangeStart) occurrences.push(new Date(current));
-    current = nextOccurrence(current, event.recurrenceRule);
+    current = nextOccurrence(current, event.recurrenceRule, anchorDay);
   }
   return occurrences;
 }
@@ -190,8 +190,8 @@ export async function updateCalendarEvent(
   const userId = requireVerifiedUserId(context);
   if (!input.id) throw calendarError('Event ID is required.');
 
-  const existing = await repository.findUnique({ where: { id: input.id } });
-  if (!existing || existing.userId !== userId) {
+  const existing = await repository.findUnique({ where: { id: input.id, userId } });
+  if (!existing) {
     throw calendarError('Calendar event was not found.', 'NOT_FOUND');
   }
 
@@ -223,8 +223,8 @@ export async function deleteCalendarEvent(
 ): Promise<boolean> {
   const userId = requireVerifiedUserId(context);
   if (!id) throw calendarError('Event ID is required.');
-  const existing = await repository.findUnique({ where: { id } });
-  if (!existing || existing.userId !== userId) {
+  const existing = await repository.findUnique({ where: { id, userId } });
+  if (!existing) {
     throw calendarError('Calendar event was not found.', 'NOT_FOUND');
   }
   await repository.delete({ where: { id } });

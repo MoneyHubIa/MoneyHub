@@ -3,13 +3,14 @@ import { describe, test } from 'node:test';
 import { GraphQLError } from 'graphql';
 import {
   createCalendarEvent,
+  calendarEventOccurrences,
   deleteCalendarEvent,
   listMyAgenda,
   updateCalendarEvent,
   type CalendarEvent,
   type CalendarEventRepository
 } from '../src/calendar-events.js';
-import { typeDefs } from '../src/graphql.js';
+import { resolvers, typeDefs } from '../src/graphql.js';
 
 function verifiedContext() {
   return {
@@ -24,7 +25,10 @@ function verifiedContext() {
   };
 }
 
-function createRepository(): CalendarEventRepository & { store: CalendarEvent[] } {
+function createRepository(): CalendarEventRepository & {
+  store: CalendarEvent[];
+  findUniqueWheres: Array<{ id: string; userId?: string }>;
+} {
   const store: CalendarEvent[] = [
     {
       id: 'event-1',
@@ -48,14 +52,22 @@ function createRepository(): CalendarEventRepository & { store: CalendarEvent[] 
     }
   ];
 
+  const findUniqueWheres: Array<{ id: string; userId?: string }> = [];
+
   return {
     store,
+    findUniqueWheres,
     findMany: async ({ where }) =>
       store.filter((item) =>
         item.userId === where.userId &&
         item.scheduledDate <= where.scheduledDate.lte
       ),
-    findUnique: async ({ where }) => store.find((item) => item.id === where.id) ?? null,
+    findUnique: async ({ where }: { where: { id: string; userId?: string } }) => {
+      findUniqueWheres.push(where);
+      return store.find(
+        (item) => item.id === where.id && (where.userId === undefined || item.userId === where.userId)
+      ) ?? null;
+    },
     create: async ({ data }) => {
       const item: CalendarEvent = {
         id: `event-${store.length + 1}`,
@@ -123,6 +135,32 @@ describe('calendar events', () => {
     assert.match(typeDefs, /deleteCalendarEvent\(id: ID!\): Boolean!/);
   });
 
+  test('serializes Agenda GraphQL dates without ISO datetime suffixes', () => {
+    const event: CalendarEvent = {
+      id: 'event-1',
+      userId: 'user-1',
+      title: 'Fechar orÃ§amento',
+      scheduledDate: new Date('2026-08-31T00:00:00.000Z'),
+      recurrenceRule: 'MONTHLY',
+      recurrenceEndDate: new Date('2026-12-31T00:00:00.000Z'),
+      createdAt: new Date('2026-08-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-08-01T00:00:00.000Z')
+    };
+
+    assert.equal(resolvers.CalendarEvent.scheduledDate(event), '2026-08-31');
+    assert.equal(resolvers.CalendarEvent.recurrenceEndDate(event), '2026-12-31');
+    assert.equal(
+      resolvers.AgendaItem.scheduledDate({
+        id: 'EVENT:event-1:2026-08-31',
+        source: 'EVENT',
+        title: 'Fechar orÃ§amento',
+        scheduledDate: event.scheduledDate,
+        status: 'SCHEDULED'
+      }),
+      '2026-08-31'
+    );
+  });
+
   test('creates date-only event owned by authenticated user', async () => {
     const result = await createCalendarEvent(
       verifiedContext(),
@@ -157,6 +195,22 @@ describe('calendar events', () => {
 
     assert.equal(updated.title, 'Revisão financeira semanal');
     assert.equal(updated.recurrenceRule, 'WEEKLY');
+  });
+
+  test('uses tenant-scoped lookup before update and delete', async () => {
+    const repository = createRepository();
+
+    await updateCalendarEvent(
+      verifiedContext(),
+      { id: 'event-1', title: 'OrÃ§amento fechado' },
+      repository
+    );
+    await deleteCalendarEvent(verifiedContext(), 'event-1', repository);
+
+    assert.deepEqual(repository.findUniqueWheres, [
+      { id: 'event-1', userId: 'user-1' },
+      { id: 'event-1', userId: 'user-1' }
+    ]);
   });
 
   test('deletes event only when it belongs to authenticated user', async () => {
@@ -209,6 +263,36 @@ describe('calendar events', () => {
         ['Semanal', '2026-08-31T00:00:00.000Z'],
         ['Anual', '2026-08-25T00:00:00.000Z']
       ].sort((left, right) => (left[1] ?? '').localeCompare(right[1] ?? ''))
+    );
+  });
+
+  test('preserves monthly and yearly recurrence anchor day when calendar supports it', () => {
+    const monthly: CalendarEvent = {
+      id: 'event-monthly',
+      userId: 'user-1',
+      title: 'Fechamento mensal',
+      scheduledDate: new Date('2026-01-31T00:00:00.000Z'),
+      recurrenceRule: 'MONTHLY',
+      recurrenceEndDate: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z')
+    };
+    const yearly: CalendarEvent = {
+      ...monthly,
+      id: 'event-yearly',
+      scheduledDate: new Date('2024-02-29T00:00:00.000Z'),
+      recurrenceRule: 'YEARLY'
+    };
+
+    assert.deepEqual(
+      calendarEventOccurrences(monthly, new Date('2026-01-01T00:00:00.000Z'), new Date('2026-03-31T00:00:00.000Z'))
+        .map((value) => value.toISOString().slice(0, 10)),
+      ['2026-01-31', '2026-02-28', '2026-03-31']
+    );
+    assert.deepEqual(
+      calendarEventOccurrences(yearly, new Date('2024-01-01T00:00:00.000Z'), new Date('2028-12-31T00:00:00.000Z'))
+        .map((value) => value.toISOString().slice(0, 10)),
+      ['2024-02-29', '2025-02-28', '2026-02-28', '2027-02-28', '2028-02-29']
     );
   });
 
