@@ -1,6 +1,7 @@
 import { GraphQLError } from 'graphql';
 import type { GraphQLContext } from './graphql.js';
 import { requireVerifiedUserId } from './financial-categories.js';
+import { validateReminderOffsetDays, type ReminderOffsetDays } from './agenda-notifications.js';
 
 export type CalendarRecurrenceRule = 'WEEKLY' | 'MONTHLY' | 'YEARLY';
 export type AgendaItemSource = 'EVENT' | 'PAYABLE' | 'RECEIVABLE';
@@ -12,6 +13,7 @@ export type CalendarEvent = {
   scheduledDate: Date;
   recurrenceRule: CalendarRecurrenceRule | null;
   recurrenceEndDate: Date | null;
+  reminderOffsetDays?: ReminderOffsetDays;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -29,6 +31,7 @@ export type CreateCalendarEventInput = {
   scheduledDate: string;
   recurrenceRule?: CalendarRecurrenceRule | null;
   recurrenceEndDate?: string | null;
+  reminderOffsetDays?: number | null;
 };
 
 export type UpdateCalendarEventInput = {
@@ -37,6 +40,7 @@ export type UpdateCalendarEventInput = {
   scheduledDate?: string;
   recurrenceRule?: CalendarRecurrenceRule | null;
   recurrenceEndDate?: string | null;
+  reminderOffsetDays?: number | null;
 };
 
 export type AgendaRangeInput = {
@@ -61,7 +65,7 @@ export type CalendarEventRepository = {
   }): Promise<CalendarEvent>;
   update(args: {
     where: { id: string };
-    data: Partial<Pick<CalendarEvent, 'title' | 'scheduledDate' | 'recurrenceRule' | 'recurrenceEndDate'>>;
+    data: Partial<Pick<CalendarEvent, 'title' | 'scheduledDate' | 'recurrenceRule' | 'recurrenceEndDate' | 'reminderOffsetDays'>>;
   }): Promise<CalendarEvent>;
   delete(args: { where: { id: string } }): Promise<CalendarEvent>;
   findPendingPayables(args: {
@@ -176,9 +180,10 @@ export async function createCalendarEvent(
     ? parseLocalDate(input.recurrenceEndDate, 'Recurrence end date')
     : null;
   validateRecurrence(recurrenceRule, recurrenceEndDate, scheduledDate);
+  const reminderOffsetDays = validateReminderOffsetDays(input.reminderOffsetDays);
 
   return repository.create({
-    data: { userId, title, scheduledDate, recurrenceRule, recurrenceEndDate }
+    data: { userId, title, scheduledDate, recurrenceRule, recurrenceEndDate, reminderOffsetDays }
   });
 }
 
@@ -213,6 +218,9 @@ export async function updateCalendarEvent(
   if (input.scheduledDate !== undefined) data.scheduledDate = scheduledDate;
   if (input.recurrenceRule !== undefined) data.recurrenceRule = recurrenceRule;
   if (input.recurrenceEndDate !== undefined) data.recurrenceEndDate = recurrenceEndDate;
+  if (input.reminderOffsetDays !== undefined) {
+    data.reminderOffsetDays = validateReminderOffsetDays(input.reminderOffsetDays);
+  }
   return repository.update({ where: { id: input.id }, data });
 }
 

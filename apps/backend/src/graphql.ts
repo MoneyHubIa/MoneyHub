@@ -5,7 +5,8 @@ import { getPrismaClient } from './database.js';
 import type {
   CalendarEvent as PrismaCalendarEvent,
   Expense as PrismaExpense,
-  Income as PrismaIncome
+  Income as PrismaIncome,
+  Notification as PrismaNotification
 } from './generated/prisma/client.js';
 import {
   getMyProfile,
@@ -108,6 +109,15 @@ import {
   type CreateCalendarEventInput,
   type UpdateCalendarEventInput
 } from './calendar-events.js';
+import {
+  listMyNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  syncAgendaNotifications,
+  type AgendaNotificationsRepository,
+  type Notification,
+  type ReminderOffsetDays
+} from './agenda-notifications.js';
 import {
   cashFlowRepository,
   getCashFlow,
@@ -467,7 +477,8 @@ function calendarEventRepository(): CalendarEventRepository {
   const prisma = getPrismaClient();
   const mapCalendarEvent = (item: PrismaCalendarEvent): CalendarEvent => ({
     ...item,
-    recurrenceRule: item.recurrenceRule as CalendarEvent['recurrenceRule']
+    recurrenceRule: item.recurrenceRule as CalendarEvent['recurrenceRule'],
+    reminderOffsetDays: item.reminderOffsetDays as ReminderOffsetDays
   });
 
   return {
@@ -484,6 +495,7 @@ function calendarEventRepository(): CalendarEventRepository {
       if (data.scheduledDate !== undefined) updateData.scheduledDate = data.scheduledDate;
       if (data.recurrenceRule !== undefined) updateData.recurrenceRule = data.recurrenceRule;
       if (data.recurrenceEndDate !== undefined) updateData.recurrenceEndDate = data.recurrenceEndDate;
+      if (data.reminderOffsetDays !== undefined) updateData.reminderOffsetDays = data.reminderOffsetDays;
       return mapCalendarEvent(await prisma.calendarEvent.update({ where, data: updateData }));
     },
     delete: async ({ where }) => mapCalendarEvent(await prisma.calendarEvent.delete({ where })),
@@ -499,6 +511,75 @@ function calendarEventRepository(): CalendarEventRepository {
         select: { id: true, description: true, dueDate: true, status: true },
         orderBy: { dueDate: 'asc' }
       })).map((item) => ({ ...item, status: 'PENDING' as const }))
+  };
+}
+
+function agendaNotificationsRepository(): AgendaNotificationsRepository {
+  const prisma = getPrismaClient();
+  const mapNotification = (item: PrismaNotification): Notification => ({
+    ...item,
+    source: item.source as Notification['source']
+  });
+
+  return {
+    findReminderItems: async ({ userId, throughDate }) => {
+      const [events, payables, receivables] = await Promise.all([
+        prisma.calendarEvent.findMany({
+          where: { userId, reminderOffsetDays: { not: null }, scheduledDate: { lte: throughDate } },
+          select: { id: true, userId: true, title: true, scheduledDate: true, reminderOffsetDays: true, recurrenceRule: true, recurrenceEndDate: true }
+        }),
+        prisma.accountPayable.findMany({
+          where: { userId, status: 'PENDING', deletedAt: null, reminderOffsetDays: { not: null }, dueDate: { lte: throughDate } },
+          select: { id: true, userId: true, description: true, dueDate: true, reminderOffsetDays: true }
+        }),
+        prisma.accountReceivable.findMany({
+          where: { userId, status: 'PENDING', deletedAt: null, reminderOffsetDays: { not: null }, dueDate: { lte: throughDate } },
+          select: { id: true, userId: true, description: true, dueDate: true, reminderOffsetDays: true }
+        })
+      ]);
+
+      return [
+        ...events.map((item) => ({
+          source: 'EVENT' as const,
+          id: item.id,
+          userId: item.userId,
+          title: item.title,
+          scheduledDate: item.scheduledDate,
+          reminderOffsetDays: item.reminderOffsetDays as ReminderOffsetDays,
+          recurrenceRule: item.recurrenceRule as CalendarEvent['recurrenceRule'],
+          recurrenceEndDate: item.recurrenceEndDate
+        })),
+        ...payables.map((item) => ({
+          source: 'PAYABLE' as const,
+          id: item.id,
+          userId: item.userId,
+          title: item.description,
+          scheduledDate: item.dueDate,
+          reminderOffsetDays: item.reminderOffsetDays as ReminderOffsetDays,
+          status: 'PENDING'
+        })),
+        ...receivables.map((item) => ({
+          source: 'RECEIVABLE' as const,
+          id: item.id,
+          userId: item.userId,
+          title: item.description,
+          scheduledDate: item.dueDate,
+          reminderOffsetDays: item.reminderOffsetDays as ReminderOffsetDays,
+          status: 'PENDING'
+        }))
+      ];
+    },
+    upsert: async ({ where, create, update }) => mapNotification(await prisma.notification.upsert({ where, create, update })),
+    findMany: async ({ where }) => (await prisma.notification.findMany({
+      where,
+      orderBy: [{ readAt: 'asc' }, { reminderDate: 'desc' }, { createdAt: 'desc' }]
+    })).map(mapNotification),
+    findFirst: async ({ where }) => {
+      const item = await prisma.notification.findFirst({ where });
+      return item ? mapNotification(item) : null;
+    },
+    update: async ({ where, data }) => mapNotification(await prisma.notification.update({ where, data })),
+    updateMany: ({ where, data }) => prisma.notification.updateMany({ where, data })
   };
 }
 
@@ -784,6 +865,7 @@ export const typeDefs = `#graphql
     dueDate: String!
     status: AccountPayableStatus!
     paidAt: String
+    reminderOffsetDays: Int
     createdAt: String!
     updatedAt: String!
   }
@@ -795,6 +877,7 @@ export const typeDefs = `#graphql
     amount: String!
     dueDate: String!
     status: AccountPayableStatus
+    reminderOffsetDays: Int
   }
 
   input UpdateAccountPayableInput {
@@ -806,6 +889,7 @@ export const typeDefs = `#graphql
     dueDate: String
     status: AccountPayableStatus
     paidAt: String
+    reminderOffsetDays: Int
   }
 
   enum AccountReceivableStatus {
@@ -825,6 +909,7 @@ export const typeDefs = `#graphql
     dueDate: String!
     status: AccountReceivableStatus!
     receivedAt: String
+    reminderOffsetDays: Int
     createdAt: String!
     updatedAt: String!
   }
@@ -836,6 +921,7 @@ export const typeDefs = `#graphql
     amount: String!
     dueDate: String!
     status: AccountReceivableStatus
+    reminderOffsetDays: Int
   }
 
   input UpdateAccountReceivableInput {
@@ -847,6 +933,7 @@ export const typeDefs = `#graphql
     dueDate: String
     status: AccountReceivableStatus
     receivedAt: String
+    reminderOffsetDays: Int
   }
 
   enum RecurringType {
@@ -909,6 +996,7 @@ export const typeDefs = `#graphql
     scheduledDate: String!
     recurrenceRule: RecurrenceRule
     recurrenceEndDate: String
+    reminderOffsetDays: Int
     createdAt: String!
     updatedAt: String!
   }
@@ -937,6 +1025,7 @@ export const typeDefs = `#graphql
     scheduledDate: String!
     recurrenceRule: RecurrenceRule
     recurrenceEndDate: String
+    reminderOffsetDays: Int
   }
 
   input UpdateCalendarEventInput {
@@ -945,6 +1034,24 @@ export const typeDefs = `#graphql
     scheduledDate: String
     recurrenceRule: RecurrenceRule
     recurrenceEndDate: String
+    reminderOffsetDays: Int
+  }
+
+  enum NotificationSource {
+    EVENT
+    PAYABLE
+    RECEIVABLE
+  }
+
+  type Notification {
+    id: ID!
+    source: NotificationSource!
+    sourceId: ID!
+    title: String!
+    occurrenceDate: String!
+    reminderDate: String!
+    readAt: String
+    createdAt: String!
   }
 
   type Query {
@@ -959,6 +1066,7 @@ export const typeDefs = `#graphql
     myAccountsReceivable(status: AccountReceivableStatus): [AccountReceivable!]!
     myRecurringTransactions: [RecurringTransaction!]!
     myAgenda(input: AgendaRangeInput!): [AgendaItem!]!
+    myNotifications: [Notification!]!
     dashboardSummary(month: Int, year: Int): DashboardSummary!
     cashFlow(input: CashFlowInput): CashFlowResult!
     categoryAnalysis(input: CategoryAnalysisInput): CategoryAnalysisResult!
@@ -995,6 +1103,9 @@ export const typeDefs = `#graphql
     createCalendarEvent(input: CreateCalendarEventInput!): CalendarEvent!
     updateCalendarEvent(input: UpdateCalendarEventInput!): CalendarEvent!
     deleteCalendarEvent(id: ID!): Boolean!
+    syncAgendaNotifications: [Notification!]!
+    markNotificationRead(id: ID!): Notification!
+    markAllNotificationsRead: Int!
   }
 `;
 
@@ -1058,6 +1169,9 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return listMyAgenda(context, args.input, calendarEventRepository());
+    },
+    myNotifications: (_parent: unknown, _args: unknown, context: GraphQLContext) => {
+      return listMyNotifications(context, agendaNotificationsRepository());
     },
     dashboardSummary: (
       _parent: unknown,
@@ -1358,6 +1472,19 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return deleteCalendarEvent(context, args.id, calendarEventRepository());
+    },
+    syncAgendaNotifications: (_parent: unknown, _args: unknown, context: GraphQLContext) => {
+      return syncAgendaNotifications(context, agendaNotificationsRepository());
+    },
+    markNotificationRead: (
+      _parent: unknown,
+      args: { id: string },
+      context: GraphQLContext
+    ) => {
+      return markNotificationRead(context, args.id, agendaNotificationsRepository());
+    },
+    markAllNotificationsRead: (_parent: unknown, _args: unknown, context: GraphQLContext) => {
+      return markAllNotificationsRead(context, agendaNotificationsRepository());
     }
   },
   CalendarEvent: {
@@ -1368,6 +1495,12 @@ export const resolvers = {
   },
   AgendaItem: {
     scheduledDate: (parent: AgendaItem) => parent.scheduledDate.toISOString().slice(0, 10)
+  },
+  Notification: {
+    occurrenceDate: (parent: Notification) => parent.occurrenceDate.toISOString().slice(0, 10),
+    reminderDate: (parent: Notification) => parent.reminderDate.toISOString().slice(0, 10),
+    readAt: (parent: Notification) => parent.readAt?.toISOString() ?? null,
+    createdAt: (parent: Notification) => parent.createdAt.toISOString()
   },
   RecurringTransaction: {
     startDate: (parent: RecurringTransaction) =>
