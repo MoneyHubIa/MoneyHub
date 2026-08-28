@@ -26,7 +26,10 @@ function verifiedContext() {
   };
 }
 
-function createRepository(): AgendaNotificationsRepository & { store: Notification[] } {
+function createRepository(): AgendaNotificationsRepository & {
+  store: Notification[];
+  reminderItems: ReminderSourceItem[];
+} {
   const store: Notification[] = [];
   const reminderItems: ReminderSourceItem[] = [
     {
@@ -84,6 +87,7 @@ function createRepository(): AgendaNotificationsRepository & { store: Notificati
 
   return {
     store,
+    reminderItems,
     findReminderItems: async ({ userId }) => reminderItems.filter((item) => item.userId === userId),
     upsert: async ({ where, create }) => {
       const existing = store.find(
@@ -118,6 +122,13 @@ function createRepository(): AgendaNotificationsRepository & { store: Notificati
       const unread = store.filter((item) => item.userId === where.userId && item.readAt === null);
       unread.forEach((item) => Object.assign(item, data));
       return { count: unread.length };
+    },
+    deleteMany: async ({ where }) => {
+      const ids = new Set(where.id.in);
+      const remaining = store.filter((item) => item.userId !== where.userId || !ids.has(item.id));
+      const count = store.length - remaining.length;
+      store.splice(0, store.length, ...remaining);
+      return { count };
     }
   };
 }
@@ -174,6 +185,50 @@ describe('agenda notifications', () => {
     assert.equal(repository.store.length, 3);
   });
 
+  test('sync removes an existing reminder after its calendar event is deleted', async () => {
+    const repository = createRepository();
+    const now = new Date('2026-08-27T12:00:00.000Z');
+    await syncAgendaNotifications(verifiedContext(), repository, now);
+    repository.reminderItems.splice(repository.reminderItems.findIndex((item) => item.source === 'EVENT'), 1);
+
+    await syncAgendaNotifications(verifiedContext(), repository, now);
+
+    assert.deepEqual(repository.store.map((item) => item.source).sort(), ['PAYABLE', 'RECEIVABLE']);
+  });
+
+  test('sync removes an existing reminder after its payable is paid', async () => {
+    const repository = createRepository();
+    const now = new Date('2026-08-27T12:00:00.000Z');
+    await syncAgendaNotifications(verifiedContext(), repository, now);
+    repository.reminderItems.find((item) => item.id === 'payable-1')!.status = 'PAID';
+
+    await syncAgendaNotifications(verifiedContext(), repository, now);
+
+    assert.deepEqual(repository.store.map((item) => item.source).sort(), ['EVENT', 'RECEIVABLE']);
+  });
+
+  test('sync removes an existing reminder after its payable is soft-deleted', async () => {
+    const repository = createRepository();
+    const now = new Date('2026-08-27T12:00:00.000Z');
+    await syncAgendaNotifications(verifiedContext(), repository, now);
+    repository.reminderItems.find((item) => item.id === 'payable-1')!.deletedAt = now;
+
+    await syncAgendaNotifications(verifiedContext(), repository, now);
+
+    assert.deepEqual(repository.store.map((item) => item.source).sort(), ['EVENT', 'RECEIVABLE']);
+  });
+
+  test('sync removes an existing reminder after its receivable is received', async () => {
+    const repository = createRepository();
+    const now = new Date('2026-08-27T12:00:00.000Z');
+    await syncAgendaNotifications(verifiedContext(), repository, now);
+    repository.reminderItems.find((item) => item.id === 'receivable-1')!.status = 'RECEIVED';
+
+    await syncAgendaNotifications(verifiedContext(), repository, now);
+
+    assert.deepEqual(repository.store.map((item) => item.source).sort(), ['EVENT', 'PAYABLE']);
+  });
+
   test('lists and marks notifications only for authenticated owner', async () => {
     const repository = createRepository();
     await syncAgendaNotifications(verifiedContext(), repository, new Date('2026-08-27T12:00:00.000Z'));
@@ -184,6 +239,26 @@ describe('agenda notifications', () => {
     const read = await markNotificationRead(verifiedContext(), listed[0]!.id, repository);
     assert.ok(read.readAt instanceof Date);
     assert.equal(await markAllNotificationsRead(verifiedContext(), repository), 2);
+
+    repository.store.push({
+      id: 'notification-other-user',
+      userId: 'user-2',
+      source: 'EVENT',
+      sourceId: 'event-other-user',
+      title: 'Privado',
+      occurrenceDate: new Date('2026-08-30T00:00:00.000Z'),
+      reminderDate: new Date('2026-08-27T00:00:00.000Z'),
+      readAt: null,
+      createdAt: new Date('2026-08-27T12:00:00.000Z')
+    });
+
+    await assert.rejects(
+      () => markNotificationRead(verifiedContext(), 'notification-other-user', repository),
+      (error) => {
+        expectCode(error, 'NOT_FOUND');
+        return true;
+      }
+    );
 
     await assert.rejects(
       () => listMyNotifications({ requestId: 'request-2', auth: null }, repository),

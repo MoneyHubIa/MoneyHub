@@ -579,7 +579,8 @@ function agendaNotificationsRepository(): AgendaNotificationsRepository {
       return item ? mapNotification(item) : null;
     },
     update: async ({ where, data }) => mapNotification(await prisma.notification.update({ where, data })),
-    updateMany: ({ where, data }) => prisma.notification.updateMany({ where, data })
+    updateMany: ({ where, data }) => prisma.notification.updateMany({ where, data }),
+    deleteMany: ({ where }) => prisma.notification.deleteMany({ where })
   };
 }
 

@@ -49,6 +49,7 @@ export type AgendaNotificationsRepository = {
   findFirst(args: { where: { id: string; userId: string } }): Promise<Notification | null>;
   update(args: { where: { id: string }; data: { readAt: Date } }): Promise<Notification>;
   updateMany(args: { where: { userId: string; readAt: null }; data: { readAt: Date } }): Promise<{ count: number }>;
+  deleteMany(args: { where: { userId: string; id: { in: string[] } } }): Promise<{ count: number }>;
 };
 
 const validReminderOffsets = new Set<Exclude<ReminderOffsetDays, null>>([0, 1, 3, 7]);
@@ -75,6 +76,10 @@ function addUtcDays(value: Date, days: number): Date {
 
 function reminderDate(occurrenceDate: Date, offsetDays: Exclude<ReminderOffsetDays, null>): Date {
   return addUtcDays(occurrenceDate, -offsetDays);
+}
+
+function notificationKey(source: NotificationSource, sourceId: string, occurrenceDate: Date): string {
+  return `${source}:${sourceId}:${startOfUtcDay(occurrenceDate).toISOString()}`;
 }
 
 function occurrenceDates(item: ReminderSourceItem, throughDate: Date): Date[] {
@@ -112,8 +117,12 @@ export async function syncAgendaNotifications(
   const userId = requireVerifiedUserId(context);
   const today = startOfUtcDay(now);
   const throughDate = addUtcDays(today, 7);
-  const items = await repository.findReminderItems({ userId, throughDate });
+  const [items, existingNotifications] = await Promise.all([
+    repository.findReminderItems({ userId, throughDate }),
+    repository.findMany({ where: { userId } })
+  ]);
   const notifications: Notification[] = [];
+  const eligibleKeys = new Set<string>();
 
   for (const item of items) {
     if (!isEligible(item)) continue;
@@ -124,6 +133,7 @@ export async function syncAgendaNotifications(
       const normalizedOccurrenceDate = startOfUtcDay(occurrenceDate);
       const dueOn = reminderDate(normalizedOccurrenceDate, offsetDays);
       if (dueOn > today) continue;
+      eligibleKeys.add(notificationKey(item.source, item.id, normalizedOccurrenceDate));
 
       notifications.push(
         await repository.upsert({
@@ -147,6 +157,13 @@ export async function syncAgendaNotifications(
         })
       );
     }
+  }
+
+  const invalidNotificationIds = existingNotifications
+    .filter((item) => !eligibleKeys.has(notificationKey(item.source, item.sourceId, item.occurrenceDate)))
+    .map((item) => item.id);
+  if (invalidNotificationIds.length > 0) {
+    await repository.deleteMany({ where: { userId, id: { in: invalidNotificationIds } } });
   }
 
   return notifications;
