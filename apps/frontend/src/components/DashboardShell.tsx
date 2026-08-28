@@ -1,8 +1,7 @@
 import { gql } from '@apollo/client';
-import { useApolloClient, useQuery } from '@apollo/client/react';
+import { useApolloClient, useMutation, useQuery } from '@apollo/client/react';
 import { useRouter } from 'expo-router';
 import {
-  BarChart3,
   Bot,
   CalendarClock,
   CalendarDays,
@@ -22,7 +21,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   useWindowDimensions,
   View
 } from 'react-native';
@@ -37,6 +35,7 @@ import { RecurringTransactions } from './RecurringTransactions';
 import { CashFlowChart } from './CashFlowChart';
 import { CategoryAnalysis } from './CategoryAnalysis';
 import { PeriodComparison } from './PeriodComparison';
+import { Agenda } from './Agenda';
 
 const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -72,6 +71,14 @@ const DASHBOARD_SUMMARY_QUERY = gql`
   }
 `;
 
+const SYNC_AGENDA_NOTIFICATIONS = gql`
+  mutation SyncAgendaNotifications {
+    syncAgendaNotifications {
+      id
+    }
+  }
+`;
+
 type DashboardSummaryData = {
   dashboardSummary?: {
     totalIncome: string;
@@ -99,6 +106,7 @@ export function DashboardShell() {
   const [activeSectionId, setActiveSectionId] =
     useState<NavigationId>('dashboard');
   const [loggingOut, setLoggingOut] = useState(false);
+  const [syncAgendaNotifications] = useMutation(SYNC_AGENDA_NOTIFICATIONS);
   const { data: summaryData, loading: loadingSummary, refetch: refetchSummary } =
     useQuery<DashboardSummaryData>(DASHBOARD_SUMMARY_QUERY, {
       fetchPolicy: 'cache-and-network'
@@ -109,6 +117,10 @@ export function DashboardShell() {
       refetchSummary?.();
     }
   }, [activeSectionId, refetchSummary]);
+
+  useEffect(() => {
+    void syncAgendaNotifications();
+  }, [syncAgendaNotifications]);
 
   const activeSection =
     navigationItems.find((item) => item.id === activeSectionId) ??
@@ -257,15 +269,15 @@ export function DashboardShell() {
             </View>
 
             <CashFlowChart
-              preferredCurrency={summaryData?.myProfile?.preferredCurrency}
+              preferredCurrency={summaryData?.myProfile?.preferredCurrency ?? 'BRL'}
             />
 
             <CategoryAnalysis
-              preferredCurrency={summaryData?.myProfile?.preferredCurrency}
+              preferredCurrency={summaryData?.myProfile?.preferredCurrency ?? 'BRL'}
             />
 
             <PeriodComparison
-              preferredCurrency={summaryData?.myProfile?.preferredCurrency}
+              preferredCurrency={summaryData?.myProfile?.preferredCurrency ?? 'BRL'}
             />
           </>
         ) : activeSectionId === 'ajustes' ? (
@@ -282,6 +294,8 @@ export function DashboardShell() {
           <RecurringTransactions />
         ) : activeSectionId === 'contas' ? (
           <CostCenters />
+        ) : activeSectionId === 'agenda' ? (
+          <Agenda />
         ) : (
           <View style={styles.header}>
             <Text style={styles.eyebrow}>MoneyHub</Text>

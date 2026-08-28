@@ -4,6 +4,8 @@ import { DashboardShell } from '../src/components/DashboardShell';
 import { AuthProvider } from '../src/providers/AuthProvider';
 import type { AuthService } from '../src/services/authService';
 
+const mockSyncAgendaNotifications = jest.fn().mockResolvedValue({ data: {} });
+
 const mockService: AuthService = {
   register: jest.fn(),
   resendEmailVerification: jest.fn(),
@@ -51,7 +53,8 @@ jest.mock('@apollo/client/react', () => ({
     },
     loading: false,
     refetch: jest.fn()
-  })
+  }),
+  useMutation: () => [mockSyncAgendaNotifications, { loading: false }]
 }));
 
 describe('MoneyHub dashboard shell', () => {
@@ -72,9 +75,8 @@ describe('MoneyHub dashboard shell', () => {
     await render(<DashboardShell />, { wrapper: Wrapper });
     await fireEvent.press(screen.getByRole('button', { name: 'Agenda' }));
 
-    expect(screen.getByRole('header', { name: 'Agenda' })).toBeOnTheScreen();
-    expect(screen.getByText('O conteudo de Agenda estara disponivel em breve.'))
-      .toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Agenda financeira' })).toBeOnTheScreen();
+    expect(mockSyncAgendaNotifications).toHaveBeenCalled();
   });
 
   test('renders a logout button', async () => {
