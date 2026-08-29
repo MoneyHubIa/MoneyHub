@@ -58,25 +58,28 @@ export function sanitizeUserMessage(message: string): string {
   return cleaned.trim();
 }
 
+function escapeXml(str: string): string {
+  return str.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 export function formatFinancialContextBlock(context: AiFinancialContext): string {
   const { totals, currency, period } = context;
 
   const categoriesBlock =
     context.topExpenseCategories.length > 0
       ? context.topExpenseCategories
-          .map((cat) => `- ${cat.categoryName}: ${cat.amount} (${cat.percentage}%)`)
+          .map((cat) => `- ${escapeXml(cat.categoryName)}: ${cat.amount} (${cat.percentage}%)`)
           .join('\n')
       : 'Nenhuma despesa categorizada neste período.';
 
   const billsBlock =
     context.upcomingBills.length > 0
       ? context.upcomingBills
-          .map(
-            (bill) =>
-              `- ${bill.description}: ${bill.amount} (vencimento: ${bill.dueDate}${
-                bill.categoryName ? `, categoria: ${bill.categoryName}` : ''
-              })`
-          )
+          .map((bill) => {
+            const statusTag = bill.status === 'OVERDUE' ? ' [ATRASADA]' : '';
+            const categoryStr = bill.categoryName ? `, categoria: ${escapeXml(bill.categoryName)}` : '';
+            return `- ${escapeXml(bill.description)}: ${bill.amount} (vencimento: ${bill.dueDate}${statusTag}${categoryStr})`;
+          })
           .join('\n')
       : 'Nenhuma conta a pagar pendente.';
 

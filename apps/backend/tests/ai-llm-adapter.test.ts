@@ -232,6 +232,20 @@ describe('LLM Adapter Contract (TASK-032)', () => {
       });
       assert.equal(adapter.provider, 'mock');
     });
+
+    test('returns OpenAiCompatibleLlmAdapter when configured with groq, ollama or baseUrl', () => {
+      const adapterGroq = createLlmAdapter({
+        provider: 'groq',
+        apiKey: 'gsk-test'
+      });
+      assert.equal(adapterGroq.provider, 'openai');
+
+      const adapterOllama = createLlmAdapter({
+        provider: 'ollama',
+        baseUrl: 'http://localhost:11434/v1'
+      });
+      assert.equal(adapterOllama.provider, 'openai');
+    });
   });
 
   describe('Refinements (EPIC-05 Hardening)', () => {

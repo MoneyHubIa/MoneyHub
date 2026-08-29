@@ -740,6 +740,7 @@ export const typeDefs = `#graphql
     description: String!
     amount: String!
     dueDate: String!
+    status: String
     categoryName: String
   }
 

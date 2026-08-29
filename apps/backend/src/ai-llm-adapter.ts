@@ -278,14 +278,24 @@ export type LlmConfig = {
 };
 
 export function createLlmAdapter(config?: LlmConfig): LlmAdapter {
-  const provider = config?.provider ?? process.env.LLM_PROVIDER ?? 'mock';
+  const provider = (config?.provider ?? process.env.LLM_PROVIDER ?? 'mock').toLowerCase();
   const apiKey = config?.apiKey ?? process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? '';
+  const baseUrl = config?.baseUrl ?? process.env.LLM_BASE_URL;
 
-  if (provider === 'openai' && apiKey.trim()) {
+  const isOpenAiCompatible =
+    provider === 'openai' ||
+    provider === 'openai-compatible' ||
+    provider === 'groq' ||
+    provider === 'ollama' ||
+    provider === 'deepseek' ||
+    provider === 'gemini' ||
+    Boolean(baseUrl);
+
+  if (isOpenAiCompatible && (apiKey.trim() || baseUrl)) {
     return new OpenAiCompatibleLlmAdapter({
-      apiKey: apiKey.trim(),
+      apiKey: apiKey.trim() || 'local-development-key',
       model: config?.model ?? process.env.LLM_MODEL,
-      baseUrl: config?.baseUrl ?? process.env.LLM_BASE_URL
+      baseUrl
     });
   }
 

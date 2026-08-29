@@ -22,6 +22,7 @@ export type AiUpcomingBill = {
   description: string;
   amount: string;
   dueDate: string;
+  status?: string | null | undefined;
   categoryName?: string | null | undefined;
 };
 
@@ -54,6 +55,7 @@ export type RawUpcomingBill = {
   description: string;
   amount: number;
   dueDate: Date;
+  status?: string | null | undefined;
   categoryName?: string | null;
 };
 
@@ -177,7 +179,7 @@ export function aiContextRepository(prismaGetter = getPrismaClient): AiContextRe
         where: {
           userId,
           deletedAt: null,
-          status: 'PENDING',
+          status: { in: ['PENDING', 'OVERDUE'] },
           dueDate: { gte: fromDate, lte: toDate }
         },
         include: {
@@ -194,6 +196,7 @@ export function aiContextRepository(prismaGetter = getPrismaClient): AiContextRe
         description: bill.description,
         amount: Number(bill.amount),
         dueDate: bill.dueDate,
+        status: bill.status,
         categoryName: bill.category?.name ?? null
       }));
     }
@@ -212,19 +215,19 @@ export async function buildAiFinancialContext(
   const month = input?.month ?? (now.getUTCMonth() + 1);
   const billsDaysAhead = input?.billsDaysAhead ?? 30;
 
-  if (month < 1 || month > 12) {
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
     throw new GraphQLError('Month must be between 1 and 12.', {
       extensions: { code: 'BAD_USER_INPUT' }
     });
   }
 
-  if (year < 2000 || year > 2100) {
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
     throw new GraphQLError('Year must be between 2000 and 2100.', {
       extensions: { code: 'BAD_USER_INPUT' }
     });
   }
 
-  if (billsDaysAhead < 1 || billsDaysAhead > 90) {
+  if (!Number.isInteger(billsDaysAhead) || billsDaysAhead < 1 || billsDaysAhead > 90) {
     throw new GraphQLError('billsDaysAhead must be between 1 and 90.', {
       extensions: { code: 'BAD_USER_INPUT' }
     });
@@ -234,8 +237,9 @@ export async function buildAiFinancialContext(
   const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
   const endDate = new Date(Date.UTC(year, month - 1, daysInMonth, 23, 59, 59, 999));
 
-  const fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
-  const toDate = new Date(fromDate.getTime() + billsDaysAhead * 24 * 60 * 60 * 1000 + (23 * 3600 + 59 * 60 + 59) * 1000 + 999);
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const fromDate = new Date(Date.UTC(thirtyDaysAgo.getUTCFullYear(), thirtyDaysAgo.getUTCMonth(), thirtyDaysAgo.getUTCDate(), 0, 0, 0, 0));
+  const toDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999) + billsDaysAhead * 24 * 60 * 60 * 1000);
 
   const [userCurrency, totals, rawTopCategories, rawUpcomingBills] = await Promise.all([
     repository.getUserCurrency(userId),
@@ -267,6 +271,7 @@ export async function buildAiFinancialContext(
     description: bill.description,
     amount: bill.amount.toFixed(2),
     dueDate: bill.dueDate.toISOString().slice(0, 10),
+    status: bill.status ?? null,
     categoryName: bill.categoryName ?? null
   }));
 

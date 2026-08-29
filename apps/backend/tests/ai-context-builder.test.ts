@@ -205,13 +205,31 @@ describe('AI Context Builder Service (TASK-013)', () => {
     );
 
     await assert.rejects(
-      () => buildAiFinancialContext(verifiedContext(), { month: 8, year: 2026, billsDaysAhead: 91 }, repository),
+      () => buildAiFinancialContext(verifiedContext(), { month: 8.5, year: 2026 }, repository),
       (err: unknown) => {
         assert.ok(err instanceof GraphQLError);
         assert.equal(err.extensions?.code, 'BAD_USER_INPUT');
         return true;
       }
     );
+  });
+
+  test('maps bill status including OVERDUE in upcomingBills', async () => {
+    const repository = createMockRepository({
+      getUpcomingBills: async () => [
+        {
+          id: 'bill-late',
+          description: 'Cartão Atrasado',
+          amount: 500,
+          dueDate: new Date('2026-08-15'),
+          status: 'OVERDUE'
+        }
+      ]
+    });
+
+    const context = await buildAiFinancialContext(verifiedContext(), { month: 8, year: 2026 }, repository);
+    assert.equal(context.upcomingBills.length, 1);
+    assert.equal(context.upcomingBills[0]?.status, 'OVERDUE');
   });
 
   test('enforces authentication and verified email', async () => {
