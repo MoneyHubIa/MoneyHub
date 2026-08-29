@@ -8,6 +8,7 @@ import {
 } from './ai-context-builder.js';
 import {
   buildAiPrompt,
+  sanitizeUserMessage,
   type PromptTemplateId
 } from './ai-prompt-registry.js';
 import {
@@ -50,6 +51,12 @@ export type AiServiceDependencies = {
   logger: AiConversationLogger;
 };
 
+const VALID_TEMPLATES: ReadonlySet<string> = new Set([
+  'GENERAL_FINANCIAL_ASSISTANT',
+  'MONTHLY_SUMMARY',
+  'EXPENSE_OPTIMIZATION'
+]);
+
 export async function askAiAssistant(
   context: GraphQLContext,
   input: AskAiAssistantInput,
@@ -57,6 +64,14 @@ export async function askAiAssistant(
 ): Promise<AiAssistantResponse> {
   const userId = requireVerifiedUserId(context);
   const requestId = context.requestId;
+
+  // Fail-fast: validate message before running database queries
+  const sanitizedMessage = sanitizeUserMessage(input.message);
+
+  const templateId: PromptTemplateId =
+    input.templateId && VALID_TEMPLATES.has(input.templateId)
+      ? (input.templateId as PromptTemplateId)
+      : 'GENERAL_FINANCIAL_ASSISTANT';
 
   const contextRepo = deps?.contextRepository ?? aiContextRepository();
   const llm = deps?.llmAdapter ?? createLlmAdapter();
@@ -70,11 +85,9 @@ export async function askAiAssistant(
 
   const contextHash = hashContext(aiContext);
 
-  const templateId = (input.templateId as PromptTemplateId) ?? 'GENERAL_FINANCIAL_ASSISTANT';
-
   const prompt = buildAiPrompt({
     context: aiContext,
-    userMessage: input.message,
+    userMessage: sanitizedMessage,
     templateId
   });
 

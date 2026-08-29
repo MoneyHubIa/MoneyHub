@@ -233,4 +233,52 @@ describe('LLM Adapter Contract (TASK-032)', () => {
       assert.equal(adapter.provider, 'mock');
     });
   });
+
+  describe('Refinements (EPIC-05 Hardening)', () => {
+    test('MockLlmAdapter respects non-BRL currency in prompt context', async () => {
+      const adapter = new MockLlmAdapter();
+      const prompt: FormattedAiPrompt = {
+        systemPrompt: 'System',
+        userPrompt: `<financial_context>
+Moeda: USD
+Saldo: 7500.00
+</financial_context>
+<user_question>
+How much do I have?
+</user_question>`,
+        version: '1.0',
+        templateId: 'GENERAL_FINANCIAL_ASSISTANT'
+      };
+
+      const response = await adapter.generateResponse(prompt);
+      assert.ok(response.content.includes('USD 7500.00'));
+      assert.ok(!response.content.includes('R$'));
+    });
+
+    test('OpenAiCompatibleLlmAdapter calculates fallback usage when API omits usage', async () => {
+      const mockFetch: typeof fetch = async () => {
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: { content: 'Resposta sem objeto usage retornado pelo proxy.' },
+                finish_reason: 'stop'
+              }
+            ]
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      };
+
+      const adapter = new OpenAiCompatibleLlmAdapter({
+        apiKey: 'test-key',
+        fetchFn: mockFetch
+      });
+
+      const response = await adapter.generateResponse(createSamplePrompt());
+      assert.ok(response.usage.promptTokens > 0);
+      assert.ok(response.usage.completionTokens > 0);
+      assert.equal(response.usage.totalTokens, response.usage.promptTokens + response.usage.completionTokens);
+    });
+  });
 });

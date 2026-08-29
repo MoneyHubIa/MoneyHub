@@ -109,7 +109,11 @@ export class MockLlmAdapter implements LlmAdapter {
     const balanceMatch = userPrompt.match(/Saldo:\s*([^\r\n]+)/i);
     const balance = balanceMatch ? balanceMatch[1]?.trim() : '0.00';
 
-    return `Olá! Analisando seu contexto financeiro no MoneyHub, verifiquei que seu saldo líquido atual no período é de R$ ${balance}. ` +
+    const currencyMatch = userPrompt.match(/Moeda:\s*([A-Z]{3})/i);
+    const currency = currencyMatch ? currencyMatch[1]?.trim() : 'BRL';
+    const symbol = currency === 'BRL' ? 'R$' : currency;
+
+    return `Olá! Analisando seu contexto financeiro no MoneyHub, verifiquei que seu saldo líquido atual no período é de ${symbol} ${balance}. ` +
       `Se precisar de detalhes sobre suas principais despesas ou contas a pagar agendadas, estou à disposição para ajudar no seu planejamento!`;
   }
 }
@@ -216,10 +220,17 @@ export class OpenAiCompatibleLlmAdapter implements LlmAdapter {
       const content = choice?.message?.content ?? '';
       const finishReason = (choice?.finish_reason as LlmFinishReason) ?? 'stop';
 
+      const promptTokens =
+        data.usage?.prompt_tokens ?? Math.max(1, Math.ceil(prompt.userPrompt.length / 4));
+      const completionTokens =
+        data.usage?.completion_tokens ?? Math.max(1, Math.ceil(content.length / 4));
+      const totalTokens =
+        data.usage?.total_tokens ?? (promptTokens + completionTokens);
+
       const usage: LlmUsage = {
-        promptTokens: data.usage?.prompt_tokens ?? 0,
-        completionTokens: data.usage?.completion_tokens ?? 0,
-        totalTokens: data.usage?.total_tokens ?? 0
+        promptTokens,
+        completionTokens,
+        totalTokens
       };
 
       const latencyMs = Date.now() - startTime;

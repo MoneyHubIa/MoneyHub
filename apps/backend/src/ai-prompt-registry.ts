@@ -38,7 +38,7 @@ export function getSystemPrompt(version = '1.0'): string {
 
 export function sanitizeUserMessage(message: string): string {
   // Remove null characters and non-printable control characters (except newline, tab, carriage return)
-  const cleaned = message.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+  let cleaned = message.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
 
   if (!cleaned.trim()) {
     throw new GraphQLError('User message must not be empty.', {
@@ -51,6 +51,9 @@ export function sanitizeUserMessage(message: string): string {
       extensions: { code: 'BAD_USER_INPUT' }
     });
   }
+
+  // Neutralize XML angle brackets to prevent delimiter injection
+  cleaned = cleaned.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   return cleaned.trim();
 }

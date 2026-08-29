@@ -209,4 +209,53 @@ describe('AI Assistant Service & Mutation (TASK-033)', () => {
       }
     );
   });
+
+  test('fails fast on invalid message without invoking database repository', async () => {
+    const throwingRepo: AiContextRepository = {
+      getUserCurrency: async () => {
+        throw new Error('Database must not be queried for invalid message');
+      },
+      getTotals: async () => {
+        throw new Error('Database must not be queried for invalid message');
+      },
+      getTopExpenseCategories: async () => {
+        throw new Error('Database must not be queried for invalid message');
+      },
+      getUpcomingBills: async () => {
+        throw new Error('Database must not be queried for invalid message');
+      }
+    };
+
+    await assert.rejects(
+      () => askAiAssistant(verifiedContext(), { message: '   ' }, { contextRepository: throwingRepo }),
+      (err: unknown) => {
+        assert.ok(err instanceof GraphQLError);
+        assert.equal(err.extensions?.code, 'BAD_USER_INPUT');
+        return true;
+      }
+    );
+  });
+
+  test('normalizes unknown templateId in audit event to GENERAL_FINANCIAL_ASSISTANT', async () => {
+    const auditEvents: AiConversationAuditEvent[] = [];
+    const mockLogger: AiConversationLogger = {
+      log: (evt) => auditEvents.push(evt)
+    };
+
+    await askAiAssistant(
+      verifiedContext(),
+      { message: 'Qual o saldo?', templateId: 'INVALID_UNKNOWN_TEMPLATE' },
+      {
+        contextRepository: createMockContextRepository(),
+        logger: mockLogger
+      }
+    );
+
+    assert.equal(auditEvents.length, 1);
+    const event = auditEvents[0];
+    assert.ok(event);
+    if (event.status === 'success') {
+      assert.equal(event.templateId, 'GENERAL_FINANCIAL_ASSISTANT');
+    }
+  });
 });
