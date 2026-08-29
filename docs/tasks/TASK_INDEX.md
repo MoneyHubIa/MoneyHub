@@ -14,7 +14,7 @@
 | TASK-010 | Plan Firebase Admin auth context | Done | EPIC-02 |
 | TASK-011 | Plan Firebase Analytics adapter | Done | EPIC-02 |
 | TASK-012 | Plan GCP and Firebase operations docs | Pending | EPIC-08 |
-| TASK-013 | Implement AI context builder | Pending | EPIC-05 |
+| TASK-013 | Implement AI context builder | Done | EPIC-05 |
 | TASK-014 | Implement agenda foundation | Pending | EPIC-06 |
 | TASK-015 | Configure E2E tests | Pending | EPIC-07 |
 | TASK-016 | Prepare deploy checklist | Pending | EPIC-08 |
