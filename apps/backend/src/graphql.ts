@@ -115,6 +115,10 @@ import {
   buildAiFinancialContext,
   type AiFinancialContextInput
 } from './ai-context-builder.js';
+import {
+  askAiAssistant,
+  type AskAiAssistantInput
+} from './ai-service.js';
 
 
 
@@ -756,6 +760,29 @@ export const typeDefs = `#graphql
     billsDaysAhead: Int
   }
 
+  type AiAssistantUsage {
+    promptTokens: Int!
+    completionTokens: Int!
+    totalTokens: Int!
+  }
+
+  type AiAssistantResponse {
+    answer: String!
+    provider: String!
+    model: String!
+    latencyMs: Int!
+    usage: AiAssistantUsage!
+    contextPeriod: String!
+    contextVersion: String!
+  }
+
+  input AskAiAssistantInput {
+    message: String!
+    month: Int
+    year: Int
+    templateId: String
+  }
+
   enum AccountPayableStatus {
     PENDING
     PAID
@@ -937,6 +964,7 @@ export const typeDefs = `#graphql
     updateRecurringTransaction(input: UpdateRecurringTransactionInput!): RecurringTransaction!
     deleteRecurringTransaction(id: ID!): Boolean!
     processRecurringTransactions: ProcessRecurringResult!
+    askAiAssistant(input: AskAiAssistantInput!): AiAssistantResponse!
   }
 `;
 
@@ -1279,6 +1307,13 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return processRecurringTransactions(context, recurringTransactionRepository());
+    },
+    askAiAssistant: (
+      _parent: unknown,
+      args: { input: AskAiAssistantInput },
+      context: GraphQLContext
+    ) => {
+      return askAiAssistant(context, args.input);
     }
   },
   RecurringTransaction: {
