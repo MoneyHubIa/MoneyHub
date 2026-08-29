@@ -116,9 +116,9 @@ export class MockLlmAdapter implements LlmAdapter {
 
 export type OpenAiCompatibleOptions = {
   apiKey: string;
-  baseUrl?: string;
-  model?: string;
-  fetchFn?: typeof fetch;
+  baseUrl?: string | undefined;
+  model?: string | undefined;
+  fetchFn?: typeof fetch | undefined;
 };
 
 export class OpenAiCompatibleLlmAdapter implements LlmAdapter {
