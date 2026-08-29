@@ -1,7 +1,7 @@
 # EPIC-05 — AI Financial Agent
 
 ## Status
-In Progress
+Done
 
 ## Feature
 AI assistant.
@@ -14,7 +14,7 @@ Implement a safe AI assistant that answers financial questions using only author
 - [x] TASK-013 — Implement AI context builder.
 - [x] TASK-031 — Implement AI prompt registry.
 - [x] TASK-032 — Implement LLM adapter contract.
-- [ ] TASK-033 — Implement AI conversation logging.
+- [x] TASK-033 — Implement AI conversation logging.
 
 ## Tasks Detail
 
@@ -41,6 +41,15 @@ Done
 
 ## Completion Review
 O módulo `ai-llm-adapter.ts` foi implementado em `apps/backend/src/ai-llm-adapter.ts` com tipagem 100% estrita sem `any`. Ele define o contrato `LlmAdapter`, opções de execução `LlmExecutionOptions`, a resposta tipada `LlmResponse` com métricas de tokens (`LlmUsage`) e latência, e a classe de erro resiliente `LlmAdapterError` com sanitização e redação de credenciais. Inclui o `MockLlmAdapter` para desenvolvimento e testes locais com respostas contextuais determinísticas, simulação de erros e latência, o `OpenAiCompatibleLlmAdapter` via `fetch` e `AbortController` nativos com mapeamento seguro de status HTTP (429 para rate limit retryable, 5xx para provider error), e a factory `createLlmAdapter` com fallback automático seguro. Testes unitários completos cobrem todos os cenários.
+
+### TASK-033 — Implement AI conversation logging
+
+## Status
+Done
+
+## Completion Review
+O módulo `ai-conversation-logging.ts` e o serviço orquestrador `ai-service.ts` foram implementados no backend com tipagem 100% estrita sem `any`. O sistema gera um hash SHA-256 seguro e determinístico do contexto financeiro de cada consulta (`hashContext`) para auditoria sem vazamento de dados confidenciais, audita eventos estruturados (`ai_conversation_completed` e `ai_conversation_failed`) com contagem de tokens, latência e status, e expõe a mutation GraphQL `askAiAssistant(input: AskAiAssistantInput!): AiAssistantResponse!`. O serviço possui isolamento estrito de usuário autenticado (`requireVerifiedUserId`), resiliência contra falhas de logging (que nunca bloqueiam a entrega da resposta da IA ao usuário) e conversão segura de falhas do provedor em `SERVICE_UNAVAILABLE`. Com isso, o **EPIC-05 está 100% concluído**.
+
 
 
 

@@ -37,9 +37,9 @@ export type AiFinancialContext = {
 };
 
 export type AiFinancialContextInput = {
-  month?: number;
-  year?: number;
-  billsDaysAhead?: number;
+  month?: number | undefined;
+  year?: number | undefined;
+  billsDaysAhead?: number | undefined;
 };
 
 export type RawTopCategory = {
