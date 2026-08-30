@@ -78,6 +78,7 @@
 - `due_date`
 - `status`
 - `paid_at`
+- `reminder_offset_days` (nullable; allowed values: `0`, `1`, `3`, `7`)
 - `created_at`
 - `updated_at`
 - `deleted_at`
