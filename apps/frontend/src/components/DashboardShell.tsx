@@ -36,6 +36,7 @@ import { CashFlowChart } from './CashFlowChart';
 import { CategoryAnalysis } from './CategoryAnalysis';
 import { PeriodComparison } from './PeriodComparison';
 import { Agenda } from './Agenda';
+import { NotificationCenter } from './NotificationCenter';
 
 const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -140,9 +141,12 @@ export function DashboardShell() {
   return (
     <View style={[styles.shell, desktop ? styles.shellDesktop : styles.shellMobile]}>
       <View style={[styles.navigation, desktop && styles.navigationDesktop]}>
-        <View style={styles.brand}>
-          <WalletCards color="#0f766e" size={28} />
-          <Text accessibilityRole="header" style={styles.brandText}>MoneyHub</Text>
+        <View style={styles.brandRow}>
+          <View style={styles.brand}>
+            <WalletCards color="#0f766e" size={28} />
+            <Text accessibilityRole="header" style={styles.brandText}>MoneyHub</Text>
+          </View>
+          <NotificationCenter onOpenSource={() => setActiveSectionId('agenda')} />
         </View>
 
         <ScrollView
@@ -318,7 +322,8 @@ const styles = StyleSheet.create({
   shellMobile: { flexDirection: 'column' },
   navigation: { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0', borderBottomWidth: 1 },
   navigationDesktop: { width: 248, borderBottomWidth: 0, borderRightColor: '#e2e8f0', borderRightWidth: 1, padding: 20 },
-  brand: { alignItems: 'center', flexDirection: 'row', gap: 10, padding: 16 },
+  brandRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', padding: 16 },
+  brand: { alignItems: 'center', flexDirection: 'row', gap: 10 },
   brandText: { color: '#0f172a', fontSize: 22, fontWeight: '700' },
   navListDesktop: { gap: 6 },
   navListMobile: { gap: 8, paddingHorizontal: 12, paddingBottom: 12 },

@@ -84,5 +84,11 @@ describe('MoneyHub dashboard shell', () => {
 
     expect(screen.getByRole('button', { name: 'Sair' })).toBeOnTheScreen();
   });
+
+  test('renders notification center in dashboard navigation', async () => {
+    await render(<DashboardShell />, { wrapper: Wrapper });
+
+    expect(screen.getByRole('button', { name: 'Notificações' })).toBeOnTheScreen();
+  });
 });
 
