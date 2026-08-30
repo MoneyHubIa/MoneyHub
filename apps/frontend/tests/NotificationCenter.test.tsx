@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { NotificationCenter } from '../src/components/NotificationCenter';
 
 const mockMarkNotificationRead = jest.fn().mockResolvedValue({ data: {} });
@@ -36,8 +36,13 @@ const mockQuery = {
   refetch: mockRefetch
 };
 
+const mockUseQuery = jest.fn((...args: unknown[]) => {
+  void args;
+  return mockQuery;
+});
+
 jest.mock('@apollo/client/react', () => ({
-  useQuery: () => mockQuery,
+  useQuery: (...args: unknown[]) => mockUseQuery(...args),
   useMutation: (document: { definitions?: Array<{ name?: { value?: string } }> }) => {
     const operationName = document.definitions?.[0]?.name?.value;
     return [
@@ -94,6 +99,15 @@ describe('NotificationCenter', () => {
     expect(screen.getByText('Reunião de planejamento amanhã')).toBeOnTheScreen();
   });
 
+  test('skips notification query until agenda notification sync is ready', async () => {
+    await render(<NotificationCenter enabled={false} />);
+
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ skip: true })
+    );
+  });
+
   test('marks one unread notification as read', async () => {
     await render(<NotificationCenter />);
     await fireEvent.press(screen.getByRole('button', { name: 'Notificações, 1 não lida' }));
@@ -112,6 +126,17 @@ describe('NotificationCenter', () => {
 
     expect(mockMarkAllNotificationsRead).toHaveBeenCalledWith();
     expect(mockRefetch).toHaveBeenCalled();
+  });
+
+  test('shows an action error when marking one notification as read fails', async () => {
+    mockMarkNotificationRead.mockRejectedValueOnce(new Error('Falha'));
+    await render(<NotificationCenter />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Notificações, 1 não lida' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Marcar Conta de luz vence hoje como lida' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Não foi possível atualizar notificações.')).toBeOnTheScreen();
+    });
   });
 
   test('opens related agenda source when supplied', async () => {

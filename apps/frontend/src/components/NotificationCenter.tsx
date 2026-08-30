@@ -53,6 +53,7 @@ export type NotificationItem = {
 };
 
 type NotificationCenterProps = {
+  enabled?: boolean;
   onOpenSource?: (notification: NotificationItem) => void;
 };
 
@@ -66,10 +67,12 @@ function sourceLabel(source: NotificationItem['source']): string {
   return 'Evento';
 }
 
-export function NotificationCenter({ onOpenSource }: NotificationCenterProps) {
+export function NotificationCenter({ enabled = true, onOpenSource }: NotificationCenterProps) {
   const [open, setOpen] = useState(false);
+  const [actionError, setActionError] = useState(false);
   const { data, loading, error, refetch } = useQuery<NotificationsData>(MY_NOTIFICATIONS_QUERY, {
-    fetchPolicy: 'cache-and-network'
+    fetchPolicy: 'cache-and-network',
+    skip: !enabled
   });
   const [markNotificationRead, { loading: markingNotificationRead }] = useMutation(
     MARK_NOTIFICATION_READ
@@ -88,13 +91,23 @@ export function NotificationCenter({ onOpenSource }: NotificationCenterProps) {
     : 'Notificações';
 
   const handleMarkRead = async (id: string) => {
-    await markNotificationRead({ variables: { id } });
-    await refetch();
+    setActionError(false);
+    try {
+      await markNotificationRead({ variables: { id } });
+      await refetch();
+    } catch {
+      setActionError(true);
+    }
   };
 
   const handleMarkAllRead = async () => {
-    await markAllNotificationsRead();
-    await refetch();
+    setActionError(false);
+    try {
+      await markAllNotificationsRead();
+      await refetch();
+    } catch {
+      setActionError(true);
+    }
   };
 
   return (
@@ -129,6 +142,9 @@ export function NotificationCenter({ onOpenSource }: NotificationCenterProps) {
               </Pressable>
             ) : null}
           </View>
+          {actionError ? (
+            <Text style={[styles.stateText, styles.errorText]}>Não foi possível atualizar notificações.</Text>
+          ) : null}
 
           {loading ? (
             <View style={styles.state}>

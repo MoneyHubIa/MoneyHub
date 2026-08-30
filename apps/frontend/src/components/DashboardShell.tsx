@@ -107,6 +107,7 @@ export function DashboardShell() {
   const [activeSectionId, setActiveSectionId] =
     useState<NavigationId>('dashboard');
   const [loggingOut, setLoggingOut] = useState(false);
+  const [notificationsReady, setNotificationsReady] = useState(false);
   const [syncAgendaNotifications] = useMutation(SYNC_AGENDA_NOTIFICATIONS);
   const { data: summaryData, loading: loadingSummary, refetch: refetchSummary } =
     useQuery<DashboardSummaryData>(DASHBOARD_SUMMARY_QUERY, {
@@ -120,7 +121,20 @@ export function DashboardShell() {
   }, [activeSectionId, refetchSummary]);
 
   useEffect(() => {
-    void syncAgendaNotifications();
+    let active = true;
+    const syncNotifications = async () => {
+      try {
+        await syncAgendaNotifications();
+      } catch {
+        // Notifications can still display existing records when sync fails.
+      } finally {
+        if (active) setNotificationsReady(true);
+      }
+    };
+    void syncNotifications();
+    return () => {
+      active = false;
+    };
   }, [syncAgendaNotifications]);
 
   const activeSection =
@@ -146,7 +160,10 @@ export function DashboardShell() {
             <WalletCards color="#0f766e" size={28} />
             <Text accessibilityRole="header" style={styles.brandText}>MoneyHub</Text>
           </View>
-          <NotificationCenter onOpenSource={() => setActiveSectionId('agenda')} />
+          <NotificationCenter
+            enabled={notificationsReady}
+            onOpenSource={() => setActiveSectionId('agenda')}
+          />
         </View>
 
         <ScrollView
