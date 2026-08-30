@@ -136,6 +136,7 @@ export function Agenda() {
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
   const [reminderOffsetDays, setReminderOffsetDays] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingOccurrence, setEditingOccurrence] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const range = useMemo(() => monthRange(activeMonth), [activeMonth]);
   const { data, loading, refetch } = useQuery<{ myAgenda: AgendaItem[] }>(MY_AGENDA_QUERY, {
@@ -178,6 +179,7 @@ export function Agenda() {
     setRecurrenceEndDate('');
     setReminderOffsetDays(null);
     setEditingId(null);
+    setEditingOccurrence(false);
     setErrorMessage(null);
     refetch();
   }
@@ -211,7 +213,7 @@ export function Agenda() {
           input: {
             id: editingId,
             title: title.trim(),
-            scheduledDate,
+            ...(editingOccurrence ? {} : { scheduledDate }),
             recurrenceRule,
             recurrenceEndDate: endDate,
             notes: notes.trim() || null,
@@ -242,6 +244,7 @@ export function Agenda() {
 
   function handleEdit(item: AgendaItem) {
     setEditingId(calendarEventIdFromAgendaId(item.id));
+    setEditingOccurrence(item.recurrenceRule !== null && /^EVENT:.+:\d{4}-\d{2}-\d{2}$/.test(item.id));
     setTitle(item.title);
     setEventDate(formatISOToRegionalDate(item.scheduledDate, 'BRL'));
     setNotes(item.notes ?? '');

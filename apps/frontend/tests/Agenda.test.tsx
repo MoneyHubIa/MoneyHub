@@ -148,7 +148,6 @@ describe('Agenda', () => {
         input: {
           id: 'event-42',
           title: 'Renovar seguro',
-          scheduledDate: '2026-08-18',
           recurrenceRule: 'MONTHLY',
           recurrenceEndDate: '2026-12-20',
           notes: 'Apólice anual',
@@ -156,6 +155,20 @@ describe('Agenda', () => {
         }
       }
     });
+  });
+
+  test('updates scheduled date when editing a non-recurring event', async () => {
+    await render(<Agenda />);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Editar Reunião de planejamento' }));
+    await fireEvent.changeText(screen.getByLabelText('Data do evento'), '20/08/2026');
+    await fireEvent.press(screen.getByRole('button', { name: 'Atualizar evento' }));
+
+    expect(mockUpdateCalendarEvent).toHaveBeenCalledWith(expect.objectContaining({
+      variables: expect.objectContaining({
+        input: expect.objectContaining({ scheduledDate: '2026-08-20' })
+      })
+    }));
   });
 
   test('deletes whole recurring series using base event ID from occurrence', async () => {
