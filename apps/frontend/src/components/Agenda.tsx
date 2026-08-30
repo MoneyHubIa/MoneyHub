@@ -22,6 +22,9 @@ const MY_AGENDA_QUERY = gql`
       scheduledDate
       status
       notes
+      recurrenceRule
+      recurrenceEndDate
+      reminderOffsetDays
     }
   }
 `;
@@ -59,6 +62,9 @@ type AgendaItem = {
   scheduledDate: string;
   status: string;
   notes?: string | null;
+  recurrenceRule?: RecurrenceRule;
+  recurrenceEndDate?: string | null;
+  reminderOffsetDays?: number | null;
 };
 
 type RecurrenceRule = 'WEEKLY' | 'MONTHLY' | 'YEARLY' | null;
@@ -113,6 +119,10 @@ function sourceLabel(source: AgendaItem['source']): string {
   if (source === 'PAYABLE') return 'Conta a pagar';
   if (source === 'RECEIVABLE') return 'Conta a receber';
   return 'Evento';
+}
+
+function calendarEventIdFromAgendaId(id: string): string {
+  return /^EVENT:(.+):\d{4}-\d{2}-\d{2}$/.exec(id)?.[1] ?? id;
 }
 
 export function Agenda() {
@@ -198,7 +208,15 @@ export function Agenda() {
     if (editingId) {
       await updateCalendarEvent({
         variables: {
-          input: { id: editingId, title: title.trim(), scheduledDate, notes: notes.trim() || null }
+          input: {
+            id: editingId,
+            title: title.trim(),
+            scheduledDate,
+            recurrenceRule,
+            recurrenceEndDate: endDate,
+            notes: notes.trim() || null,
+            reminderOffsetDays
+          }
         }
       });
       return;
@@ -223,12 +241,24 @@ export function Agenda() {
   }
 
   function handleEdit(item: AgendaItem) {
-    setEditingId(item.id);
+    setEditingId(calendarEventIdFromAgendaId(item.id));
     setTitle(item.title);
     setEventDate(formatISOToRegionalDate(item.scheduledDate, 'BRL'));
     setNotes(item.notes ?? '');
+    setRecurrenceRule(item.recurrenceRule ?? null);
+    setRecurrenceEndDate(item.recurrenceEndDate ? formatISOToRegionalDate(item.recurrenceEndDate, 'BRL') : '');
+    setReminderOffsetDays(item.reminderOffsetDays ?? null);
     setSelectedDate(item.scheduledDate);
     setErrorMessage(null);
+  }
+
+  function handleChangeMonth(offset: number) {
+    setActiveMonth((value) => {
+      const month = new Date(value.getFullYear(), value.getMonth() + offset, 1);
+      setSelectedDate(toIsoDate(month));
+      setEventDate(formatISOToRegionalDate(toIsoDate(month), 'BRL'));
+      return month;
+    });
   }
 
   return (
@@ -241,11 +271,11 @@ export function Agenda() {
 
       <View style={styles.calendarCard}>
         <View style={styles.calendarHeader}>
-          <Pressable accessibilityLabel="Mês anterior" accessibilityRole="button" onPress={() => setActiveMonth((value) => new Date(value.getFullYear(), value.getMonth() - 1, 1))} style={styles.iconButton}>
+          <Pressable accessibilityLabel="Mês anterior" accessibilityRole="button" onPress={() => handleChangeMonth(-1)} style={styles.iconButton}>
             <ChevronLeft color="#334155" size={20} />
           </Pressable>
           <Text accessibilityRole="header" style={styles.monthTitle}>{monthTitle(activeMonth)}</Text>
-          <Pressable accessibilityLabel="Próximo mês" accessibilityRole="button" onPress={() => setActiveMonth((value) => new Date(value.getFullYear(), value.getMonth() + 1, 1))} style={styles.iconButton}>
+          <Pressable accessibilityLabel="Próximo mês" accessibilityRole="button" onPress={() => handleChangeMonth(1)} style={styles.iconButton}>
             <ChevronRight color="#334155" size={20} />
           </Pressable>
         </View>
@@ -282,7 +312,7 @@ export function Agenda() {
                 </View>
                 {item.source === 'EVENT' ? <View style={styles.itemActions}>
                   <Pressable accessibilityLabel={`Editar ${item.title}`} accessibilityRole="button" onPress={() => handleEdit(item)} style={styles.smallButton}><Pencil color="#0f766e" size={16} /></Pressable>
-                  <Pressable accessibilityLabel={`Excluir ${item.title}`} accessibilityRole="button" disabled={deleting} onPress={() => deleteCalendarEvent({ variables: { id: item.id } })} style={styles.smallButton}><Trash2 color="#dc2626" size={16} /></Pressable>
+                  <Pressable accessibilityLabel={`Excluir ${item.title}`} accessibilityRole="button" disabled={deleting} onPress={() => deleteCalendarEvent({ variables: { id: calendarEventIdFromAgendaId(item.id) } })} style={styles.smallButton}><Trash2 color="#dc2626" size={16} /></Pressable>
                 </View> : null}
               </View>
             ))}

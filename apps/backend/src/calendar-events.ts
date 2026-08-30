@@ -26,6 +26,9 @@ export type AgendaItem = {
   scheduledDate: Date;
   status: 'SCHEDULED' | 'PENDING';
   notes?: string | null;
+  recurrenceRule?: CalendarRecurrenceRule | null;
+  recurrenceEndDate?: Date | null;
+  reminderOffsetDays?: ReminderOffsetDays | null;
 };
 
 export type CreateCalendarEventInput = {
@@ -280,7 +283,10 @@ export async function listMyAgenda(
       title: event.title,
       scheduledDate,
       status: 'SCHEDULED' as const,
-      notes: event.notes ?? null
+      notes: event.notes ?? null,
+      recurrenceRule: event.recurrenceRule,
+      recurrenceEndDate: event.recurrenceEndDate,
+      reminderOffsetDays: event.reminderOffsetDays ?? null
     }))
   );
   const payableItems = payables.map((item) => ({

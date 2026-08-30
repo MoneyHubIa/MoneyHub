@@ -1018,6 +1018,9 @@ export const typeDefs = `#graphql
     scheduledDate: String!
     status: String!
     notes: String
+    recurrenceRule: RecurrenceRule
+    recurrenceEndDate: String
+    reminderOffsetDays: Int
   }
 
   input AgendaRangeInput {
@@ -1503,7 +1506,9 @@ export const resolvers = {
   },
   AgendaItem: {
     scheduledDate: (parent: AgendaItem) => parent.scheduledDate.toISOString().slice(0, 10),
-    notes: (parent: AgendaItem) => parent.notes ?? null
+    notes: (parent: AgendaItem) => parent.notes ?? null,
+    recurrenceEndDate: (parent: AgendaItem) => parent.recurrenceEndDate?.toISOString().slice(0, 10) ?? null,
+    reminderOffsetDays: (parent: AgendaItem) => parent.reminderOffsetDays ?? null
   },
   Notification: {
     occurrenceDate: (parent: Notification) => parent.occurrenceDate.toISOString().slice(0, 10),

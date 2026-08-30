@@ -210,6 +210,42 @@ describe('calendar events', () => {
     assert.equal(resolvers.CalendarEvent.notes(updated), 'Enviar pauta antes.');
   });
 
+  test('includes recurring event fields on Agenda occurrence for full-series edits', async () => {
+    const repository = createRepository();
+    const created = await createCalendarEvent(
+      verifiedContext(),
+      {
+        title: 'Renovar seguro',
+        scheduledDate: '2026-08-18',
+        recurrenceRule: 'MONTHLY',
+        recurrenceEndDate: '2026-12-20',
+        reminderOffsetDays: 3
+      },
+      repository
+    );
+
+    const agenda = await listMyAgenda(
+      verifiedContext(),
+      { startDate: '2026-08-01', endDate: '2026-08-31' },
+      repository
+    );
+
+    assert.deepEqual(
+      agenda.find((item) => item.id === `EVENT:${created.id}:2026-08-18`),
+      {
+        id: `EVENT:${created.id}:2026-08-18`,
+        source: 'EVENT',
+        title: 'Renovar seguro',
+        scheduledDate: new Date('2026-08-18T00:00:00.000Z'),
+        status: 'SCHEDULED',
+        notes: null,
+        recurrenceRule: 'MONTHLY',
+        recurrenceEndDate: new Date('2026-12-20T00:00:00.000Z'),
+        reminderOffsetDays: 3
+      }
+    );
+  });
+
   test('rejects event notes longer than 500 characters', async () => {
     await assert.rejects(
       () => createCalendarEvent(
