@@ -213,7 +213,7 @@ export function Agenda() {
           input: {
             id: editingId,
             title: title.trim(),
-            ...(editingOccurrence ? {} : { scheduledDate }),
+            ...(editingOccurrence && recurrenceRule ? {} : { scheduledDate }),
             recurrenceRule,
             recurrenceEndDate: endDate,
             notes: notes.trim() || null,

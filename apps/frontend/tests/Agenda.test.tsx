@@ -171,6 +171,36 @@ describe('Agenda', () => {
     }));
   });
 
+  test('submits occurrence date when converting a recurring occurrence to non-recurring', async () => {
+    mockAgendaItems = [{
+      id: 'EVENT:event-42:2026-08-20',
+      source: 'EVENT',
+      title: 'Renovar seguro',
+      scheduledDate: '2026-08-20',
+      status: 'SCHEDULED',
+      notes: null,
+      recurrenceRule: 'MONTHLY',
+      recurrenceEndDate: '2026-12-20',
+      reminderOffsetDays: null
+    }];
+    await render(<Agenda />);
+
+    await fireEvent.press(screen.getByRole('button', { name: '20 de agosto de 2026' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Editar Renovar seguro' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Sem recorrência' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Atualizar evento' }));
+
+    expect(mockUpdateCalendarEvent).toHaveBeenCalledWith(expect.objectContaining({
+      variables: expect.objectContaining({
+        input: expect.objectContaining({
+          scheduledDate: '2026-08-20',
+          recurrenceRule: null,
+          recurrenceEndDate: null
+        })
+      })
+    }));
+  });
+
   test('deletes whole recurring series using base event ID from occurrence', async () => {
     mockAgendaItems = [{
       id: 'EVENT:event-42:2026-08-18',
