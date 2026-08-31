@@ -221,8 +221,8 @@ test('returns only authenticated owner account, event, and reminders through age
     { startDate: '2026-08-01', endDate: '2026-08-31' },
     eventRepository
   );
-  await syncAgendaNotifications(owner, notificationRepository, new Date('2026-08-27T00:00:00.000Z'));
-  await syncAgendaNotifications(otherUser, notificationRepository, new Date('2026-08-27T00:00:00.000Z'));
+  await syncAgendaNotifications(owner, notificationRepository, '2026-08-27');
+  await syncAgendaNotifications(otherUser, notificationRepository, '2026-08-27');
 
   assert.deepEqual(
     ownerAgenda.map((item) => [item.source, item.title]),

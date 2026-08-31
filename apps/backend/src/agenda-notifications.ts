@@ -39,7 +39,7 @@ type NotificationUniqueKey = {
 };
 
 export type AgendaNotificationsRepository = {
-  findReminderItems(args: { userId: string; throughDate: Date }): Promise<ReminderSourceItem[]>;
+  findReminderItems(args: { userId: string; rangeStart: Date; throughDate: Date }): Promise<ReminderSourceItem[]>;
   upsert(args: {
     where: { userId_source_sourceId_occurrenceDate: NotificationUniqueKey };
     create: Omit<Notification, 'id' | 'readAt' | 'createdAt'>;
@@ -53,6 +53,7 @@ export type AgendaNotificationsRepository = {
 };
 
 const validReminderOffsets = new Set<Exclude<ReminderOffsetDays, null>>([0, 1, 3, 7]);
+const localDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 export function agendaNotificationError(message: string, code = 'BAD_USER_INPUT'): GraphQLError {
   return new GraphQLError(message, { extensions: { code } });
@@ -70,6 +71,23 @@ function startOfUtcDay(value: Date): Date {
   return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
 }
 
+function parseLocalDay(value: string): Date {
+  if (!localDatePattern.test(value)) {
+    throw agendaNotificationError('Today must use YYYY-MM-DD format.');
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+  const parsed = new Date(Date.UTC(year!, month! - 1, day!));
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month! - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    throw agendaNotificationError('Today is invalid.');
+  }
+  return parsed;
+}
+
 function addUtcDays(value: Date, days: number): Date {
   return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate() + days));
 }
@@ -82,23 +100,19 @@ function notificationKey(source: NotificationSource, sourceId: string, occurrenc
   return `${source}:${sourceId}:${startOfUtcDay(occurrenceDate).toISOString()}`;
 }
 
-function occurrenceDates(item: ReminderSourceItem, throughDate: Date): Date[] {
-  if (item.source !== 'EVENT' || !item.recurrenceRule) {
-    return [startOfUtcDay(item.scheduledDate)];
-  }
-
+function occurrenceDates(item: ReminderSourceItem, rangeStart: Date, throughDate: Date): Date[] {
   return calendarEventOccurrences(
     {
       id: item.id,
       userId: item.userId,
       title: item.title,
       scheduledDate: startOfUtcDay(item.scheduledDate),
-      recurrenceRule: item.recurrenceRule,
+      recurrenceRule: item.recurrenceRule ?? null,
       recurrenceEndDate: item.recurrenceEndDate ? startOfUtcDay(item.recurrenceEndDate) : null,
       createdAt: throughDate,
       updatedAt: throughDate
     },
-    startOfUtcDay(item.scheduledDate),
+    rangeStart,
     throughDate
   );
 }
@@ -112,13 +126,13 @@ function isEligible(item: ReminderSourceItem): boolean {
 export async function syncAgendaNotifications(
   context: GraphQLContext,
   repository: AgendaNotificationsRepository,
-  now = new Date()
+  localToday: string
 ): Promise<Notification[]> {
   const userId = requireVerifiedUserId(context);
-  const today = startOfUtcDay(now);
+  const today = parseLocalDay(localToday);
   const throughDate = addUtcDays(today, 7);
   const [items, existingNotifications] = await Promise.all([
-    repository.findReminderItems({ userId, throughDate }),
+    repository.findReminderItems({ userId, rangeStart: today, throughDate }),
     repository.findMany({ where: { userId } })
   ]);
   const notifications: Notification[] = [];
@@ -129,10 +143,10 @@ export async function syncAgendaNotifications(
     const offsetDays = validateReminderOffsetDays(item.reminderOffsetDays);
     if (offsetDays === null) continue;
 
-    for (const occurrenceDate of occurrenceDates(item, throughDate)) {
+    for (const occurrenceDate of occurrenceDates(item, today, throughDate)) {
       const normalizedOccurrenceDate = startOfUtcDay(occurrenceDate);
       const dueOn = reminderDate(normalizedOccurrenceDate, offsetDays);
-      if (dueOn > today) continue;
+      if (dueOn.getTime() !== today.getTime()) continue;
       eligibleKeys.add(notificationKey(item.source, item.id, normalizedOccurrenceDate));
 
       notifications.push(
@@ -160,7 +174,11 @@ export async function syncAgendaNotifications(
   }
 
   const invalidNotificationIds = existingNotifications
-    .filter((item) => !eligibleKeys.has(notificationKey(item.source, item.sourceId, item.occurrenceDate)))
+    .filter(
+      (item) =>
+        startOfUtcDay(item.reminderDate).getTime() === today.getTime() &&
+        !eligibleKeys.has(notificationKey(item.source, item.sourceId, item.occurrenceDate))
+    )
     .map((item) => item.id);
   if (invalidNotificationIds.length > 0) {
     await repository.deleteMany({ where: { userId, id: { in: invalidNotificationIds } } });

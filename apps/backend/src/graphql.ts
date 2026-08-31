@@ -524,18 +524,35 @@ function agendaNotificationsRepository(): AgendaNotificationsRepository {
   });
 
   return {
-    findReminderItems: async ({ userId, throughDate }) => {
+    findReminderItems: async ({ userId, rangeStart, throughDate }) => {
       const [events, payables, receivables] = await Promise.all([
         prisma.calendarEvent.findMany({
-          where: { userId, reminderOffsetDays: { not: null }, scheduledDate: { lte: throughDate } },
+          where: {
+            userId,
+            reminderOffsetDays: { not: null },
+            scheduledDate: { lte: throughDate },
+            OR: [{ recurrenceRule: { not: null } }, { scheduledDate: { gte: rangeStart } }]
+          },
           select: { id: true, userId: true, title: true, scheduledDate: true, reminderOffsetDays: true, recurrenceRule: true, recurrenceEndDate: true }
         }),
         prisma.accountPayable.findMany({
-          where: { userId, status: 'PENDING', deletedAt: null, reminderOffsetDays: { not: null }, dueDate: { lte: throughDate } },
+          where: {
+            userId,
+            status: 'PENDING',
+            deletedAt: null,
+            reminderOffsetDays: { not: null },
+            dueDate: { gte: rangeStart, lte: throughDate }
+          },
           select: { id: true, userId: true, description: true, dueDate: true, reminderOffsetDays: true }
         }),
         prisma.accountReceivable.findMany({
-          where: { userId, status: 'PENDING', deletedAt: null, reminderOffsetDays: { not: null }, dueDate: { lte: throughDate } },
+          where: {
+            userId,
+            status: 'PENDING',
+            deletedAt: null,
+            reminderOffsetDays: { not: null },
+            dueDate: { gte: rangeStart, lte: throughDate }
+          },
           select: { id: true, userId: true, description: true, dueDate: true, reminderOffsetDays: true }
         })
       ]);
@@ -1113,7 +1130,7 @@ export const typeDefs = `#graphql
     createCalendarEvent(input: CreateCalendarEventInput!): CalendarEvent!
     updateCalendarEvent(input: UpdateCalendarEventInput!): CalendarEvent!
     deleteCalendarEvent(id: ID!): Boolean!
-    syncAgendaNotifications: [Notification!]!
+    syncAgendaNotifications(today: String!): [Notification!]!
     markNotificationRead(id: ID!): Notification!
     markAllNotificationsRead: Int!
   }
@@ -1483,8 +1500,12 @@ export const resolvers = {
     ) => {
       return deleteCalendarEvent(context, args.id, calendarEventRepository());
     },
-    syncAgendaNotifications: (_parent: unknown, _args: unknown, context: GraphQLContext) => {
-      return syncAgendaNotifications(context, agendaNotificationsRepository());
+    syncAgendaNotifications: (
+      _parent: unknown,
+      args: { today: string },
+      context: GraphQLContext
+    ) => {
+      return syncAgendaNotifications(context, agendaNotificationsRepository(), args.today);
     },
     markNotificationRead: (
       _parent: unknown,
