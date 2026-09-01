@@ -30,3 +30,23 @@ Implemented reminder configuration for Accounts Payable and Accounts Receivable.
 - `git diff --check` reported no whitespace errors.
 - Reviewed only Task 2 component and test changes before commit.
 - User-owned README and documentation edits remain unstaged and excluded.
+
+## Follow-up Review Correction
+
+- Added backend persistence matrices for create and update in both account services. Each matrix covers `null`, `0`, `1`, `3`, and `7`.
+- Added frontend create and update matrices for both screens. Each selector value reaches the matching GraphQL mutation input.
+- Expanded edit tests to assert the saved reminder and every existing editable field remain unchanged when updating without edits.
+- RED: backend persistence matrices failed with `actual undefined` and `expected null` because the in-memory repository test fixture did not round-trip `reminderOffsetDays` on create.
+- RED: edit-preservation tests failed because the UI converted `2500.00`/`4500.00` to `2500`/`4500` before update.
+- GREEN: the fixture now round-trips the field; account forms preserve the validated entered amount string rather than normalizing it.
+
+## Follow-up Verification
+
+- `node --import tsx --test tests/accounts-payable.test.ts tests/accounts-receivable.test.ts` in `apps/backend`
+  - PASS: 24 tests.
+- `npm test -w apps/frontend -- AccountsPayable.test.tsx AccountsReceivable.test.tsx`
+  - PASS: 2 suites, 26 tests.
+- `npm run typecheck -w apps/frontend`
+  - PASS.
+- `npm run typecheck -w apps/backend`
+  - PASS.

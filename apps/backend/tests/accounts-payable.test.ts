@@ -64,6 +64,7 @@ function createRepository(overrides: Partial<AccountPayableRepository> = {}): Ac
         dueDate: data.dueDate,
         status: data.status ?? 'PENDING',
         paidAt: data.paidAt ?? null,
+        reminderOffsetDays: data.reminderOffsetDays ?? null,
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null
@@ -132,6 +133,31 @@ describe('accounts payable', () => {
     assert.equal(result.amount, '120.50');
     assert.equal(result.status, 'PENDING');
     assert.equal(result.paidAt, null);
+  });
+
+  test('persists every supported reminder offset when creating and updating an account payable', async () => {
+    for (const reminderOffsetDays of [null, 0, 1, 3, 7]) {
+      const repository = createRepository();
+      const created = await createAccountPayable(
+        verifiedContext(),
+        {
+          categoryId: 'cat-2',
+          description: 'Internet',
+          amount: '120.50',
+          dueDate: '2026-08-25T00:00:00.000Z',
+          reminderOffsetDays
+        },
+        repository
+      );
+      assert.equal(created.reminderOffsetDays, reminderOffsetDays);
+
+      const updated = await updateAccountPayable(
+        verifiedContext(),
+        { id: 'payable-1', reminderOffsetDays },
+        repository
+      );
+      assert.equal(updated.reminderOffsetDays, reminderOffsetDays);
+    }
   });
 
   test('creates account payable directly as PAID setting paidAt', async () => {

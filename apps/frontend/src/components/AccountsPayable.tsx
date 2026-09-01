@@ -220,7 +220,7 @@ export function AccountsPayable() {
 
     const input = {
       description: description.trim(),
-      amount: Number(amount).toString(),
+      amount: amount.trim(),
       dueDate: new Date(isoDueDate).toISOString(),
       categoryId,
       costCenterId: costCenterId || undefined,

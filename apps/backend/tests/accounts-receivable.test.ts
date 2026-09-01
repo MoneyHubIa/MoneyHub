@@ -64,6 +64,7 @@ function createRepository(overrides: Partial<AccountReceivableRepository> = {}):
         dueDate: data.dueDate,
         status: data.status ?? 'PENDING',
         receivedAt: data.receivedAt ?? null,
+        reminderOffsetDays: data.reminderOffsetDays ?? null,
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null
@@ -132,6 +133,31 @@ describe('accounts receivable', () => {
     assert.equal(result.amount, '8000.00');
     assert.equal(result.status, 'PENDING');
     assert.equal(result.receivedAt, null);
+  });
+
+  test('persists every supported reminder offset when creating and updating an account receivable', async () => {
+    for (const reminderOffsetDays of [null, 0, 1, 3, 7]) {
+      const repository = createRepository();
+      const created = await createAccountReceivable(
+        verifiedContext(),
+        {
+          categoryId: 'cat-2',
+          description: 'Venda de Projeto',
+          amount: '8000.00',
+          dueDate: '2026-08-25T00:00:00.000Z',
+          reminderOffsetDays
+        },
+        repository
+      );
+      assert.equal(created.reminderOffsetDays, reminderOffsetDays);
+
+      const updated = await updateAccountReceivable(
+        verifiedContext(),
+        { id: 'receivable-1', reminderOffsetDays },
+        repository
+      );
+      assert.equal(updated.reminderOffsetDays, reminderOffsetDays);
+    }
   });
 
   test('creates account receivable directly as RECEIVED setting receivedAt', async () => {

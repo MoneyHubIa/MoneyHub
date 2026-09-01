@@ -34,6 +34,14 @@ type MutationDocument = {
   definitions: Array<{ name?: { value?: string } }>;
 };
 
+const reminderOptions = [
+  { label: 'Sem lembrete', value: null },
+  { label: 'No dia', value: 0 },
+  { label: '1 dia antes', value: 1 },
+  { label: '3 dias antes', value: 3 },
+  { label: '7 dias antes', value: 7 }
+] as const;
+
 jest.mock('@apollo/client/react', () => ({
   useQuery: () => ({
     data: {
@@ -113,7 +121,7 @@ describe('AccountsReceivable component', () => {
     expect(screen.getByText('Informe uma descrição.')).toBeOnTheScreen();
   });
 
-  test('sends selected reminder offset when creating an account receivable', async () => {
+  test.each(reminderOptions)('sends $value as selected reminder offset when creating an account receivable', async ({ label, value }) => {
     await render(<AccountsReceivable />, { wrapper: Wrapper });
 
     await fireEvent.changeText(
@@ -124,18 +132,18 @@ describe('AccountsReceivable component', () => {
     const categoryTags = screen.getAllByText('Serviços Prestados');
     expect(categoryTags[0]).toBeDefined();
     await fireEvent.press(categoryTags[0]!);
-    await fireEvent.press(screen.getByRole('button', { name: '7 dias antes' }));
+    await fireEvent.press(screen.getByRole('button', { name: label }));
 
     await fireEvent.press(screen.getByRole('button', { name: 'Agendar Conta a Receber' }));
 
     expect(mockCreateReceivable).toHaveBeenCalledWith(expect.objectContaining({
       variables: expect.objectContaining({
-        input: expect.objectContaining({ reminderOffsetDays: 7 })
+        input: expect.objectContaining({ reminderOffsetDays: value })
       })
     }));
   });
 
-  test('keeps saved reminder offset when updating an account receivable', async () => {
+  test('keeps saved reminder and existing account values when updating an account receivable', async () => {
     await render(<AccountsReceivable />, { wrapper: Wrapper });
 
     await fireEvent.press(screen.getByRole('button', { name: 'Editar Consultoria Contábil' }));
@@ -146,9 +154,31 @@ describe('AccountsReceivable component', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: 'Atualizar Conta a Receber' }));
 
+    expect(mockUpdateReceivable).toHaveBeenCalledWith({
+      variables: {
+        input: {
+          id: 'receivable-1',
+          description: 'Consultoria Contábil',
+          amount: '4500.00',
+          dueDate: '2026-08-30T00:00:00.000Z',
+          categoryId: 'cat-1',
+          costCenterId: undefined,
+          reminderOffsetDays: 1
+        }
+      }
+    });
+  });
+
+  test.each(reminderOptions)('sends $value as selected reminder offset when updating an account receivable', async ({ label, value }) => {
+    await render(<AccountsReceivable />, { wrapper: Wrapper });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Editar Consultoria Contábil' }));
+    await fireEvent.press(screen.getByRole('button', { name: label }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Atualizar Conta a Receber' }));
+
     expect(mockUpdateReceivable).toHaveBeenCalledWith(expect.objectContaining({
       variables: expect.objectContaining({
-        input: expect.objectContaining({ id: 'receivable-1', reminderOffsetDays: 1 })
+        input: expect.objectContaining({ id: 'receivable-1', reminderOffsetDays: value })
       })
     }));
   });
