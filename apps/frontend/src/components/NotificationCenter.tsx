@@ -56,7 +56,7 @@ type NotificationCenterProps = {
   enabled?: boolean;
   onOpenSource?: (notification: NotificationItem) => void;
   syncError?: boolean;
-  onRetrySync?: () => void;
+  onRetrySync?: () => void | Promise<void>;
 };
 
 type NotificationsData = {
@@ -77,6 +77,7 @@ export function NotificationCenter({
 }: NotificationCenterProps) {
   const [open, setOpen] = useState(false);
   const [actionError, setActionError] = useState(false);
+  const [retryingSync, setRetryingSync] = useState(false);
   const { data, loading, error, refetch } = useQuery<NotificationsData>(MY_NOTIFICATIONS_QUERY, {
     fetchPolicy: 'cache-and-network',
     skip: !enabled
@@ -114,6 +115,21 @@ export function NotificationCenter({
       await refetch();
     } catch {
       setActionError(true);
+    }
+  };
+
+  const handleRetrySync = async () => {
+    if (!onRetrySync) return;
+
+    setActionError(false);
+    setRetryingSync(true);
+    try {
+      await onRetrySync();
+      await refetch();
+    } catch {
+      setActionError(true);
+    } finally {
+      setRetryingSync(false);
     }
   };
 
@@ -161,8 +177,9 @@ export function NotificationCenter({
               {onRetrySync ? (
                 <Pressable
                   accessibilityRole="button"
-                  onPress={onRetrySync}
-                  style={styles.syncRetryButton}
+                  disabled={retryingSync}
+                  onPress={() => void handleRetrySync()}
+                  style={[styles.syncRetryButton, retryingSync && styles.buttonDisabled]}
                 >
                   <Text style={styles.syncRetryText}>Tentar novamente</Text>
                 </Pressable>

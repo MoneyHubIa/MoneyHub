@@ -14,7 +14,7 @@ import {
   Target,
   WalletCards
 } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -113,7 +113,6 @@ export function DashboardShell() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [notificationsReady, setNotificationsReady] = useState(false);
   const [syncAgendaError, setSyncAgendaError] = useState(false);
-  const [syncAttempt, setSyncAttempt] = useState(0);
   const [syncAgendaNotifications] = useMutation(SYNC_AGENDA_NOTIFICATIONS);
   const { data: summaryData, loading: loadingSummary, refetch: refetchSummary } =
     useQuery<DashboardSummaryData>(DASHBOARD_SUMMARY_QUERY, {
@@ -126,23 +125,21 @@ export function DashboardShell() {
     }
   }, [activeSectionId, refetchSummary]);
 
+  const syncNotifications = useCallback(async () => {
+    setSyncAgendaError(false);
+    try {
+      await syncAgendaNotifications({ variables: { today: localIsoDate(new Date()) } });
+    } catch (error) {
+      setSyncAgendaError(true);
+      throw error;
+    } finally {
+      setNotificationsReady(true);
+    }
+  }, [syncAgendaNotifications]);
+
   useEffect(() => {
-    let active = true;
-    const syncNotifications = async () => {
-      if (active) setSyncAgendaError(false);
-      try {
-        await syncAgendaNotifications({ variables: { today: localIsoDate(new Date()) } });
-      } catch {
-        if (active) setSyncAgendaError(true);
-      } finally {
-        if (active) setNotificationsReady(true);
-      }
-    };
-    void syncNotifications();
-    return () => {
-      active = false;
-    };
-  }, [syncAgendaNotifications, syncAttempt]);
+    void syncNotifications().catch(() => undefined);
+  }, [syncNotifications]);
 
   const activeSection =
     navigationItems.find((item) => item.id === activeSectionId) ??
@@ -170,7 +167,7 @@ export function DashboardShell() {
           <NotificationCenter
             enabled={notificationsReady}
             onOpenSource={() => setActiveSectionId('agenda')}
-            onRetrySync={() => setSyncAttempt((attempt) => attempt + 1)}
+            onRetrySync={syncNotifications}
             syncError={syncAgendaError}
           />
         </View>

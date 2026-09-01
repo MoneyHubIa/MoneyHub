@@ -166,9 +166,23 @@ describe('NotificationCenter', () => {
     expect(screen.getByText('Nenhuma notificação por enquanto.')).toBeOnTheScreen();
   });
 
-  test('shows sync failure separately from an empty notification list and retries it', async () => {
+  test('refreshes notification list after a successful sync retry', async () => {
+    const syncedNotification = {
+      id: 'notification-synced',
+      source: 'EVENT' as const,
+      sourceId: 'event-synced',
+      title: 'Lembrete sincronizado',
+      occurrenceDate: '2026-08-31',
+      reminderDate: '2026-08-30',
+      readAt: null,
+      createdAt: '2026-08-30T11:00:00.000Z'
+    };
     Object.assign(mockQuery, { data: { myNotifications: [] }, loading: false, error: undefined });
-    await render(<NotificationCenter syncError onRetrySync={mockRetrySync} />);
+    const retrySync = jest.fn(async () => {
+      Object.assign(mockQuery, { data: { myNotifications: [syncedNotification] } });
+    });
+    mockRefetch.mockResolvedValueOnce({ data: { myNotifications: [syncedNotification] } });
+    const { rerender } = await render(<NotificationCenter syncError onRetrySync={retrySync} />);
     await fireEvent.press(screen.getByRole('button', { name: 'Notificações' }));
 
     expect(screen.getByLabelText('Falha de sincronização da agenda')).toBeOnTheScreen();
@@ -176,7 +190,13 @@ describe('NotificationCenter', () => {
     expect(screen.getByText('Nenhuma notificação por enquanto.')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByRole('button', { name: 'Tentar novamente' }));
-    expect(mockRetrySync).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(retrySync).toHaveBeenCalledTimes(1);
+      expect(mockRefetch).toHaveBeenCalledTimes(1);
+    });
+    await rerender(<NotificationCenter syncError onRetrySync={retrySync} />);
+
+    expect(screen.getByText('Lembrete sincronizado')).toBeOnTheScreen();
   });
 
   test('shows error state', async () => {
