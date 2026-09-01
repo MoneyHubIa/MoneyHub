@@ -125,6 +125,12 @@ function calendarEventIdFromAgendaId(id: string): string {
   return /^EVENT:(.+):\d{4}-\d{2}-\d{2}$/.exec(id)?.[1] ?? id;
 }
 
+type RetryAction = () => Promise<void>;
+
+function messageForError(error: unknown): string {
+  return error instanceof Error ? error.message : 'Não foi possível concluir esta ação.';
+}
+
 export function Agenda() {
   const today = useMemo(() => new Date(), []);
   const [activeMonth, setActiveMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
@@ -137,24 +143,17 @@ export function Agenda() {
   const [reminderOffsetDays, setReminderOffsetDays] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingOccurrence, setEditingOccurrence] = useState(false);
+  const [editingOccurrenceDate, setEditingOccurrenceDate] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [retryAction, setRetryAction] = useState<RetryAction | null>(null);
   const range = useMemo(() => monthRange(activeMonth), [activeMonth]);
-  const { data, loading, refetch } = useQuery<{ myAgenda: AgendaItem[] }>(MY_AGENDA_QUERY, {
+  const { data, loading, error: agendaError, refetch } = useQuery<{ myAgenda: AgendaItem[] }>(MY_AGENDA_QUERY, {
     variables: { input: range },
     fetchPolicy: 'cache-and-network'
   });
-  const [createCalendarEvent, { loading: creating }] = useMutation(CREATE_CALENDAR_EVENT, {
-    onCompleted: () => resetForm(),
-    onError: (error) => setErrorMessage(error.message)
-  });
-  const [updateCalendarEvent, { loading: updating }] = useMutation(UPDATE_CALENDAR_EVENT, {
-    onCompleted: () => resetForm(),
-    onError: (error) => setErrorMessage(error.message)
-  });
-  const [deleteCalendarEvent, { loading: deleting }] = useMutation(DELETE_CALENDAR_EVENT, {
-    onCompleted: () => refetch(),
-    onError: (error) => setErrorMessage(error.message)
-  });
+  const [createCalendarEvent, { loading: creating }] = useMutation(CREATE_CALENDAR_EVENT);
+  const [updateCalendarEvent, { loading: updating }] = useMutation(UPDATE_CALENDAR_EVENT);
+  const [deleteCalendarEvent, { loading: deleting }] = useMutation(DELETE_CALENDAR_EVENT);
 
   const items = data?.myAgenda ?? [];
   const selectedItems = items.filter((item) => item.scheduledDate === selectedDate);
@@ -180,11 +179,26 @@ export function Agenda() {
     setReminderOffsetDays(null);
     setEditingId(null);
     setEditingOccurrence(false);
+    setEditingOccurrenceDate(null);
     setErrorMessage(null);
+    setRetryAction(null);
     refetch();
   }
 
-  async function handleSave() {
+  function runMutation(action: RetryAction) {
+    setErrorMessage(null);
+    setRetryAction(null);
+    void action().catch((error: unknown) => {
+      setErrorMessage(messageForError(error));
+      setRetryAction(() => action);
+    });
+  }
+
+  function handleRetryMutation() {
+    if (retryAction) runMutation(retryAction);
+  }
+
+  function handleSave() {
     const scheduledDate = parseRegionalDateToISO(eventDate, 'BRL');
     const endDate = recurrenceEndDate
       ? parseRegionalDateToISO(recurrenceEndDate, 'BRL')
@@ -206,14 +220,32 @@ export function Agenda() {
       return;
     }
 
-    setErrorMessage(null);
     if (editingId) {
-      await updateCalendarEvent({
+      const preservesSeriesAnchor = editingOccurrence && recurrenceRule && scheduledDate === editingOccurrenceDate;
+      runMutation(async () => {
+        await updateCalendarEvent({
+          variables: {
+            input: {
+              id: editingId,
+              title: title.trim(),
+              ...(preservesSeriesAnchor ? {} : { scheduledDate }),
+              recurrenceRule,
+              recurrenceEndDate: endDate,
+              notes: notes.trim() || null,
+              reminderOffsetDays
+            }
+          }
+        });
+        resetForm();
+      });
+      return;
+    }
+    runMutation(async () => {
+      await createCalendarEvent({
         variables: {
           input: {
-            id: editingId,
             title: title.trim(),
-            ...(editingOccurrence && recurrenceRule ? {} : { scheduledDate }),
+            scheduledDate,
             recurrenceRule,
             recurrenceEndDate: endDate,
             notes: notes.trim() || null,
@@ -221,19 +253,7 @@ export function Agenda() {
           }
         }
       });
-      return;
-    }
-    await createCalendarEvent({
-      variables: {
-        input: {
-          title: title.trim(),
-          scheduledDate,
-          recurrenceRule,
-          recurrenceEndDate: endDate,
-          notes: notes.trim() || null,
-          reminderOffsetDays
-        }
-      }
+      resetForm();
     });
   }
 
@@ -243,8 +263,10 @@ export function Agenda() {
   }
 
   function handleEdit(item: AgendaItem) {
+    const isRecurringOccurrence = item.recurrenceRule !== null && /^EVENT:.+:\d{4}-\d{2}-\d{2}$/.test(item.id);
     setEditingId(calendarEventIdFromAgendaId(item.id));
-    setEditingOccurrence(item.recurrenceRule !== null && /^EVENT:.+:\d{4}-\d{2}-\d{2}$/.test(item.id));
+    setEditingOccurrence(isRecurringOccurrence);
+    setEditingOccurrenceDate(isRecurringOccurrence ? item.scheduledDate : null);
     setTitle(item.title);
     setEventDate(formatISOToRegionalDate(item.scheduledDate, 'BRL'));
     setNotes(item.notes ?? '');
@@ -253,6 +275,14 @@ export function Agenda() {
     setReminderOffsetDays(item.reminderOffsetDays ?? null);
     setSelectedDate(item.scheduledDate);
     setErrorMessage(null);
+    setRetryAction(null);
+  }
+
+  function handleDelete(id: string) {
+    runMutation(async () => {
+      await deleteCalendarEvent({ variables: { id: calendarEventIdFromAgendaId(id) } });
+      await refetch();
+    });
   }
 
   function handleChangeMonth(offset: number) {
@@ -303,7 +333,10 @@ export function Agenda() {
 
       <View style={styles.dayListCard}>
         <Text accessibilityRole="header" style={styles.sectionTitle}>Compromissos em {dayTitle(selectedDate)}</Text>
-        {loading ? <ActivityIndicator color="#0f766e" size="small" /> : selectedItems.length === 0 ? (
+        {agendaError ? <View style={styles.errorState}>
+          <Text accessibilityRole="alert" style={styles.errorText}>Não foi possível carregar a agenda.</Text>
+          <Pressable accessibilityRole="button" onPress={() => void refetch()} style={styles.retryButton}><Text style={styles.retryButtonText}>Tentar novamente</Text></Pressable>
+        </View> : loading ? <ActivityIndicator color="#0f766e" size="small" /> : selectedItems.length === 0 ? (
           <Text style={styles.emptyText}>Nenhum compromisso neste dia.</Text>
         ) : (
           <View style={styles.itemsList}>
@@ -315,7 +348,7 @@ export function Agenda() {
                 </View>
                 {item.source === 'EVENT' ? <View style={styles.itemActions}>
                   <Pressable accessibilityLabel={`Editar ${item.title}`} accessibilityRole="button" onPress={() => handleEdit(item)} style={styles.smallButton}><Pencil color="#0f766e" size={16} /></Pressable>
-                  <Pressable accessibilityLabel={`Excluir ${item.title}`} accessibilityRole="button" disabled={deleting} onPress={() => deleteCalendarEvent({ variables: { id: calendarEventIdFromAgendaId(item.id) } })} style={styles.smallButton}><Trash2 color="#dc2626" size={16} /></Pressable>
+                  <Pressable accessibilityLabel={`Excluir ${item.title}`} accessibilityRole="button" disabled={deleting} onPress={() => handleDelete(item.id)} style={styles.smallButton}><Trash2 color="#dc2626" size={16} /></Pressable>
                 </View> : null}
               </View>
             ))}
@@ -325,12 +358,16 @@ export function Agenda() {
 
       <View style={styles.formCard}>
         <Text style={styles.sectionTitle}>{editingId ? 'Editar evento' : 'Novo evento'}</Text>
-        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+        {errorMessage ? <View style={styles.errorState}>
+          <Text accessibilityRole="alert" style={styles.errorText}>{errorMessage}</Text>
+          {retryAction ? <Pressable accessibilityRole="button" onPress={handleRetryMutation} style={styles.retryButton}><Text style={styles.retryButtonText}>Tentar novamente</Text></Pressable> : null}
+        </View> : null}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Título</Text>
           <TextInput accessibilityLabel="Título do evento" onChangeText={setTitle} placeholder="Ex: Renovar seguro" placeholderTextColor="#94a3b8" style={styles.input} value={title} />
         </View>
         <DatePickerInput accessibilityLabel="Data do evento" label="Data" onChangeText={setEventDate} value={eventDate} />
+        {editingOccurrence && recurrenceRule ? <Text style={styles.recurrenceHint}>Alterar data move a âncora de toda a série.</Text> : null}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Notas</Text>
           <TextInput accessibilityLabel="Notas do evento" multiline onChangeText={setNotes} placeholder="Ex: Apólice, instruções ou contexto" placeholderTextColor="#94a3b8" style={[styles.input, styles.notesInput]} value={notes} />
@@ -357,5 +394,5 @@ const styles = StyleSheet.create({
   calendarCard: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, gap: 12, padding: 16 }, calendarHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }, iconButton: { borderRadius: 6, padding: 8 }, monthTitle: { color: '#0f172a', fontSize: 18, fontWeight: '700' }, weekRow: { flexDirection: 'row' }, weekDay: { color: '#64748b', flex: 1, fontSize: 12, fontWeight: '700', textAlign: 'center' },
   daysGrid: { flexDirection: 'row', flexWrap: 'wrap' }, dayCell: { alignItems: 'center', flexBasis: '14.2857%', minHeight: 54, paddingTop: 8 }, dayCellSelected: { backgroundColor: '#ccfbf1', borderRadius: 6 }, dayNumber: { color: '#0f172a', fontSize: 14, fontWeight: '600' }, dayNumberSelected: { color: '#0f766e', fontWeight: '800' }, dayMarker: { backgroundColor: '#0f766e', borderRadius: 3, height: 6, marginTop: 5, width: 6 },
   dayListCard: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, gap: 12, padding: 16 }, sectionTitle: { color: '#0f172a', fontSize: 18, fontWeight: '700' }, emptyText: { color: '#64748b', fontSize: 14 }, itemsList: { gap: 8 }, agendaItem: { alignItems: 'center', backgroundColor: '#f8fafc', borderRadius: 6, flexDirection: 'row', justifyContent: 'space-between', padding: 12 }, itemCopy: { gap: 5, flex: 1 }, itemTitle: { color: '#0f172a', fontSize: 15, fontWeight: '600' }, sourceBadge: { alignSelf: 'flex-start', borderRadius: 4, fontSize: 11, fontWeight: '700', overflow: 'hidden', paddingHorizontal: 6, paddingVertical: 2 }, eventBadge: { backgroundColor: '#ccfbf1', color: '#0f766e' }, payableBadge: { backgroundColor: '#fee2e2', color: '#b91c1c' }, receivableBadge: { backgroundColor: '#dcfce7', color: '#15803d' }, itemActions: { flexDirection: 'row', gap: 4 }, smallButton: { padding: 6 },
-  formCard: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, gap: 14, padding: 16 }, errorText: { backgroundColor: '#fef2f2', borderColor: '#fecaca', borderRadius: 6, borderWidth: 1, color: '#b91c1c', padding: 10 }, inputGroup: { gap: 6 }, label: { color: '#334155', fontSize: 13, fontWeight: '600' }, input: { backgroundColor: '#f8fafc', borderColor: '#cbd5e1', borderRadius: 6, borderWidth: 1, color: '#0f172a', fontSize: 14, minHeight: 42, paddingHorizontal: 12 }, notesInput: { minHeight: 82, paddingTop: 10, textAlignVertical: 'top' }, optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, optionButton: { borderColor: '#cbd5e1', borderRadius: 6, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 7 }, optionButtonSelected: { backgroundColor: '#0f766e', borderColor: '#0f766e' }, optionText: { color: '#475569', fontSize: 12, fontWeight: '600' }, optionTextSelected: { color: '#ffffff' }, submitButton: { alignItems: 'center', backgroundColor: '#0f766e', borderRadius: 6, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 44, paddingHorizontal: 16 }, submitButtonDisabled: { opacity: 0.65 }, submitButtonText: { color: '#ffffff', fontSize: 14, fontWeight: '700' }
+  formCard: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, gap: 14, padding: 16 }, errorState: { gap: 8 }, errorText: { backgroundColor: '#fef2f2', borderColor: '#fecaca', borderRadius: 6, borderWidth: 1, color: '#b91c1c', padding: 10 }, retryButton: { alignSelf: 'flex-start', backgroundColor: '#0f766e', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 8 }, retryButtonText: { color: '#ffffff', fontSize: 13, fontWeight: '700' }, recurrenceHint: { color: '#475569', fontSize: 13, lineHeight: 18 }, inputGroup: { gap: 6 }, label: { color: '#334155', fontSize: 13, fontWeight: '600' }, input: { backgroundColor: '#f8fafc', borderColor: '#cbd5e1', borderRadius: 6, borderWidth: 1, color: '#0f172a', fontSize: 14, minHeight: 42, paddingHorizontal: 12 }, notesInput: { minHeight: 82, paddingTop: 10, textAlignVertical: 'top' }, optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, optionButton: { borderColor: '#cbd5e1', borderRadius: 6, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 7 }, optionButtonSelected: { backgroundColor: '#0f766e', borderColor: '#0f766e' }, optionText: { color: '#475569', fontSize: 12, fontWeight: '600' }, optionTextSelected: { color: '#ffffff' }, submitButton: { alignItems: 'center', backgroundColor: '#0f766e', borderRadius: 6, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 44, paddingHorizontal: 16 }, submitButtonDisabled: { opacity: 0.65 }, submitButtonText: { color: '#ffffff', fontSize: 14, fontWeight: '700' }
 });

@@ -73,12 +73,16 @@ const DASHBOARD_SUMMARY_QUERY = gql`
 `;
 
 const SYNC_AGENDA_NOTIFICATIONS = gql`
-  mutation SyncAgendaNotifications {
-    syncAgendaNotifications {
+  mutation SyncAgendaNotifications($today: String!) {
+    syncAgendaNotifications(today: $today) {
       id
     }
   }
 `;
+
+function localIsoDate(value: Date): string {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+}
 
 type DashboardSummaryData = {
   dashboardSummary?: {
@@ -108,6 +112,8 @@ export function DashboardShell() {
     useState<NavigationId>('dashboard');
   const [loggingOut, setLoggingOut] = useState(false);
   const [notificationsReady, setNotificationsReady] = useState(false);
+  const [syncAgendaError, setSyncAgendaError] = useState(false);
+  const [syncAttempt, setSyncAttempt] = useState(0);
   const [syncAgendaNotifications] = useMutation(SYNC_AGENDA_NOTIFICATIONS);
   const { data: summaryData, loading: loadingSummary, refetch: refetchSummary } =
     useQuery<DashboardSummaryData>(DASHBOARD_SUMMARY_QUERY, {
@@ -123,10 +129,11 @@ export function DashboardShell() {
   useEffect(() => {
     let active = true;
     const syncNotifications = async () => {
+      if (active) setSyncAgendaError(false);
       try {
-        await syncAgendaNotifications();
+        await syncAgendaNotifications({ variables: { today: localIsoDate(new Date()) } });
       } catch {
-        // Notifications can still display existing records when sync fails.
+        if (active) setSyncAgendaError(true);
       } finally {
         if (active) setNotificationsReady(true);
       }
@@ -135,7 +142,7 @@ export function DashboardShell() {
     return () => {
       active = false;
     };
-  }, [syncAgendaNotifications]);
+  }, [syncAgendaNotifications, syncAttempt]);
 
   const activeSection =
     navigationItems.find((item) => item.id === activeSectionId) ??
@@ -165,6 +172,12 @@ export function DashboardShell() {
             onOpenSource={() => setActiveSectionId('agenda')}
           />
         </View>
+        {syncAgendaError ? <View style={styles.syncError}>
+          <Text accessibilityRole="alert" style={styles.syncErrorText}>Não foi possível sincronizar lembretes da agenda.</Text>
+          <Pressable accessibilityRole="button" onPress={() => setSyncAttempt((attempt) => attempt + 1)} style={styles.syncRetryButton}>
+            <Text style={styles.syncRetryText}>Tentar novamente</Text>
+          </Pressable>
+        </View> : null}
 
         <ScrollView
           contentContainerStyle={desktop ? styles.navListDesktop : styles.navListMobile}
@@ -342,6 +355,10 @@ const styles = StyleSheet.create({
   brandRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', padding: 16 },
   brand: { alignItems: 'center', flexDirection: 'row', gap: 10 },
   brandText: { color: '#0f172a', fontSize: 22, fontWeight: '700' },
+  syncError: { backgroundColor: '#fef2f2', borderColor: '#fecaca', borderWidth: 1, gap: 8, marginHorizontal: 12, marginBottom: 12, padding: 10 },
+  syncErrorText: { color: '#b91c1c', fontSize: 13 },
+  syncRetryButton: { alignSelf: 'flex-start', backgroundColor: '#b91c1c', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 7 },
+  syncRetryText: { color: '#ffffff', fontSize: 13, fontWeight: '700' },
   navListDesktop: { gap: 6 },
   navListMobile: { gap: 8, paddingHorizontal: 12, paddingBottom: 12 },
   navButton: { alignItems: 'center', borderRadius: 6, flexDirection: 'row', gap: 9, minHeight: 42, paddingHorizontal: 12, paddingVertical: 10 },

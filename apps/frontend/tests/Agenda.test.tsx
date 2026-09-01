@@ -1,9 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Agenda } from '../src/components/Agenda';
 
 const mockCreateCalendarEvent = jest.fn().mockResolvedValue({ data: {} });
 const mockUpdateCalendarEvent = jest.fn().mockResolvedValue({ data: {} });
 const mockDeleteCalendarEvent = jest.fn().mockResolvedValue({ data: {} });
+const mockAgendaRefetch = jest.fn().mockResolvedValue({ data: {} });
 type MockAgendaItem = {
   id: string;
   source: 'EVENT' | 'PAYABLE' | 'RECEIVABLE';
@@ -36,6 +37,7 @@ let mockAgendaItems: MockAgendaItem[] = [
     status: 'PENDING'
   }
 ];
+let mockAgendaQueryError: Error | undefined;
 
 jest.mock('@apollo/client/react', () => ({
   useQuery: () => ({
@@ -43,7 +45,8 @@ jest.mock('@apollo/client/react', () => ({
       myAgenda: mockAgendaItems
     },
     loading: false,
-    refetch: jest.fn()
+    error: mockAgendaQueryError,
+    refetch: mockAgendaRefetch
   }),
   useMutation: (document: { definitions?: Array<{ name?: { value?: string } }> }) => {
     const operationName = document.definitions?.[0]?.name?.value;
@@ -81,6 +84,7 @@ describe('Agenda', () => {
         status: 'PENDING'
       }
     ];
+    mockAgendaQueryError = undefined;
   });
 
   afterEach(() => {
@@ -97,6 +101,33 @@ describe('Agenda', () => {
     expect(screen.getByText('Conta de luz')).toBeOnTheScreen();
     expect(screen.getByText('Evento')).toBeOnTheScreen();
     expect(screen.getByText('Conta a pagar')).toBeOnTheScreen();
+  });
+
+  test('shows a recoverable myAgenda error and retries the query', async () => {
+    mockAgendaQueryError = new Error('Agenda indisponível');
+    await render(<Agenda />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível carregar a agenda.');
+    await fireEvent.press(screen.getByRole('button', { name: 'Tentar novamente' }));
+
+    expect(mockAgendaRefetch).toHaveBeenCalledTimes(1);
+  });
+
+  test('retries a failed event mutation without discarding form data', async () => {
+    mockCreateCalendarEvent.mockRejectedValueOnce(new Error('Falha temporária'));
+    await render(<Agenda />);
+
+    await fireEvent.changeText(screen.getByLabelText('Título do evento'), 'Renovar seguro');
+    await fireEvent.press(screen.getByRole('button', { name: 'Salvar evento' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Falha temporária');
+    });
+    await fireEvent.press(screen.getByRole('button', { name: 'Tentar novamente' }));
+
+    await waitFor(() => {
+      expect(mockCreateCalendarEvent).toHaveBeenCalledTimes(2);
+    });
   });
 
   test('submits event form without time using selected recurrence and reminder', async () => {
@@ -124,12 +155,12 @@ describe('Agenda', () => {
     });
   });
 
-  test('updates whole recurring series from occurrence using base event ID and saved recurrence fields', async () => {
+  test('preserves recurring-series anchor when editing a future occurrence without changing date', async () => {
     mockAgendaItems = [{
-      id: 'EVENT:event-42:2026-08-18',
+      id: 'EVENT:event-42:2026-08-20',
       source: 'EVENT',
       title: 'Renovar seguro',
-      scheduledDate: '2026-08-18',
+      scheduledDate: '2026-08-20',
       status: 'SCHEDULED',
       notes: 'Apólice anual',
       recurrenceRule: 'MONTHLY',
@@ -138,6 +169,7 @@ describe('Agenda', () => {
     }];
     await render(<Agenda />);
 
+    await fireEvent.press(screen.getByRole('button', { name: '20 de agosto de 2026' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Editar Renovar seguro' }));
 
     expect(screen.getByLabelText('Fim da recorrência')).toHaveProp('value', '20/12/2026');
@@ -155,6 +187,34 @@ describe('Agenda', () => {
         }
       }
     });
+  });
+
+  test('moves recurring-series anchor when date changes from a future occurrence', async () => {
+    mockAgendaItems = [{
+      id: 'EVENT:event-42:2026-08-20',
+      source: 'EVENT',
+      title: 'Renovar seguro',
+      scheduledDate: '2026-08-20',
+      status: 'SCHEDULED',
+      notes: null,
+      recurrenceRule: 'MONTHLY',
+      recurrenceEndDate: '2026-12-20',
+      reminderOffsetDays: null
+    }];
+    await render(<Agenda />);
+
+    await fireEvent.press(screen.getByRole('button', { name: '20 de agosto de 2026' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Editar Renovar seguro' }));
+
+    expect(screen.getByText('Alterar data move a âncora de toda a série.')).toBeOnTheScreen();
+    await fireEvent.changeText(screen.getByLabelText('Data do evento'), '25/08/2026');
+    await fireEvent.press(screen.getByRole('button', { name: 'Atualizar evento' }));
+
+    expect(mockUpdateCalendarEvent).toHaveBeenCalledWith(expect.objectContaining({
+      variables: expect.objectContaining({
+        input: expect.objectContaining({ scheduledDate: '2026-08-25' })
+      })
+    }));
   });
 
   test('updates scheduled date when editing a non-recurring event', async () => {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { PropsWithChildren } from 'react';
 import { DashboardShell } from '../src/components/DashboardShell';
 import { AuthProvider } from '../src/providers/AuthProvider';
@@ -58,6 +58,16 @@ jest.mock('@apollo/client/react', () => ({
 }));
 
 describe('MoneyHub dashboard shell', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-08-18T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   test('renders the product and financial summary', async () => {
     await render(<DashboardShell />, { wrapper: Wrapper });
 
@@ -76,7 +86,26 @@ describe('MoneyHub dashboard shell', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Agenda' }));
 
     expect(screen.getByRole('header', { name: 'Agenda financeira' })).toBeOnTheScreen();
-    expect(mockSyncAgendaNotifications).toHaveBeenCalled();
+    expect(mockSyncAgendaNotifications).toHaveBeenCalledWith({
+      variables: { today: '2026-08-18' }
+    });
+  });
+
+  test('shows a recoverable sync error and retries with local today', async () => {
+    mockSyncAgendaNotifications.mockRejectedValueOnce(new Error('Falha temporária'));
+    await render(<DashboardShell />, { wrapper: Wrapper });
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível sincronizar lembretes da agenda.');
+    });
+    await fireEvent.press(screen.getByRole('button', { name: 'Tentar novamente' }));
+
+    await waitFor(() => {
+      expect(mockSyncAgendaNotifications).toHaveBeenCalledTimes(2);
+    });
+    expect(mockSyncAgendaNotifications).toHaveBeenLastCalledWith({
+      variables: { today: '2026-08-18' }
+    });
   });
 
   test('renders a logout button', async () => {
