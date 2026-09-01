@@ -41,3 +41,31 @@ npm run lint -w apps/frontend
 ```
 
 Result: failed on 14 pre-existing errors outside task files: `CashFlowChart.tsx`, `CategoryAnalysis.tsx`, `DatePickerInput.tsx`, `RecurringTransactions.tsx`, `VerifyEmailScreen.tsx`, and unrelated test files. No lint failure reported in Task 3 files.
+
+## P1 follow-up — delete refresh retry
+
+### RED
+
+Command:
+
+```powershell
+npm test -w apps/frontend -- Agenda.test.tsx
+```
+
+Result: failed as expected. After `deleteCalendarEvent` succeeded and `refetch` failed, retry called `deleteCalendarEvent` twice.
+
+### GREEN
+
+Command:
+
+```powershell
+npm test -w apps/frontend -- Agenda.test.tsx
+```
+
+Result: passed — 1 suite, 11 tests. Retry now re-runs only agenda refetch after a successful delete.
+
+```powershell
+npm run typecheck -w apps/frontend
+```
+
+Result: passed (`tsc --noEmit`).

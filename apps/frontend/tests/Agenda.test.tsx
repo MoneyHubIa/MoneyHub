@@ -280,6 +280,23 @@ describe('Agenda', () => {
     expect(mockDeleteCalendarEvent).toHaveBeenCalledWith({ variables: { id: 'event-42' } });
   });
 
+  test('retries only agenda refetch when delete succeeds but refresh fails', async () => {
+    mockAgendaRefetch.mockRejectedValueOnce(new Error('Agenda indisponível'));
+    await render(<Agenda />);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Excluir Reunião de planejamento' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Agenda indisponível');
+    });
+    await fireEvent.press(screen.getByRole('button', { name: 'Tentar novamente' }));
+
+    await waitFor(() => {
+      expect(mockAgendaRefetch).toHaveBeenCalledTimes(2);
+    });
+    expect(mockDeleteCalendarEvent).toHaveBeenCalledTimes(1);
+  });
+
   test('selects valid day in new month after month navigation', async () => {
     await render(<Agenda />);
 

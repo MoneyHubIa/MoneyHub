@@ -198,6 +198,17 @@ export function Agenda() {
     if (retryAction) runMutation(retryAction);
   }
 
+  function refetchAgenda(): Promise<void> {
+    return refetch().then(() => undefined);
+  }
+
+  function refetchAfterMutation() {
+    void refetchAgenda().catch((error: unknown) => {
+      setErrorMessage(messageForError(error));
+      setRetryAction(() => refetchAgenda);
+    });
+  }
+
   function handleSave() {
     const scheduledDate = parseRegionalDateToISO(eventDate, 'BRL');
     const endDate = recurrenceEndDate
@@ -281,7 +292,7 @@ export function Agenda() {
   function handleDelete(id: string) {
     runMutation(async () => {
       await deleteCalendarEvent({ variables: { id: calendarEventIdFromAgendaId(id) } });
-      await refetch();
+      refetchAfterMutation();
     });
   }
 
