@@ -22,7 +22,7 @@ depois da conclusao do `EPIC-01`.
   auditoria segura e sanitizacao de `x-request-id` antes de logs ou eventos.
 - `EPIC-02` permanece aberto ate o smoke real Firebase passar.
 - `EPIC-01` esta concluido.
-- Producao Firebase, Cloud SQL, GCP, deploy, proxy confiavel no Cloud Run e
+- Producao Firebase, Supabase PostgreSQL, GCP, deploy, proxy confiavel no Cloud Run e
   rate limit compartilhado continuam fora do escopo da fundacao; `EPIC-08`
   ainda cobre store compartilhado e revisao do comportamento
   `trust proxy`/`X-Forwarded-For` antes de qualquer deploy Cloud Run com varias
