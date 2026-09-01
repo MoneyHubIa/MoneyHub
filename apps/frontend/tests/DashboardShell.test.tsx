@@ -91,11 +91,19 @@ describe('MoneyHub dashboard shell', () => {
     });
   });
 
-  test('shows a recoverable sync error and retries with local today', async () => {
+  test('shows sync failure in notification center and retries with local today', async () => {
     mockSyncAgendaNotifications.mockRejectedValueOnce(new Error('Falha temporária'));
     await render(<DashboardShell />, { wrapper: Wrapper });
 
     await waitFor(() => {
+      expect(mockSyncAgendaNotifications).toHaveBeenCalledWith({
+        variables: { today: '2026-08-18' }
+      });
+    });
+    await fireEvent.press(screen.getByRole('button', { name: 'Notificações' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Falha de sincronização da agenda')).toBeOnTheScreen();
       expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível sincronizar lembretes da agenda.');
     });
     await fireEvent.press(screen.getByRole('button', { name: 'Tentar novamente' }));

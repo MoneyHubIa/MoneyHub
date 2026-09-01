@@ -5,6 +5,7 @@ const mockMarkNotificationRead = jest.fn().mockResolvedValue({ data: {} });
 const mockMarkAllNotificationsRead = jest.fn().mockResolvedValue({ data: {} });
 const mockRefetch = jest.fn();
 const mockOpenSource = jest.fn();
+const mockRetrySync = jest.fn();
 
 const mockQuery = {
   data: {
@@ -163,6 +164,19 @@ describe('NotificationCenter', () => {
     await render(<NotificationCenter />);
     await fireEvent.press(screen.getByRole('button', { name: 'Notificações' }));
     expect(screen.getByText('Nenhuma notificação por enquanto.')).toBeOnTheScreen();
+  });
+
+  test('shows sync failure separately from an empty notification list and retries it', async () => {
+    Object.assign(mockQuery, { data: { myNotifications: [] }, loading: false, error: undefined });
+    await render(<NotificationCenter syncError onRetrySync={mockRetrySync} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Notificações' }));
+
+    expect(screen.getByLabelText('Falha de sincronização da agenda')).toBeOnTheScreen();
+    expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível sincronizar lembretes da agenda.');
+    expect(screen.getByText('Nenhuma notificação por enquanto.')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Tentar novamente' }));
+    expect(mockRetrySync).toHaveBeenCalledTimes(1);
   });
 
   test('shows error state', async () => {

@@ -55,6 +55,8 @@ export type NotificationItem = {
 type NotificationCenterProps = {
   enabled?: boolean;
   onOpenSource?: (notification: NotificationItem) => void;
+  syncError?: boolean;
+  onRetrySync?: () => void;
 };
 
 type NotificationsData = {
@@ -67,7 +69,12 @@ function sourceLabel(source: NotificationItem['source']): string {
   return 'Evento';
 }
 
-export function NotificationCenter({ enabled = true, onOpenSource }: NotificationCenterProps) {
+export function NotificationCenter({
+  enabled = true,
+  onOpenSource,
+  syncError = false,
+  onRetrySync
+}: NotificationCenterProps) {
   const [open, setOpen] = useState(false);
   const [actionError, setActionError] = useState(false);
   const { data, loading, error, refetch } = useQuery<NotificationsData>(MY_NOTIFICATIONS_QUERY, {
@@ -146,6 +153,23 @@ export function NotificationCenter({ enabled = true, onOpenSource }: Notificatio
             <Text style={[styles.stateText, styles.errorText]}>Não foi possível atualizar notificações.</Text>
           ) : null}
 
+          {syncError ? (
+            <View accessibilityLabel="Falha de sincronização da agenda" style={styles.syncError}>
+              <Text accessibilityRole="alert" style={[styles.stateText, styles.errorText]}>
+                Não foi possível sincronizar lembretes da agenda.
+              </Text>
+              {onRetrySync ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={onRetrySync}
+                  style={styles.syncRetryButton}
+                >
+                  <Text style={styles.syncRetryText}>Tentar novamente</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+
           {loading ? (
             <View style={styles.state}>
               <ActivityIndicator color="#0f766e" size="small" />
@@ -218,6 +242,9 @@ const styles = StyleSheet.create({
   state: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingVertical: 8 },
   stateText: { color: '#64748b', fontSize: 14, lineHeight: 20 },
   errorText: { color: '#b91c1c' },
+  syncError: { backgroundColor: '#fef2f2', borderColor: '#fecaca', borderRadius: 6, borderWidth: 1, gap: 8, padding: 10 },
+  syncRetryButton: { alignSelf: 'flex-start', backgroundColor: '#b91c1c', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 7 },
+  syncRetryText: { color: '#ffffff', fontSize: 13, fontWeight: '700' },
   listScroll: { maxHeight: 330 },
   list: { gap: 8 },
   item: { backgroundColor: '#f8fafc', borderColor: '#e2e8f0', borderRadius: 6, borderWidth: 1, gap: 10, padding: 12 },

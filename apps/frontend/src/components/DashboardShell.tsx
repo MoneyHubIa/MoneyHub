@@ -170,14 +170,10 @@ export function DashboardShell() {
           <NotificationCenter
             enabled={notificationsReady}
             onOpenSource={() => setActiveSectionId('agenda')}
+            onRetrySync={() => setSyncAttempt((attempt) => attempt + 1)}
+            syncError={syncAgendaError}
           />
         </View>
-        {syncAgendaError ? <View style={styles.syncError}>
-          <Text accessibilityRole="alert" style={styles.syncErrorText}>Não foi possível sincronizar lembretes da agenda.</Text>
-          <Pressable accessibilityRole="button" onPress={() => setSyncAttempt((attempt) => attempt + 1)} style={styles.syncRetryButton}>
-            <Text style={styles.syncRetryText}>Tentar novamente</Text>
-          </Pressable>
-        </View> : null}
 
         <ScrollView
           contentContainerStyle={desktop ? styles.navListDesktop : styles.navListMobile}
@@ -355,10 +351,6 @@ const styles = StyleSheet.create({
   brandRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', padding: 16 },
   brand: { alignItems: 'center', flexDirection: 'row', gap: 10 },
   brandText: { color: '#0f172a', fontSize: 22, fontWeight: '700' },
-  syncError: { backgroundColor: '#fef2f2', borderColor: '#fecaca', borderWidth: 1, gap: 8, marginHorizontal: 12, marginBottom: 12, padding: 10 },
-  syncErrorText: { color: '#b91c1c', fontSize: 13 },
-  syncRetryButton: { alignSelf: 'flex-start', backgroundColor: '#b91c1c', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 7 },
-  syncRetryText: { color: '#ffffff', fontSize: 13, fontWeight: '700' },
   navListDesktop: { gap: 6 },
   navListMobile: { gap: 8, paddingHorizontal: 12, paddingBottom: 12 },
   navButton: { alignItems: 'center', borderRadius: 6, flexDirection: 'row', gap: 9, minHeight: 42, paddingHorizontal: 12, paddingVertical: 10 },
