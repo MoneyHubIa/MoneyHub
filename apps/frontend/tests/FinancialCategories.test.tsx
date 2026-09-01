@@ -26,8 +26,6 @@ function Wrapper({ children }: PropsWithChildren) {
 }
 
 const mockCreateCategory = jest.fn();
-const mockUpdateCategory = jest.fn();
-const mockDeleteCategory = jest.fn();
 
 jest.mock('@apollo/client/react', () => ({
   useQuery: () => ({
@@ -54,7 +52,7 @@ jest.mock('@apollo/client/react', () => ({
     loading: false,
     refetch: jest.fn()
   }),
-  useMutation: (mutation: any) => {
+  useMutation: () => {
     return [mockCreateCategory, { loading: false }];
   }
 }));

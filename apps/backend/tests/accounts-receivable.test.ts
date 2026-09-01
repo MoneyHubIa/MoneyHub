@@ -12,6 +12,10 @@ import {
 } from '../src/accounts-receivable.js';
 import { typeDefs } from '../src/graphql.js';
 
+type IncomeFromReceivableData = Parameters<
+  NonNullable<AccountReceivableRepository['createIncomeFromReceivable']>
+>[0]['data'];
+
 function verifiedContext() {
   return {
     requestId: 'request-1',
@@ -195,10 +199,10 @@ describe('accounts receivable', () => {
   });
 
   test('marks account receivable as RECEIVED and generates an income transaction', async () => {
-    let generatedIncome: any = null;
+    const generatedIncome: { value: IncomeFromReceivableData | null } = { value: null };
     const repository = createRepository({
       createIncomeFromReceivable: async ({ data }) => {
-        generatedIncome = data;
+        generatedIncome.value = data;
       }
     });
 
@@ -210,10 +214,10 @@ describe('accounts receivable', () => {
 
     assert.equal(result.status, 'RECEIVED');
     assert.ok(result.receivedAt instanceof Date);
-    assert.ok(generatedIncome);
-    assert.equal(generatedIncome.description, '[Recebido] Consultoria Financeira');
-    assert.equal(generatedIncome.amount, '3500.00');
-    assert.equal(generatedIncome.categoryId, 'cat-1');
+    assert.ok(generatedIncome.value);
+    assert.equal(generatedIncome.value.description, '[Recebido] Consultoria Financeira');
+    assert.equal(generatedIncome.value.amount, '3500.00');
+    assert.equal(generatedIncome.value.categoryId, 'cat-1');
   });
 
   test('soft-deletes account receivable by setting deletedAt timestamp', async () => {

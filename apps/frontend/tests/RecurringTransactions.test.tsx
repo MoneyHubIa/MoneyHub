@@ -26,8 +26,6 @@ function Wrapper({ children }: PropsWithChildren) {
 }
 
 const mockCreateRecurring = jest.fn();
-const mockDeleteRecurring = jest.fn();
-const mockProcessRecurring = jest.fn();
 
 jest.mock('@apollo/client/react', () => ({
   useQuery: () => ({

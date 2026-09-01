@@ -5,7 +5,6 @@ const mockMarkNotificationRead = jest.fn().mockResolvedValue({ data: {} });
 const mockMarkAllNotificationsRead = jest.fn().mockResolvedValue({ data: {} });
 const mockRefetch = jest.fn();
 const mockOpenSource = jest.fn();
-const mockRetrySync = jest.fn();
 
 const mockQuery = {
   data: {

@@ -12,6 +12,10 @@ import {
 } from '../src/accounts-payable.js';
 import { typeDefs } from '../src/graphql.js';
 
+type ExpenseFromPayableData = Parameters<
+  NonNullable<AccountPayableRepository['createExpenseFromPayable']>
+>[0]['data'];
+
 function verifiedContext() {
   return {
     requestId: 'request-1',
@@ -195,10 +199,10 @@ describe('accounts payable', () => {
   });
 
   test('marks account payable as PAID and generates an expense transaction', async () => {
-    let generatedExpense: any = null;
+    const generatedExpense: { value: ExpenseFromPayableData | null } = { value: null };
     const repository = createRepository({
       createExpenseFromPayable: async ({ data }) => {
-        generatedExpense = data;
+        generatedExpense.value = data;
       }
     });
 
@@ -210,10 +214,10 @@ describe('accounts payable', () => {
 
     assert.equal(result.status, 'PAID');
     assert.ok(result.paidAt instanceof Date);
-    assert.ok(generatedExpense);
-    assert.equal(generatedExpense.description, '[Pago] Conta de Luz');
-    assert.equal(generatedExpense.amount, '250.00');
-    assert.equal(generatedExpense.categoryId, 'cat-1');
+    assert.ok(generatedExpense.value);
+    assert.equal(generatedExpense.value.description, '[Pago] Conta de Luz');
+    assert.equal(generatedExpense.value.amount, '250.00');
+    assert.equal(generatedExpense.value.categoryId, 'cat-1');
   });
 
   test('soft-deletes account payable by setting deletedAt timestamp', async () => {

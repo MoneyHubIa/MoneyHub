@@ -3,10 +3,13 @@ import type { Prisma } from './generated/prisma/client.js';
 import type { AuthContext } from './auth.js';
 import { getPrismaClient } from './database.js';
 import type {
+  AccountPayable as PrismaAccountPayable,
+  AccountReceivable as PrismaAccountReceivable,
   CalendarEvent as PrismaCalendarEvent,
   Expense as PrismaExpense,
   Income as PrismaIncome,
-  Notification as PrismaNotification
+  Notification as PrismaNotification,
+  RecurringTransaction as PrismaRecurringTransaction
 } from './generated/prisma/client.js';
 import {
   getMyProfile,
@@ -90,7 +93,6 @@ import {
   processRecurringTransactions,
   updateRecurringTransaction,
   type CreateRecurringTransactionInput,
-  type ProcessRecurringResult,
   type RecurrenceRule,
   type RecurringTransaction,
   type RecurringTransactionRepository,
@@ -121,20 +123,17 @@ import {
 import {
   cashFlowRepository,
   getCashFlow,
-  type CashFlowInput,
-  type CashFlowResult
+  type CashFlowInput
 } from './cash-flow.js';
 import {
   categoryAnalysisRepository,
   getCategoryAnalysis,
-  type CategoryAnalysisInput,
-  type CategoryAnalysisResult
+  type CategoryAnalysisInput
 } from './category-analysis.js';
 import {
   periodComparisonRepository,
   getPeriodComparison,
-  type PeriodComparisonInput,
-  type PeriodComparisonResult
+  type PeriodComparisonInput
 } from './period-comparison.js';
 
 
@@ -301,14 +300,16 @@ function dashboardSummaryRepository(): DashboardSummaryRepository {
 
 function accountPayableRepository(): AccountPayableRepository {
   const prisma = getPrismaClient();
-  const mapAccountPayable = (item: any): AccountPayable => ({
+  const mapAccountPayable = (item: PrismaAccountPayable): AccountPayable => ({
     ...item,
     amount: item.amount.toString(),
-    dueDate: item.dueDate instanceof Date ? item.dueDate.toISOString() : item.dueDate,
-    paidAt: item.paidAt ? (item.paidAt instanceof Date ? item.paidAt.toISOString() : item.paidAt) : null,
-    createdAt: item.createdAt instanceof Date ? item.createdAt.toISOString() : item.createdAt,
-    updatedAt: item.updatedAt instanceof Date ? item.updatedAt.toISOString() : item.updatedAt
-  });
+    dueDate: item.dueDate.toISOString(),
+    paidAt: item.paidAt?.toISOString() ?? null,
+    createdAt: item.createdAt.toISOString(),
+    updatedAt: item.updatedAt.toISOString(),
+    status: item.status as AccountPayableStatus,
+    reminderOffsetDays: item.reminderOffsetDays as ReminderOffsetDays | null
+  } as unknown as AccountPayable);
   return {
     findMany: async ({ where }) => (await prisma.accountPayable.findMany({ where, orderBy: { dueDate: 'asc' } })).map(mapAccountPayable),
     findUnique: async ({ where }) => {
@@ -335,14 +336,16 @@ function accountPayableRepository(): AccountPayableRepository {
 
 function accountReceivableRepository(): AccountReceivableRepository {
   const prisma = getPrismaClient();
-  const mapAccountReceivable = (item: any): AccountReceivable => ({
+  const mapAccountReceivable = (item: PrismaAccountReceivable): AccountReceivable => ({
     ...item,
     amount: item.amount.toString(),
-    dueDate: item.dueDate instanceof Date ? item.dueDate.toISOString() : item.dueDate,
-    receivedAt: item.receivedAt ? (item.receivedAt instanceof Date ? item.receivedAt.toISOString() : item.receivedAt) : null,
-    createdAt: item.createdAt instanceof Date ? item.createdAt.toISOString() : item.createdAt,
-    updatedAt: item.updatedAt instanceof Date ? item.updatedAt.toISOString() : item.updatedAt
-  });
+    dueDate: item.dueDate.toISOString(),
+    receivedAt: item.receivedAt?.toISOString() ?? null,
+    createdAt: item.createdAt.toISOString(),
+    updatedAt: item.updatedAt.toISOString(),
+    status: item.status as AccountReceivableStatus,
+    reminderOffsetDays: item.reminderOffsetDays as ReminderOffsetDays | null
+  } as unknown as AccountReceivable);
   return {
     findMany: async ({ where }) => (await prisma.accountReceivable.findMany({ where, orderBy: { dueDate: 'asc' } })).map(mapAccountReceivable),
     findUnique: async ({ where }) => {
@@ -369,7 +372,7 @@ function accountReceivableRepository(): AccountReceivableRepository {
 
 function recurringTransactionRepository(): RecurringTransactionRepository {
   const prisma = getPrismaClient();
-  const mapRecurring = (item: any): RecurringTransaction => ({
+  const mapRecurring = (item: PrismaRecurringTransaction): RecurringTransaction => ({
     ...item,
     amount: item.amount.toString(),
     type: item.type as RecurringType,

@@ -6,8 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  View,
-  useWindowDimensions
+  View
 } from 'react-native';
 import { useState } from 'react';
 import {
@@ -69,8 +68,6 @@ type CashFlowChartProps = Readonly<{
 }>;
 
 export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps) {
-  const { width } = useWindowDimensions();
-  const desktop = width >= 768;
   const [granularity, setGranularity] = useState<'DAILY' | 'MONTHLY'>('DAILY');
   const [selectedPoint, setSelectedPoint] = useState<CashFlowDataPoint | null>(null);
 
