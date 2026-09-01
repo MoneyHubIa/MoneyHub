@@ -26,8 +26,13 @@ function Wrapper({ children }: PropsWithChildren) {
 }
 
 const mockCreateReceivable = jest.fn();
+const mockUpdateReceivable = jest.fn();
 const mockMarkReceived = jest.fn();
 const mockDeleteReceivable = jest.fn();
+
+type MutationDocument = {
+  definitions: Array<{ name?: { value?: string } }>;
+};
 
 jest.mock('@apollo/client/react', () => ({
   useQuery: () => ({
@@ -42,6 +47,7 @@ jest.mock('@apollo/client/react', () => ({
           dueDate: '2026-08-30T00:00:00.000Z',
           status: 'PENDING',
           receivedAt: null,
+          reminderOffsetDays: 1,
           createdAt: '2026-08-01T00:00:00.000Z'
         },
         {
@@ -73,7 +79,11 @@ jest.mock('@apollo/client/react', () => ({
     loading: false,
     refetch: jest.fn()
   }),
-  useMutation: (mutation: any) => {
+  useMutation: (mutation: MutationDocument) => {
+    const mutationName = mutation.definitions[0]?.name?.value;
+    if (mutationName === 'UpdateAccountReceivable') return [mockUpdateReceivable, { loading: false }];
+    if (mutationName === 'MarkAccountReceivableReceived') return [mockMarkReceived, { loading: false }];
+    if (mutationName === 'DeleteAccountReceivable') return [mockDeleteReceivable, { loading: false }];
     return [mockCreateReceivable, { loading: false }];
   }
 }));
@@ -103,7 +113,7 @@ describe('AccountsReceivable component', () => {
     expect(screen.getByText('Informe uma descrição.')).toBeOnTheScreen();
   });
 
-  test('submits valid form with category and amount', async () => {
+  test('sends selected reminder offset when creating an account receivable', async () => {
     await render(<AccountsReceivable />, { wrapper: Wrapper });
 
     await fireEvent.changeText(
@@ -114,9 +124,32 @@ describe('AccountsReceivable component', () => {
     const categoryTags = screen.getAllByText('Serviços Prestados');
     expect(categoryTags[0]).toBeDefined();
     await fireEvent.press(categoryTags[0]!);
+    await fireEvent.press(screen.getByRole('button', { name: '7 dias antes' }));
 
     await fireEvent.press(screen.getByRole('button', { name: 'Agendar Conta a Receber' }));
 
-    expect(mockCreateReceivable).toHaveBeenCalled();
+    expect(mockCreateReceivable).toHaveBeenCalledWith(expect.objectContaining({
+      variables: expect.objectContaining({
+        input: expect.objectContaining({ reminderOffsetDays: 7 })
+      })
+    }));
+  });
+
+  test('keeps saved reminder offset when updating an account receivable', async () => {
+    await render(<AccountsReceivable />, { wrapper: Wrapper });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Editar Consultoria Contábil' }));
+
+    expect(screen.getByRole('button', { name: '1 dia antes' }).props.accessibilityState).toEqual(
+      expect.objectContaining({ selected: true })
+    );
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Atualizar Conta a Receber' }));
+
+    expect(mockUpdateReceivable).toHaveBeenCalledWith(expect.objectContaining({
+      variables: expect.objectContaining({
+        input: expect.objectContaining({ id: 'receivable-1', reminderOffsetDays: 1 })
+      })
+    }));
   });
 });

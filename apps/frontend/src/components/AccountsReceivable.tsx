@@ -6,6 +6,7 @@ import {
   CalendarClock,
   CheckCircle2,
   Clock,
+  Pencil,
   PlusCircle,
   Tag,
   Trash2
@@ -32,6 +33,7 @@ const MY_ACCOUNTS_RECEIVABLE_QUERY = gql`
       dueDate
       status
       receivedAt
+      reminderOffsetDays
       createdAt
     }
     myCategories {
@@ -64,6 +66,19 @@ const CREATE_ACCOUNT_RECEIVABLE = gql`
   }
 `;
 
+const UPDATE_ACCOUNT_RECEIVABLE = gql`
+  mutation UpdateAccountReceivable($input: UpdateAccountReceivableInput!) {
+    updateAccountReceivable(input: $input) {
+      id
+      description
+      amount
+      dueDate
+      status
+      reminderOffsetDays
+    }
+  }
+`;
+
 const MARK_ACCOUNT_RECEIVABLE_RECEIVED = gql`
   mutation MarkAccountReceivableReceived($id: ID!, $receivedAt: String) {
     markAccountReceivableReceived(id: $id, receivedAt: $receivedAt) {
@@ -80,7 +95,7 @@ const DELETE_ACCOUNT_RECEIVABLE = gql`
   }
 `;
 
-import { formatCurrency, formatDate, getDatePlaceholder, parseRegionalDateToISO } from '../utils/formatters';
+import { formatCurrency, formatDate, formatISOToRegionalDate, parseRegionalDateToISO } from '../utils/formatters';
 import { DatePickerInput } from './DatePickerInput';
 
 export type AccountReceivableItem = {
@@ -92,8 +107,17 @@ export type AccountReceivableItem = {
   dueDate: string;
   status: 'PENDING' | 'RECEIVED' | 'OVERDUE' | 'CANCELLED';
   receivedAt?: string | null;
+  reminderOffsetDays?: number | null;
   createdAt: string;
 };
+
+const reminderOptions: Array<{ label: string; value: number | null }> = [
+  { label: 'Sem lembrete', value: null },
+  { label: 'No dia', value: 0 },
+  { label: '1 dia antes', value: 1 },
+  { label: '3 dias antes', value: 3 },
+  { label: '7 dias antes', value: 7 }
+];
 
 type Category = {
   id: string;
@@ -120,6 +144,8 @@ export function AccountsReceivable() {
   });
   const [categoryId, setCategoryId] = useState('');
   const [costCenterId, setCostCenterId] = useState('');
+  const [reminderOffsetDays, setReminderOffsetDays] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [activeStatusFilter, setActiveStatusFilter] = useState<'ALL' | 'PENDING' | 'RECEIVED'>('ALL');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -141,6 +167,12 @@ export function AccountsReceivable() {
     onError: (err) => setErrorMessage(err.message)
   });
 
+  const [updateReceivable, { loading: updating }] = useMutation(UPDATE_ACCOUNT_RECEIVABLE, {
+    refetchQueries: ['MyAccountsReceivable', 'DashboardSummary'],
+    onCompleted: () => resetForm(),
+    onError: (err) => setErrorMessage(err.message)
+  });
+
   const [markReceived, { loading: markingReceived }] = useMutation(MARK_ACCOUNT_RECEIVABLE_RECEIVED, {
     refetchQueries: ['MyAccountsReceivable', 'DashboardSummary', 'MyIncomes'],
     onCompleted: () => refetch(),
@@ -158,11 +190,13 @@ export function AccountsReceivable() {
     setAmount('');
     setCategoryId('');
     setCostCenterId('');
+    setReminderOffsetDays(null);
+    setEditingId(null);
     setErrorMessage(null);
     refetch();
   };
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     if (!description.trim()) {
       setErrorMessage('Informe uma descrição.');
       return;
@@ -183,18 +217,32 @@ export function AccountsReceivable() {
 
     setErrorMessage(null);
 
-    await createReceivable({
-      variables: {
-        input: {
-          description: description.trim(),
-          amount: Number(amount).toString(),
-          dueDate: new Date(isoDueDate).toISOString(),
-          categoryId,
-          costCenterId: costCenterId || undefined,
-          status: 'PENDING'
-        }
-      }
-    });
+    const input = {
+      description: description.trim(),
+      amount: Number(amount).toString(),
+      dueDate: new Date(isoDueDate).toISOString(),
+      categoryId,
+      costCenterId: costCenterId || undefined,
+      reminderOffsetDays
+    };
+
+    if (editingId) {
+      await updateReceivable({ variables: { input: { id: editingId, ...input } } });
+      return;
+    }
+
+    await createReceivable({ variables: { input: { ...input, status: 'PENDING' } } });
+  };
+
+  const handleEdit = (item: AccountReceivableItem) => {
+    setEditingId(item.id);
+    setDescription(item.description);
+    setAmount(item.amount);
+    setDueDate(formatISOToRegionalDate(item.dueDate, currency));
+    setCategoryId(item.categoryId);
+    setCostCenterId(item.costCenterId ?? '');
+    setReminderOffsetDays(item.reminderOffsetDays ?? null);
+    setErrorMessage(null);
   };
 
   const items = data?.myAccountsReceivable ?? [];
@@ -248,7 +296,7 @@ export function AccountsReceivable() {
       </View>
 
       <View style={styles.formCard}>
-        <Text style={styles.formTitle}>Agendar Nova Conta a Receber</Text>
+        <Text style={styles.formTitle}>{editingId ? 'Editar Conta a Receber' : 'Agendar Nova Conta a Receber'}</Text>
 
         {errorMessage ? (
           <View style={styles.errorBox}>
@@ -353,18 +401,37 @@ export function AccountsReceivable() {
           </View>
         ) : null}
 
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Lembrete</Text>
+          <View style={styles.optionRow}>
+            {reminderOptions.map((option) => (
+              <Pressable
+                key={option.label}
+                accessibilityRole="button"
+                accessibilityState={{ selected: reminderOffsetDays === option.value }}
+                onPress={() => setReminderOffsetDays(option.value)}
+                style={[styles.optionButton, reminderOffsetDays === option.value && styles.optionButtonSelected]}
+              >
+                <Text style={[styles.optionText, reminderOffsetDays === option.value && styles.optionTextSelected]}>
+                  {option.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         <Pressable
           accessibilityRole="button"
-          disabled={creating}
-          onPress={handleCreate}
-          style={[styles.submitButton, creating && styles.submitButtonDisabled]}
+          disabled={creating || updating}
+          onPress={handleSave}
+          style={[styles.submitButton, (creating || updating) && styles.submitButtonDisabled]}
         >
-          {creating ? (
+          {creating || updating ? (
             <ActivityIndicator color="#ffffff" size="small" />
           ) : (
             <>
               <PlusCircle color="#ffffff" size={18} />
-              <Text style={styles.submitButtonText}>Agendar Conta a Receber</Text>
+              <Text style={styles.submitButtonText}>{editingId ? 'Atualizar Conta a Receber' : 'Agendar Conta a Receber'}</Text>
             </>
           )}
         </Pressable>
@@ -454,6 +521,14 @@ export function AccountsReceivable() {
                     </Text>
 
                     <View style={styles.actionButtonsRow}>
+                      <Pressable
+                        accessibilityLabel={`Editar ${item.description}`}
+                        accessibilityRole="button"
+                        onPress={() => handleEdit(item)}
+                        style={styles.editButton}
+                      >
+                        <Pencil color="#0f766e" size={16} />
+                      </Pressable>
                       {!isReceived ? (
                         <Pressable
                           accessibilityRole="button"
@@ -510,6 +585,11 @@ const styles = StyleSheet.create({
   tagBadgeSelected: { backgroundColor: '#0f766e', borderColor: '#0f766e' },
   tagText: { color: '#475569', fontSize: 13, fontWeight: '500' },
   tagTextSelected: { color: '#ffffff', fontWeight: '700' },
+  optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  optionButton: { borderColor: '#cbd5e1', borderRadius: 6, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 7 },
+  optionButtonSelected: { backgroundColor: '#0f766e', borderColor: '#0f766e' },
+  optionText: { color: '#475569', fontSize: 12, fontWeight: '600' },
+  optionTextSelected: { color: '#ffffff' },
   emptyCategoriesText: { color: '#b91c1c', fontSize: 13, paddingVertical: 4 },
   submitButton: { alignItems: 'center', backgroundColor: '#0f766e', borderRadius: 6, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 44, marginTop: 4, paddingHorizontal: 16 },
   submitButtonDisabled: { opacity: 0.7 },
@@ -545,5 +625,6 @@ const styles = StyleSheet.create({
   actionButtonsRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
   receiveButton: { alignItems: 'center', backgroundColor: '#059669', borderRadius: 4, flexDirection: 'row', gap: 4, paddingHorizontal: 10, paddingVertical: 6 },
   receiveButtonText: { color: '#ffffff', fontSize: 12, fontWeight: '600' },
+  editButton: { padding: 4 },
   deleteButton: { padding: 4 }
 });

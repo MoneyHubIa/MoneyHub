@@ -26,8 +26,13 @@ function Wrapper({ children }: PropsWithChildren) {
 }
 
 const mockCreatePayable = jest.fn();
+const mockUpdatePayable = jest.fn();
 const mockMarkPaid = jest.fn();
 const mockDeletePayable = jest.fn();
+
+type MutationDocument = {
+  definitions: Array<{ name?: { value?: string } }>;
+};
 
 jest.mock('@apollo/client/react', () => ({
   useQuery: () => ({
@@ -42,6 +47,7 @@ jest.mock('@apollo/client/react', () => ({
           dueDate: '2026-08-30T00:00:00.000Z',
           status: 'PENDING',
           paidAt: null,
+          reminderOffsetDays: 3,
           createdAt: '2026-08-01T00:00:00.000Z'
         },
         {
@@ -73,7 +79,11 @@ jest.mock('@apollo/client/react', () => ({
     loading: false,
     refetch: jest.fn()
   }),
-  useMutation: (mutation: any) => {
+  useMutation: (mutation: MutationDocument) => {
+    const mutationName = mutation.definitions[0]?.name?.value;
+    if (mutationName === 'UpdateAccountPayable') return [mockUpdatePayable, { loading: false }];
+    if (mutationName === 'MarkAccountPayablePaid') return [mockMarkPaid, { loading: false }];
+    if (mutationName === 'DeleteAccountPayable') return [mockDeletePayable, { loading: false }];
     return [mockCreatePayable, { loading: false }];
   }
 }));
@@ -103,7 +113,7 @@ describe('AccountsPayable component', () => {
     expect(screen.getByText('Informe uma descrição.')).toBeOnTheScreen();
   });
 
-  test('submits valid form with category and amount', async () => {
+  test('sends selected reminder offset when creating an account payable', async () => {
     await render(<AccountsPayable />, { wrapper: Wrapper });
 
     await fireEvent.changeText(
@@ -114,9 +124,32 @@ describe('AccountsPayable component', () => {
     const categoryTags = screen.getAllByText('Moradia');
     expect(categoryTags[0]).toBeDefined();
     await fireEvent.press(categoryTags[0]!);
+    await fireEvent.press(screen.getByRole('button', { name: '7 dias antes' }));
 
     await fireEvent.press(screen.getByRole('button', { name: 'Agendar Conta a Pagar' }));
 
-    expect(mockCreatePayable).toHaveBeenCalled();
+    expect(mockCreatePayable).toHaveBeenCalledWith(expect.objectContaining({
+      variables: expect.objectContaining({
+        input: expect.objectContaining({ reminderOffsetDays: 7 })
+      })
+    }));
+  });
+
+  test('keeps saved reminder offset when updating an account payable', async () => {
+    await render(<AccountsPayable />, { wrapper: Wrapper });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Editar Aluguel do escritório' }));
+
+    expect(screen.getByRole('button', { name: '3 dias antes' }).props.accessibilityState).toEqual(
+      expect.objectContaining({ selected: true })
+    );
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Atualizar Conta a Pagar' }));
+
+    expect(mockUpdatePayable).toHaveBeenCalledWith(expect.objectContaining({
+      variables: expect.objectContaining({
+        input: expect.objectContaining({ id: 'payable-1', reminderOffsetDays: 3 })
+      })
+    }));
   });
 });
