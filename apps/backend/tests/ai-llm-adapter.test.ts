@@ -206,6 +206,64 @@ describe('LLM Adapter Contract (TASK-032)', () => {
         }
       );
     });
+
+    test('sends tools in payload and parses tool_calls finish_reason', async () => {
+      const mockFetch: typeof fetch = async (_url, init) => {
+        const body = JSON.parse(init?.body as string) as {
+          tools?: Array<{ type: string; function: { name: string } }>;
+        };
+        assert.ok(Array.isArray(body.tools));
+        assert.equal(body.tools?.[0]?.function.name, 'get_financial_summary');
+
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: null,
+                  tool_calls: [
+                    {
+                      id: 'call_123',
+                      type: 'function',
+                      function: {
+                        name: 'get_financial_summary',
+                        arguments: '{"startDate":"2025-01-01","endDate":"2025-12-31"}'
+                      }
+                    }
+                  ]
+                },
+                finish_reason: 'tool_calls'
+              }
+            ],
+            usage: { prompt_tokens: 40, completion_tokens: 20, total_tokens: 60 }
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      };
+
+      const adapter = new OpenAiCompatibleLlmAdapter({
+        apiKey: 'test-key',
+        fetchFn: mockFetch
+      });
+
+      const response = await adapter.generateResponse(createSamplePrompt(), {
+        tools: [
+          {
+            type: 'function',
+            function: {
+              name: 'get_financial_summary',
+              description: 'Resumo',
+              parameters: { type: 'object', properties: {} }
+            }
+          }
+        ]
+      });
+
+      assert.equal(response.finishReason, 'tool_calls');
+      assert.ok(response.toolCalls);
+      assert.equal(response.toolCalls?.length, 1);
+      assert.equal(response.toolCalls?.[0]?.function.name, 'get_financial_summary');
+    });
   });
 
   describe('createLlmAdapter factory', () => {

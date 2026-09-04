@@ -52,6 +52,7 @@
 | TASK-048 | Implement TypeScript GraphQL backend foundation | Done | EPIC-01 |
 | TASK-049 | Implement TypeScript Expo app foundation | Done | EPIC-01 |
 | TASK-050 | Migrate database from Cloud SQL to Supabase PostgreSQL | Done | EPIC-01 |
+| TASK-051 | Implement AI financial assistant screen | Done | EPIC-05 |
 
 `TASK-019` remains `In Progress (real smoke pending)`, and `EPIC-02` stays
 open until real Firebase smoke confirms delivery/content, MoneyHub action URL,

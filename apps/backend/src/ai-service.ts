@@ -14,13 +14,15 @@ import {
 import {
   createLlmAdapter,
   LlmAdapterError,
-  type LlmAdapter
+  type LlmAdapter,
+  type LlmMessage
 } from './ai-llm-adapter.js';
 import {
   hashContext,
   defaultAiConversationLogger,
   type AiConversationLogger
 } from './ai-conversation-logging.js';
+import { FINANCIAL_TOOLS, executeFinancialTool } from './ai-tools.js';
 
 export type AskAiAssistantInput = {
   message: string;
@@ -94,7 +96,62 @@ export async function askAiAssistant(
   const startTime = Date.now();
 
   try {
-    const llmResponse = await llm.generateResponse(prompt);
+    const conversationMessages: LlmMessage[] = [
+      { role: 'system', content: prompt.systemPrompt },
+      { role: 'user', content: prompt.userPrompt }
+    ];
+
+    let currentLlmResponse = await llm.generateResponse(prompt, {
+      tools: FINANCIAL_TOOLS,
+      messages: conversationMessages
+    });
+
+    let totalPromptTokens = currentLlmResponse.usage.promptTokens;
+    let totalCompletionTokens = currentLlmResponse.usage.completionTokens;
+
+    let iterations = 0;
+    const maxIterations = 3;
+
+    while (
+      currentLlmResponse.toolCalls &&
+      currentLlmResponse.toolCalls.length > 0 &&
+      iterations < maxIterations
+    ) {
+      iterations++;
+
+      conversationMessages.push({
+        role: 'assistant',
+        content: currentLlmResponse.content || null,
+        tool_calls: currentLlmResponse.toolCalls
+      });
+
+      for (const toolCall of currentLlmResponse.toolCalls) {
+        const result = await executeFinancialTool(
+          toolCall.function.name,
+          toolCall.function.arguments,
+          userId,
+          contextRepo
+        );
+
+        conversationMessages.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          name: toolCall.function.name,
+          content: JSON.stringify(result)
+        });
+      }
+
+      currentLlmResponse = await llm.generateResponse(prompt, {
+        tools: FINANCIAL_TOOLS,
+        messages: conversationMessages
+      });
+
+      totalPromptTokens += currentLlmResponse.usage.promptTokens;
+      totalCompletionTokens += currentLlmResponse.usage.completionTokens;
+    }
+
+    const latencyMs = Date.now() - startTime;
+    const totalTokens = totalPromptTokens + totalCompletionTokens;
 
     try {
       logger.log({
@@ -102,12 +159,12 @@ export async function askAiAssistant(
         userId,
         requestId,
         templateId,
-        provider: llmResponse.provider,
-        model: llmResponse.model,
-        promptTokens: llmResponse.usage.promptTokens,
-        completionTokens: llmResponse.usage.completionTokens,
-        totalTokens: llmResponse.usage.totalTokens,
-        latencyMs: llmResponse.latencyMs,
+        provider: currentLlmResponse.provider,
+        model: currentLlmResponse.model,
+        promptTokens: totalPromptTokens,
+        completionTokens: totalCompletionTokens,
+        totalTokens,
+        latencyMs,
         contextVersion: aiContext.version,
         contextPeriod: aiContext.period,
         contextHash,
@@ -118,17 +175,22 @@ export async function askAiAssistant(
     }
 
     return {
-      answer: llmResponse.content,
-      provider: llmResponse.provider,
-      model: llmResponse.model,
-      latencyMs: llmResponse.latencyMs,
-      usage: llmResponse.usage,
+      answer: currentLlmResponse.content,
+      provider: currentLlmResponse.provider,
+      model: currentLlmResponse.model,
+      latencyMs,
+      usage: {
+        promptTokens: totalPromptTokens,
+        completionTokens: totalCompletionTokens,
+        totalTokens
+      },
       contextPeriod: aiContext.period,
       contextVersion: aiContext.version
     };
   } catch (err: unknown) {
     const latencyMs = Date.now() - startTime;
     const errorCode = err instanceof LlmAdapterError ? err.code : 'UNKNOWN_ERROR';
+    console.error('[AI SERVICE ERROR]', err);
 
     try {
       logger.log({

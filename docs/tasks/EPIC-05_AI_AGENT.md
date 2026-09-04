@@ -15,6 +15,7 @@ Implement a safe AI assistant that answers financial questions using only author
 - [x] TASK-031 — Implement AI prompt registry.
 - [x] TASK-032 — Implement LLM adapter contract.
 - [x] TASK-033 — Implement AI conversation logging.
+- [x] TASK-051 — Implement AI financial assistant screen.
 
 ## Tasks Detail
 
@@ -48,7 +49,16 @@ O módulo `ai-llm-adapter.ts` foi implementado em `apps/backend/src/ai-llm-adapt
 Done
 
 ## Completion Review
-O módulo `ai-conversation-logging.ts` e o serviço orquestrador `ai-service.ts` foram implementados no backend com tipagem 100% estrita sem `any`. O sistema gera um hash SHA-256 seguro e determinístico do contexto financeiro de cada consulta (`hashContext`) para auditoria sem vazamento de dados confidenciais, audita eventos estruturados (`ai_conversation_completed` e `ai_conversation_failed`) com contagem de tokens, latência e status, e expõe a mutation GraphQL `askAiAssistant(input: AskAiAssistantInput!): AiAssistantResponse!`. O serviço possui isolamento estrito de usuário autenticado (`requireVerifiedUserId`), resiliência contra falhas de logging (que nunca bloqueiam a entrega da resposta da IA ao usuário) e conversão segura de falhas do provedor em `SERVICE_UNAVAILABLE`. Com isso, o **EPIC-05 está 100% concluído**.
+O módulo `ai-conversation-logging.ts` e o serviço orquestrador `ai-service.ts` foram implementados no backend com tipagem 100% estrita sem `any`. O sistema gera um hash SHA-256 seguro e determinístico do contexto financeiro de cada consulta (`hashContext`) para auditoria sem vazamento de dados confidenciais, audita eventos estruturados (`ai_conversation_completed` e `ai_conversation_failed`) com contagem de tokens, latência e status, e expõe a mutation GraphQL `askAiAssistant(input: AskAiAssistantInput!): AiAssistantResponse!`. O serviço possui isolamento estrito de usuário autenticado (`requireVerifiedUserId`), resiliência contra falhas de logging (que nunca bloqueiam a entrega da resposta da IA ao usuário) e conversão segura de falhas do provedor em `SERVICE_UNAVAILABLE`.
+
+### TASK-051 — Implement AI financial assistant screen
+
+## Status
+Done
+
+## Completion Review
+O componente `<AiAssistant />` foi implementado em `apps/frontend/src/components/AiAssistant.tsx` com tipagem 100% estrita sem `any`. O componente provê uma interface de chat moderna, com suporte a sugestões de prompts rápidos (*"Resumo do Mês"*, *"Otimizar Despesas"*, *"Próximas Contas"*), histórico em sessão, indicador visual de status do assistente e modelo ativo (`llama3.1:8b`), exibição de latência e contagem de tokens, seleção de período de contexto financeiro e tratamento robusto de loading e erros com retentativa. Foi integrado ao shell principal em `apps/frontend/src/components/DashboardShell.tsx` tanto na navegação quanto no atalho *"Consultar IA"*. Testes automatizados cobrem todos os fluxos com 100% de sucesso. Com isso, o **EPIC-05 está 100% concluído ponta a ponta (Backend + Frontend)**.
+
 
 
 

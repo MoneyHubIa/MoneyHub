@@ -258,4 +258,47 @@ describe('AI Assistant Service & Mutation (TASK-033)', () => {
       assert.equal(event.templateId, 'GENERAL_FINANCIAL_ASSISTANT');
     }
   });
+
+  test('executes tool calling loop when LLM requests tools', async () => {
+    let callCount = 0;
+    const toolCallingLlm: LlmAdapter = new MockLlmAdapter({
+      customResponder: (_prompt, options) => {
+        callCount++;
+        if (callCount === 1) {
+          return {
+            content: '',
+            toolCalls: [
+              {
+                id: 'call-1',
+                type: 'function',
+                function: {
+                  name: 'get_financial_summary',
+                  arguments: '{"startDate":"2025-01-01","endDate":"2025-12-31"}'
+                }
+              }
+            ]
+          };
+        }
+
+        const toolMessage = options?.messages?.find((m) => m.role === 'tool');
+        assert.ok(toolMessage);
+        assert.ok(toolMessage.content?.includes('5000.00'));
+
+        return 'Em 2025 você teve um total de receitas de R$ 5.000,00.';
+      }
+    });
+
+    const response = await askAiAssistant(
+      verifiedContext(),
+      { message: 'Como foi meu ano de 2025?' },
+      {
+        contextRepository: createMockContextRepository(),
+        llmAdapter: toolCallingLlm
+      }
+    );
+
+    assert.equal(callCount, 2);
+    assert.equal(response.answer, 'Em 2025 você teve um total de receitas de R$ 5.000,00.');
+  });
 });
+

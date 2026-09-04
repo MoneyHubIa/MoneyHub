@@ -1,9 +1,48 @@
 import type { FormattedAiPrompt } from './ai-prompt-registry.js';
 
+export type LlmToolCall = {
+  id: string;
+  type: 'function';
+  function: {
+    name: string;
+    arguments: string;
+  };
+};
+
+export type LlmMessage = {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content?: string | null;
+  tool_calls?: LlmToolCall[];
+  tool_call_id?: string;
+  name?: string;
+};
+
+export type LlmToolProperty = {
+  type: string;
+  description: string;
+  enum?: string[];
+  items?: { type: string };
+};
+
+export type LlmToolDefinition = {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: {
+      type: 'object';
+      properties: Record<string, LlmToolProperty>;
+      required?: string[];
+    };
+  };
+};
+
 export type LlmExecutionOptions = {
   maxTokens?: number;
   temperature?: number;
   timeoutMs?: number;
+  tools?: LlmToolDefinition[];
+  messages?: LlmMessage[];
 };
 
 export type LlmUsage = {
@@ -12,7 +51,12 @@ export type LlmUsage = {
   totalTokens: number;
 };
 
-export type LlmFinishReason = 'stop' | 'length' | 'content_filter' | 'error';
+export type LlmFinishReason =
+  | 'stop'
+  | 'length'
+  | 'tool_calls'
+  | 'content_filter'
+  | 'error';
 
 export type LlmResponse = {
   content: string;
@@ -21,6 +65,7 @@ export type LlmResponse = {
   finishReason: LlmFinishReason;
   usage: LlmUsage;
   latencyMs: number;
+  toolCalls?: LlmToolCall[];
 };
 
 export interface LlmAdapter {
@@ -31,7 +76,11 @@ export interface LlmAdapter {
   ): Promise<LlmResponse>;
 }
 
-export type LlmErrorCode = 'TIMEOUT' | 'RATE_LIMIT' | 'PROVIDER_ERROR' | 'UNAVAILABLE';
+export type LlmErrorCode =
+  | 'TIMEOUT'
+  | 'RATE_LIMIT'
+  | 'PROVIDER_ERROR'
+  | 'UNAVAILABLE';
 
 export class LlmAdapterError extends Error {
   readonly code: LlmErrorCode;
@@ -45,11 +94,18 @@ export class LlmAdapterError extends Error {
   }
 }
 
+export type MockCustomResponse =
+  | string
+  | { content: string; toolCalls?: LlmToolCall[] };
+
 export type MockLlmOptions = {
   defaultResponse?: string;
   latencyMs?: number;
   simulatedError?: LlmAdapterError;
-  customResponder?: (prompt: FormattedAiPrompt) => string;
+  customResponder?: (
+    prompt: FormattedAiPrompt,
+    options?: LlmExecutionOptions
+  ) => MockCustomResponse;
 };
 
 export class MockLlmAdapter implements LlmAdapter {
@@ -62,7 +118,7 @@ export class MockLlmAdapter implements LlmAdapter {
 
   async generateResponse(
     prompt: FormattedAiPrompt,
-    _options?: LlmExecutionOptions
+    options?: LlmExecutionOptions
   ): Promise<LlmResponse> {
     const startTime = Date.now();
 
@@ -74,13 +130,24 @@ export class MockLlmAdapter implements LlmAdapter {
       await new Promise((resolve) => setTimeout(resolve, this.options.latencyMs));
     }
 
-    let content: string;
+    let content = '';
+    let toolCalls: LlmToolCall[] | undefined;
+    let finishReason: LlmFinishReason = 'stop';
+
     if (this.options.customResponder) {
-      content = this.options.customResponder(prompt);
+      const res = this.options.customResponder(prompt, options);
+      if (typeof res === 'string') {
+        content = res;
+      } else {
+        content = res.content;
+        toolCalls = res.toolCalls;
+        if (toolCalls && toolCalls.length > 0) {
+          finishReason = 'tool_calls';
+        }
+      }
     } else if (this.options.defaultResponse) {
       content = this.options.defaultResponse;
     } else {
-      // Generate intelligent contextual response based on the prompt
       content = this.buildContextualResponse(prompt);
     }
 
@@ -92,13 +159,14 @@ export class MockLlmAdapter implements LlmAdapter {
       content,
       provider: this.provider,
       model: 'mock-financial-v1',
-      finishReason: 'stop',
+      finishReason,
       usage: {
         promptTokens,
         completionTokens,
         totalTokens: promptTokens + completionTokens
       },
-      latencyMs
+      latencyMs,
+      ...(toolCalls ? { toolCalls } : {})
     };
   }
 
@@ -113,8 +181,10 @@ export class MockLlmAdapter implements LlmAdapter {
     const currency = currencyMatch ? currencyMatch[1]?.trim() : 'BRL';
     const symbol = currency === 'BRL' ? 'R$' : currency;
 
-    return `Olá! Analisando seu contexto financeiro no MoneyHub, verifiquei que seu saldo líquido atual no período é de ${symbol} ${balance}. ` +
-      `Se precisar de detalhes sobre suas principais despesas ou contas a pagar agendadas, estou à disposição para ajudar no seu planejamento!`;
+    return (
+      `Olá! Analisando seu contexto financeiro no MoneyHub, verifiquei que seu saldo líquido atual no período é de ${symbol} ${balance}. ` +
+      `Se precisar de detalhes sobre suas principais despesas ou contas a pagar agendadas, estou à disposição para ajudar no seu planejamento!`
+    );
   }
 }
 
@@ -122,6 +192,7 @@ export type OpenAiCompatibleOptions = {
   apiKey: string;
   baseUrl?: string | undefined;
   model?: string | undefined;
+  timeoutMs?: number | undefined;
   fetchFn?: typeof fetch | undefined;
 };
 
@@ -130,12 +201,16 @@ export class OpenAiCompatibleLlmAdapter implements LlmAdapter {
   private readonly apiKey: string;
   private readonly baseUrl: string;
   private readonly model: string;
+  private readonly defaultTimeoutMs: number;
   private readonly fetchFn: typeof fetch;
 
   constructor(options: OpenAiCompatibleOptions) {
     this.apiKey = options.apiKey;
     this.baseUrl = options.baseUrl ?? 'https://api.openai.com/v1';
     this.model = options.model ?? 'gpt-4o-mini';
+    this.defaultTimeoutMs =
+      options.timeoutMs ??
+      (process.env.LLM_TIMEOUT_MS ? Number(process.env.LLM_TIMEOUT_MS) : 120000);
     this.fetchFn = options.fetchFn ?? globalThis.fetch;
   }
 
@@ -144,19 +219,31 @@ export class OpenAiCompatibleLlmAdapter implements LlmAdapter {
     options?: LlmExecutionOptions
   ): Promise<LlmResponse> {
     const startTime = Date.now();
-    const timeoutMs = options?.timeoutMs ?? 10000;
+    const timeoutMs = options?.timeoutMs ?? this.defaultTimeoutMs;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    const payload = {
+    const messages = options?.messages ?? [
+      { role: 'system', content: prompt.systemPrompt },
+      { role: 'user', content: prompt.userPrompt }
+    ];
+
+    const payload: {
+      model: string;
+      messages: LlmMessage[];
+      temperature: number;
+      max_tokens: number;
+      tools?: LlmToolDefinition[];
+    } = {
       model: this.model,
-      messages: [
-        { role: 'system', content: prompt.systemPrompt },
-        { role: 'user', content: prompt.userPrompt }
-      ],
+      messages,
       temperature: options?.temperature ?? 0.3,
       max_tokens: options?.maxTokens ?? 600
     };
+
+    if (options?.tools && options.tools.length > 0) {
+      payload.tools = options.tools;
+    }
 
     try {
       const response = await this.fetchFn(`${this.baseUrl}/chat/completions`, {
@@ -203,11 +290,16 @@ export class OpenAiCompatibleLlmAdapter implements LlmAdapter {
         );
       }
 
+      type ChatCompletionChoice = {
+        message?: {
+          content?: string | null;
+          tool_calls?: LlmToolCall[];
+        };
+        finish_reason?: string;
+      };
+
       type ChatCompletionJson = {
-        choices?: Array<{
-          message?: { content?: string };
-          finish_reason?: string;
-        }>;
+        choices?: ChatCompletionChoice[];
         usage?: {
           prompt_tokens?: number;
           completion_tokens?: number;
@@ -218,14 +310,17 @@ export class OpenAiCompatibleLlmAdapter implements LlmAdapter {
       const data = (await response.json()) as ChatCompletionJson;
       const choice = data.choices?.[0];
       const content = choice?.message?.content ?? '';
-      const finishReason = (choice?.finish_reason as LlmFinishReason) ?? 'stop';
+      const toolCalls = choice?.message?.tool_calls;
+      const finishReason =
+        (choice?.finish_reason as LlmFinishReason) ??
+        (toolCalls && toolCalls.length > 0 ? 'tool_calls' : 'stop');
 
       const promptTokens =
         data.usage?.prompt_tokens ?? Math.max(1, Math.ceil(prompt.userPrompt.length / 4));
       const completionTokens =
         data.usage?.completion_tokens ?? Math.max(1, Math.ceil(content.length / 4));
       const totalTokens =
-        data.usage?.total_tokens ?? (promptTokens + completionTokens);
+        data.usage?.total_tokens ?? promptTokens + completionTokens;
 
       const usage: LlmUsage = {
         promptTokens,
@@ -241,7 +336,8 @@ export class OpenAiCompatibleLlmAdapter implements LlmAdapter {
         model: this.model,
         finishReason,
         usage,
-        latencyMs
+        latencyMs,
+        ...(toolCalls && toolCalls.length > 0 ? { toolCalls } : {})
       };
     } catch (err: unknown) {
       if (err instanceof LlmAdapterError) {
