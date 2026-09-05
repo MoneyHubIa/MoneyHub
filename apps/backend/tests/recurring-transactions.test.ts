@@ -13,6 +13,13 @@ import {
 } from '../src/recurring-transactions.js';
 import { typeDefs } from '../src/graphql.js';
 
+type CreatedPayable = Parameters<
+  NonNullable<RecurringTransactionRepository['createPayable']>
+>[0]['data'];
+type CreatedReceivable = Parameters<
+  NonNullable<RecurringTransactionRepository['createReceivable']>
+>[0]['data'];
+
 function verifiedContext() {
   return {
     requestId: 'request-1',
@@ -48,8 +55,8 @@ function anonymousContext() {
 
 function createRepository(overrides: Partial<RecurringTransactionRepository> = {}): RecurringTransactionRepository & {
   store: RecurringTransaction[];
-  payables: any[];
-  receivables: any[];
+  payables: CreatedPayable[];
+  receivables: CreatedReceivable[];
 } {
   const store: RecurringTransaction[] = [
     {
@@ -68,8 +75,8 @@ function createRepository(overrides: Partial<RecurringTransactionRepository> = {
     }
   ];
 
-  const payables: any[] = [];
-  const receivables: any[] = [];
+  const payables: CreatedPayable[] = [];
+  const receivables: CreatedReceivable[] = [];
 
   return {
     store,
@@ -134,7 +141,7 @@ function createRepository(overrides: Partial<RecurringTransactionRepository> = {
           p.description === where.description &&
           new Date(p.dueDate).toISOString().split('T')[0] ===
             new Date(where.dueDate).toISOString().split('T')[0]
-      );
+      ).map((_, index) => ({ id: `payable-${index}` }));
     },
     findExistingReceivables: async ({ where }) => {
       return receivables.filter(
@@ -143,7 +150,7 @@ function createRepository(overrides: Partial<RecurringTransactionRepository> = {
           r.description === where.description &&
           new Date(r.dueDate).toISOString().split('T')[0] ===
             new Date(where.dueDate).toISOString().split('T')[0]
-      );
+      ).map((_, index) => ({ id: `receivable-${index}` }));
     },
     ...overrides
   };
@@ -191,9 +198,9 @@ describe('recurring transactions', () => {
     assert.equal(created.description, 'Internet Fibra');
     assert.equal(created.amount, '150.00');
     assert.equal(repo.payables.length, 1);
-    assert.equal(repo.payables[0].description, 'Internet Fibra');
-    assert.equal(repo.payables[0].amount, '150.00');
-    assert.equal(repo.payables[0].status, 'PENDING');
+    assert.equal(repo.payables[0]!.description, 'Internet Fibra');
+    assert.equal(repo.payables[0]!.amount, '150.00');
+    assert.equal(repo.payables[0]!.status, 'PENDING');
   });
 
   test('creates income recurrence and generates initial AccountReceivable', async () => {
@@ -213,9 +220,9 @@ describe('recurring transactions', () => {
 
     assert.equal(created.description, 'Contrato Mensal TI');
     assert.equal(repo.receivables.length, 1);
-    assert.equal(repo.receivables[0].description, 'Contrato Mensal TI');
-    assert.equal(repo.receivables[0].amount, '8000.00');
-    assert.equal(repo.receivables[0].status, 'PENDING');
+    assert.equal(repo.receivables[0]!.description, 'Contrato Mensal TI');
+    assert.equal(repo.receivables[0]!.amount, '8000.00');
+    assert.equal(repo.receivables[0]!.status, 'PENDING');
   });
 
   test('updates recurring transaction', async () => {

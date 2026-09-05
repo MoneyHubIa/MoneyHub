@@ -39,7 +39,7 @@ function createRepository(
   comparisonMetrics: RawPeriodMetrics = { incomeTotal: 0, expenseTotal: 0, incomeCount: 0, expenseCount: 0 }
 ): PeriodComparisonRepository {
   return {
-    getPeriodMetrics: async (_userId, month, _year) => {
+    getPeriodMetrics: async (_userId, month) => {
       // If month matches base or comparison
       return month === 8 ? baseMetrics : comparisonMetrics;
     }
@@ -62,7 +62,7 @@ describe('period comparison', () => {
 
   test('computes period comparison metrics and deltas correctly', async () => {
     const repository: PeriodComparisonRepository = {
-      getPeriodMetrics: async (_userId, month, _year) => {
+      getPeriodMetrics: async (_userId, month) => {
         if (month === 8) {
           // Base: Aug 2026
           return {

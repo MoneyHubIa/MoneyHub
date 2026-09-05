@@ -55,7 +55,6 @@ export function DatePickerInput({
   const weekDayNames = useMemo(() => {
     // Generate Sunday through Saturday localized abbreviations
     const days: string[] = [];
-    const baseSunday = new Date(2026, 7, 2); // 2026-08-02 is Sunday
     for (let i = 0; i < 7; i++) {
       const d = new Date(2026, 7, 2 + i);
       const name = d.toLocaleDateString(locale, { weekday: 'narrow' });

@@ -26,8 +26,21 @@ function Wrapper({ children }: PropsWithChildren) {
 }
 
 const mockCreatePayable = jest.fn();
+const mockUpdatePayable = jest.fn();
 const mockMarkPaid = jest.fn();
 const mockDeletePayable = jest.fn();
+
+type MutationDocument = {
+  definitions: Array<{ name?: { value?: string } }>;
+};
+
+const reminderOptions = [
+  { label: 'Sem lembrete', value: null },
+  { label: 'No dia', value: 0 },
+  { label: '1 dia antes', value: 1 },
+  { label: '3 dias antes', value: 3 },
+  { label: '7 dias antes', value: 7 }
+] as const;
 
 jest.mock('@apollo/client/react', () => ({
   useQuery: () => ({
@@ -42,6 +55,7 @@ jest.mock('@apollo/client/react', () => ({
           dueDate: '2026-08-30T00:00:00.000Z',
           status: 'PENDING',
           paidAt: null,
+          reminderOffsetDays: 3,
           createdAt: '2026-08-01T00:00:00.000Z'
         },
         {
@@ -73,7 +87,11 @@ jest.mock('@apollo/client/react', () => ({
     loading: false,
     refetch: jest.fn()
   }),
-  useMutation: (mutation: any) => {
+  useMutation: (mutation: MutationDocument) => {
+    const mutationName = mutation.definitions[0]?.name?.value;
+    if (mutationName === 'UpdateAccountPayable') return [mockUpdatePayable, { loading: false }];
+    if (mutationName === 'MarkAccountPayablePaid') return [mockMarkPaid, { loading: false }];
+    if (mutationName === 'DeleteAccountPayable') return [mockDeletePayable, { loading: false }];
     return [mockCreatePayable, { loading: false }];
   }
 }));
@@ -103,7 +121,7 @@ describe('AccountsPayable component', () => {
     expect(screen.getByText('Informe uma descrição.')).toBeOnTheScreen();
   });
 
-  test('submits valid form with category and amount', async () => {
+  test.each(reminderOptions)('sends $value as selected reminder offset when creating an account payable', async ({ label, value }) => {
     await render(<AccountsPayable />, { wrapper: Wrapper });
 
     await fireEvent.changeText(
@@ -114,9 +132,54 @@ describe('AccountsPayable component', () => {
     const categoryTags = screen.getAllByText('Moradia');
     expect(categoryTags[0]).toBeDefined();
     await fireEvent.press(categoryTags[0]!);
+    await fireEvent.press(screen.getByRole('button', { name: label }));
 
     await fireEvent.press(screen.getByRole('button', { name: 'Agendar Conta a Pagar' }));
 
-    expect(mockCreatePayable).toHaveBeenCalled();
+    expect(mockCreatePayable).toHaveBeenCalledWith(expect.objectContaining({
+      variables: expect.objectContaining({
+        input: expect.objectContaining({ reminderOffsetDays: value })
+      })
+    }));
+  });
+
+  test('keeps saved reminder and existing account values when updating an account payable', async () => {
+    await render(<AccountsPayable />, { wrapper: Wrapper });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Editar Aluguel do escritório' }));
+
+    expect(screen.getByRole('button', { name: '3 dias antes' }).props.accessibilityState).toEqual(
+      expect.objectContaining({ selected: true })
+    );
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Atualizar Conta a Pagar' }));
+
+    expect(mockUpdatePayable).toHaveBeenCalledWith({
+      variables: {
+        input: {
+          id: 'payable-1',
+          description: 'Aluguel do escritório',
+          amount: '2500.00',
+          dueDate: '2026-08-30T00:00:00.000Z',
+          categoryId: 'cat-1',
+          costCenterId: undefined,
+          reminderOffsetDays: 3
+        }
+      }
+    });
+  });
+
+  test.each(reminderOptions)('sends $value as selected reminder offset when updating an account payable', async ({ label, value }) => {
+    await render(<AccountsPayable />, { wrapper: Wrapper });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Editar Aluguel do escritório' }));
+    await fireEvent.press(screen.getByRole('button', { name: label }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Atualizar Conta a Pagar' }));
+
+    expect(mockUpdatePayable).toHaveBeenCalledWith(expect.objectContaining({
+      variables: expect.objectContaining({
+        input: expect.objectContaining({ id: 'payable-1', reminderOffsetDays: value })
+      })
+    }));
   });
 });

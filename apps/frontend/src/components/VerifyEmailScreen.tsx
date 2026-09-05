@@ -13,7 +13,7 @@ import { CheckCircle2, LogOut, Mail, RefreshCw, Send } from 'lucide-react-native
 import { useAuth } from '../providers/AuthProvider';
 
 export function VerifyEmailScreen() {
-  const { user, refreshEmailVerification, resendEmailVerification, logout } = useAuth();
+  const { refreshEmailVerification, resendEmailVerification, logout } = useAuth();
   const [checking, setChecking] = useState(false);
   const [resending, setResending] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);

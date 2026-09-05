@@ -75,7 +75,7 @@ npm run start -w apps/backend
 - API: Node.js + Express + Apollo Server GraphQL.
 - Identity: Firebase Auth, verified in the backend with Firebase Admin.
 - Analytics: Firebase Analytics.
-- Infrastructure: Google Cloud Platform with Cloud Run, Cloud SQL for PostgreSQL, Secret Manager, and Cloud Logging.
+- Infrastructure: Google Cloud Platform with Cloud Run, Supabase PostgreSQL, Secret Manager, and Cloud Logging.
 - Identity email: Firebase Authentication templates for verification and password recovery.
 
 ## Development Rule

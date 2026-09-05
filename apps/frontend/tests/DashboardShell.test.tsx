@@ -1,8 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { PropsWithChildren } from 'react';
 import { DashboardShell } from '../src/components/DashboardShell';
 import { AuthProvider } from '../src/providers/AuthProvider';
 import type { AuthService } from '../src/services/authService';
+
+const mockSyncAgendaNotifications = jest.fn().mockResolvedValue({ data: {} });
 
 const mockService: AuthService = {
   register: jest.fn(),
@@ -51,10 +53,21 @@ jest.mock('@apollo/client/react', () => ({
     },
     loading: false,
     refetch: jest.fn()
-  })
+  }),
+  useMutation: () => [mockSyncAgendaNotifications, { loading: false }]
 }));
 
 describe('MoneyHub dashboard shell', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-08-18T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   test('renders the product and financial summary', async () => {
     await render(<DashboardShell />, { wrapper: Wrapper });
 
@@ -72,15 +85,47 @@ describe('MoneyHub dashboard shell', () => {
     await render(<DashboardShell />, { wrapper: Wrapper });
     await fireEvent.press(screen.getByRole('button', { name: 'Agenda' }));
 
-    expect(screen.getByRole('header', { name: 'Agenda' })).toBeOnTheScreen();
-    expect(screen.getByText('O conteudo de Agenda estara disponivel em breve.'))
-      .toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Agenda financeira' })).toBeOnTheScreen();
+    expect(mockSyncAgendaNotifications).toHaveBeenCalledWith({
+      variables: { today: '2026-08-18' }
+    });
+  });
+
+  test('shows sync failure in notification center and retries with local today', async () => {
+    mockSyncAgendaNotifications.mockRejectedValueOnce(new Error('Falha temporária'));
+    await render(<DashboardShell />, { wrapper: Wrapper });
+
+    await waitFor(() => {
+      expect(mockSyncAgendaNotifications).toHaveBeenCalledWith({
+        variables: { today: '2026-08-18' }
+      });
+    });
+    await fireEvent.press(screen.getByRole('button', { name: 'Notificações' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Falha de sincronização da agenda')).toBeOnTheScreen();
+      expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível sincronizar lembretes da agenda.');
+    });
+    await fireEvent.press(screen.getByRole('button', { name: 'Tentar novamente' }));
+
+    await waitFor(() => {
+      expect(mockSyncAgendaNotifications).toHaveBeenCalledTimes(2);
+    });
+    expect(mockSyncAgendaNotifications).toHaveBeenLastCalledWith({
+      variables: { today: '2026-08-18' }
+    });
   });
 
   test('renders a logout button', async () => {
     await render(<DashboardShell />, { wrapper: Wrapper });
 
     expect(screen.getByRole('button', { name: 'Sair' })).toBeOnTheScreen();
+  });
+
+  test('renders notification center in dashboard navigation', async () => {
+    await render(<DashboardShell />, { wrapper: Wrapper });
+
+    expect(screen.getByRole('button', { name: 'Notificações' })).toBeOnTheScreen();
   });
 });
 
