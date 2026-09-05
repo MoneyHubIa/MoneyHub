@@ -15,7 +15,7 @@
 | TASK-011 | Plan Firebase Analytics adapter | Done | EPIC-02 |
 | TASK-012 | Plan GCP and Firebase operations docs | Pending | EPIC-08 |
 | TASK-013 | Implement AI context builder | Done | EPIC-05 |
-| TASK-014 | Implement agenda foundation | Pending | EPIC-06 |
+| TASK-014 | Implement agenda foundation | Done | EPIC-06 |
 | TASK-015 | Configure E2E tests | Pending | EPIC-07 |
 | TASK-016 | Prepare deploy checklist | Pending | EPIC-08 |
 | TASK-017 | Implement authenticated GraphQL profile bootstrap | Done | EPIC-02 |
@@ -46,9 +46,9 @@
 | TASK-042 | Add Expo Web smoke build verification | Pending | EPIC-07 |
 | TASK-043 | Document Firebase Auth and Analytics project setup | Pending | EPIC-08 |
 | TASK-044 | Document Firebase identity email and recovery setup | Pending | EPIC-08 |
-| TASK-045 | Implement financial reminders | Pending | EPIC-06 |
-| TASK-046 | Implement notification center | Pending | EPIC-06 |
-| TASK-047 | Implement recurring events | Pending | EPIC-06 |
+| TASK-045 | Implement financial reminders | Done | EPIC-06 |
+| TASK-046 | Implement notification center | Done | EPIC-06 |
+| TASK-047 | Implement recurring events | Done | EPIC-06 |
 | TASK-048 | Implement TypeScript GraphQL backend foundation | Done | EPIC-01 |
 | TASK-049 | Implement TypeScript Expo app foundation | Done | EPIC-01 |
 | TASK-050 | Migrate database from Cloud SQL to Supabase PostgreSQL | Done | EPIC-01 |

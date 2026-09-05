@@ -6,7 +6,7 @@ import {
   CalendarClock,
   CheckCircle2,
   Clock,
-  DollarSign,
+  Pencil,
   PlusCircle,
   Tag,
   Trash2
@@ -33,6 +33,7 @@ const MY_ACCOUNTS_PAYABLE_QUERY = gql`
       dueDate
       status
       paidAt
+      reminderOffsetDays
       createdAt
     }
     myCategories {
@@ -65,6 +66,19 @@ const CREATE_ACCOUNT_PAYABLE = gql`
   }
 `;
 
+const UPDATE_ACCOUNT_PAYABLE = gql`
+  mutation UpdateAccountPayable($input: UpdateAccountPayableInput!) {
+    updateAccountPayable(input: $input) {
+      id
+      description
+      amount
+      dueDate
+      status
+      reminderOffsetDays
+    }
+  }
+`;
+
 const MARK_ACCOUNT_PAYABLE_PAID = gql`
   mutation MarkAccountPayablePaid($id: ID!, $paidAt: String) {
     markAccountPayablePaid(id: $id, paidAt: $paidAt) {
@@ -81,7 +95,7 @@ const DELETE_ACCOUNT_PAYABLE = gql`
   }
 `;
 
-import { formatCurrency, formatDate, getDatePlaceholder, parseRegionalDateToISO } from '../utils/formatters';
+import { formatCurrency, formatDate, formatISOToRegionalDate, parseRegionalDateToISO } from '../utils/formatters';
 import { DatePickerInput } from './DatePickerInput';
 
 export type AccountPayableItem = {
@@ -93,8 +107,17 @@ export type AccountPayableItem = {
   dueDate: string;
   status: 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED';
   paidAt?: string | null;
+  reminderOffsetDays?: number | null;
   createdAt: string;
 };
+
+const reminderOptions: Array<{ label: string; value: number | null }> = [
+  { label: 'Sem lembrete', value: null },
+  { label: 'No dia', value: 0 },
+  { label: '1 dia antes', value: 1 },
+  { label: '3 dias antes', value: 3 },
+  { label: '7 dias antes', value: 7 }
+];
 
 type Category = {
   id: string;
@@ -121,6 +144,8 @@ export function AccountsPayable() {
   });
   const [categoryId, setCategoryId] = useState('');
   const [costCenterId, setCostCenterId] = useState('');
+  const [reminderOffsetDays, setReminderOffsetDays] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [activeStatusFilter, setActiveStatusFilter] = useState<'ALL' | 'PENDING' | 'PAID'>('ALL');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -137,6 +162,12 @@ export function AccountsPayable() {
   });
 
   const [createPayable, { loading: creating }] = useMutation(CREATE_ACCOUNT_PAYABLE, {
+    refetchQueries: ['MyAccountsPayable', 'DashboardSummary'],
+    onCompleted: () => resetForm(),
+    onError: (err) => setErrorMessage(err.message)
+  });
+
+  const [updatePayable, { loading: updating }] = useMutation(UPDATE_ACCOUNT_PAYABLE, {
     refetchQueries: ['MyAccountsPayable', 'DashboardSummary'],
     onCompleted: () => resetForm(),
     onError: (err) => setErrorMessage(err.message)
@@ -159,11 +190,13 @@ export function AccountsPayable() {
     setAmount('');
     setCategoryId('');
     setCostCenterId('');
+    setReminderOffsetDays(null);
+    setEditingId(null);
     setErrorMessage(null);
     refetch();
   };
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     if (!description.trim()) {
       setErrorMessage('Informe uma descrição.');
       return;
@@ -185,18 +218,32 @@ export function AccountsPayable() {
 
     setErrorMessage(null);
 
-    await createPayable({
-      variables: {
-        input: {
-          description: description.trim(),
-          amount: Number(amount).toString(),
-          dueDate: new Date(isoDueDate).toISOString(),
-          categoryId,
-          costCenterId: costCenterId || undefined,
-          status: 'PENDING'
-        }
-      }
-    });
+    const input = {
+      description: description.trim(),
+      amount: amount.trim(),
+      dueDate: new Date(isoDueDate).toISOString(),
+      categoryId,
+      costCenterId: costCenterId || undefined,
+      reminderOffsetDays
+    };
+
+    if (editingId) {
+      await updatePayable({ variables: { input: { id: editingId, ...input } } });
+      return;
+    }
+
+    await createPayable({ variables: { input: { ...input, status: 'PENDING' } } });
+  };
+
+  const handleEdit = (item: AccountPayableItem) => {
+    setEditingId(item.id);
+    setDescription(item.description);
+    setAmount(item.amount);
+    setDueDate(formatISOToRegionalDate(item.dueDate, currency));
+    setCategoryId(item.categoryId);
+    setCostCenterId(item.costCenterId ?? '');
+    setReminderOffsetDays(item.reminderOffsetDays ?? null);
+    setErrorMessage(null);
   };
 
   const items = data?.myAccountsPayable ?? [];
@@ -250,7 +297,7 @@ export function AccountsPayable() {
       </View>
 
       <View style={styles.formCard}>
-        <Text style={styles.formTitle}>Agendar Nova Conta a Pagar</Text>
+        <Text style={styles.formTitle}>{editingId ? 'Editar Conta a Pagar' : 'Agendar Nova Conta a Pagar'}</Text>
 
         {errorMessage ? (
           <View style={styles.errorBox}>
@@ -355,18 +402,37 @@ export function AccountsPayable() {
           </View>
         ) : null}
 
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Lembrete</Text>
+          <View style={styles.optionRow}>
+            {reminderOptions.map((option) => (
+              <Pressable
+                key={option.label}
+                accessibilityRole="button"
+                accessibilityState={{ selected: reminderOffsetDays === option.value }}
+                onPress={() => setReminderOffsetDays(option.value)}
+                style={[styles.optionButton, reminderOffsetDays === option.value && styles.optionButtonSelected]}
+              >
+                <Text style={[styles.optionText, reminderOffsetDays === option.value && styles.optionTextSelected]}>
+                  {option.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         <Pressable
           accessibilityRole="button"
-          disabled={creating}
-          onPress={handleCreate}
-          style={[styles.submitButton, creating && styles.submitButtonDisabled]}
+          disabled={creating || updating}
+          onPress={handleSave}
+          style={[styles.submitButton, (creating || updating) && styles.submitButtonDisabled]}
         >
-          {creating ? (
+          {creating || updating ? (
             <ActivityIndicator color="#ffffff" size="small" />
           ) : (
             <>
               <PlusCircle color="#ffffff" size={18} />
-              <Text style={styles.submitButtonText}>Agendar Conta a Pagar</Text>
+              <Text style={styles.submitButtonText}>{editingId ? 'Atualizar Conta a Pagar' : 'Agendar Conta a Pagar'}</Text>
             </>
           )}
         </Pressable>
@@ -456,6 +522,14 @@ export function AccountsPayable() {
                     </Text>
 
                     <View style={styles.actionButtonsRow}>
+                      <Pressable
+                        accessibilityLabel={`Editar ${item.description}`}
+                        accessibilityRole="button"
+                        onPress={() => handleEdit(item)}
+                        style={styles.editButton}
+                      >
+                        <Pencil color="#0f766e" size={16} />
+                      </Pressable>
                       {!isPaid ? (
                         <Pressable
                           accessibilityRole="button"
@@ -512,6 +586,11 @@ const styles = StyleSheet.create({
   tagBadgeSelected: { backgroundColor: '#0f766e', borderColor: '#0f766e' },
   tagText: { color: '#475569', fontSize: 13, fontWeight: '500' },
   tagTextSelected: { color: '#ffffff', fontWeight: '700' },
+  optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  optionButton: { borderColor: '#cbd5e1', borderRadius: 6, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 7 },
+  optionButtonSelected: { backgroundColor: '#0f766e', borderColor: '#0f766e' },
+  optionText: { color: '#475569', fontSize: 12, fontWeight: '600' },
+  optionTextSelected: { color: '#ffffff' },
   emptyCategoriesText: { color: '#b91c1c', fontSize: 13, paddingVertical: 4 },
   submitButton: { alignItems: 'center', backgroundColor: '#0f766e', borderRadius: 6, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 44, marginTop: 4, paddingHorizontal: 16 },
   submitButtonDisabled: { opacity: 0.7 },
@@ -547,5 +626,6 @@ const styles = StyleSheet.create({
   actionButtonsRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
   payButton: { alignItems: 'center', backgroundColor: '#059669', borderRadius: 4, flexDirection: 'row', gap: 4, paddingHorizontal: 10, paddingVertical: 6 },
   payButtonText: { color: '#ffffff', fontSize: 12, fontWeight: '600' },
+  editButton: { padding: 4 },
   deleteButton: { padding: 4 }
 });

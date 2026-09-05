@@ -12,6 +12,10 @@ import {
 } from '../src/accounts-payable.js';
 import { typeDefs } from '../src/graphql.js';
 
+type ExpenseFromPayableData = Parameters<
+  NonNullable<AccountPayableRepository['createExpenseFromPayable']>
+>[0]['data'];
+
 function verifiedContext() {
   return {
     requestId: 'request-1',
@@ -64,6 +68,7 @@ function createRepository(overrides: Partial<AccountPayableRepository> = {}): Ac
         dueDate: data.dueDate,
         status: data.status ?? 'PENDING',
         paidAt: data.paidAt ?? null,
+        reminderOffsetDays: data.reminderOffsetDays ?? null,
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null
@@ -134,6 +139,31 @@ describe('accounts payable', () => {
     assert.equal(result.paidAt, null);
   });
 
+  test('persists every supported reminder offset when creating and updating an account payable', async () => {
+    for (const reminderOffsetDays of [null, 0, 1, 3, 7]) {
+      const repository = createRepository();
+      const created = await createAccountPayable(
+        verifiedContext(),
+        {
+          categoryId: 'cat-2',
+          description: 'Internet',
+          amount: '120.50',
+          dueDate: '2026-08-25T00:00:00.000Z',
+          reminderOffsetDays
+        },
+        repository
+      );
+      assert.equal(created.reminderOffsetDays, reminderOffsetDays);
+
+      const updated = await updateAccountPayable(
+        verifiedContext(),
+        { id: 'payable-1', reminderOffsetDays },
+        repository
+      );
+      assert.equal(updated.reminderOffsetDays, reminderOffsetDays);
+    }
+  });
+
   test('creates account payable directly as PAID setting paidAt', async () => {
     const repository = createRepository();
     const result = await createAccountPayable(
@@ -169,10 +199,10 @@ describe('accounts payable', () => {
   });
 
   test('marks account payable as PAID and generates an expense transaction', async () => {
-    let generatedExpense: any = null;
+    const generatedExpense: { value: ExpenseFromPayableData | null } = { value: null };
     const repository = createRepository({
       createExpenseFromPayable: async ({ data }) => {
-        generatedExpense = data;
+        generatedExpense.value = data;
       }
     });
 
@@ -184,10 +214,10 @@ describe('accounts payable', () => {
 
     assert.equal(result.status, 'PAID');
     assert.ok(result.paidAt instanceof Date);
-    assert.ok(generatedExpense);
-    assert.equal(generatedExpense.description, '[Pago] Conta de Luz');
-    assert.equal(generatedExpense.amount, '250.00');
-    assert.equal(generatedExpense.categoryId, 'cat-1');
+    assert.ok(generatedExpense.value);
+    assert.equal(generatedExpense.value.description, '[Pago] Conta de Luz');
+    assert.equal(generatedExpense.value.amount, '250.00');
+    assert.equal(generatedExpense.value.categoryId, 'cat-1');
   });
 
   test('soft-deletes account payable by setting deletedAt timestamp', async () => {

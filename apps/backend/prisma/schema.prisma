@@ -23,6 +23,8 @@ model User {
   accountsPayable       AccountPayable[]
   accountsReceivable    AccountReceivable[]
   recurringTransactions RecurringTransaction[]
+  calendarEvents        CalendarEvent[]
+  notifications         Notification[]
 
   @@map("users")
 }
@@ -134,6 +136,7 @@ model AccountPayable {
   dueDate      DateTime    @map("due_date") @db.Timestamptz(3)
   status       String      @default("PENDING") @db.VarChar(20)
   paidAt       DateTime?   @map("paid_at") @db.Timestamptz(3)
+  reminderOffsetDays Int? @map("reminder_offset_days") @db.SmallInt
   createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
   deletedAt    DateTime?   @map("deleted_at") @db.Timestamptz(3)
@@ -156,6 +159,7 @@ model AccountReceivable {
   dueDate      DateTime    @map("due_date") @db.Timestamptz(3)
   status       String      @default("PENDING") @db.VarChar(20)
   receivedAt   DateTime?   @map("received_at") @db.Timestamptz(3)
+  reminderOffsetDays Int? @map("reminder_offset_days") @db.SmallInt
   createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
   deletedAt    DateTime?   @map("deleted_at") @db.Timestamptz(3)
@@ -188,4 +192,40 @@ model RecurringTransaction {
 
   @@index([userId])
   @@map("recurring_transactions")
+}
+
+model CalendarEvent {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  title             String    @db.VarChar(120)
+  scheduledDate     DateTime  @map("scheduled_date") @db.Date
+  recurrenceRule    String?   @map("recurrence_rule") @db.VarChar(20)
+  recurrenceEndDate DateTime? @map("recurrence_end_date") @db.Date
+  notes             String?   @db.VarChar(500)
+  reminderOffsetDays Int? @map("reminder_offset_days") @db.SmallInt
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scheduledDate])
+  @@map("calendar_events")
+}
+
+model Notification {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  source         String   @db.VarChar(20)
+  sourceId       String   @map("source_id") @db.Uuid
+  title          String   @db.VarChar(120)
+  occurrenceDate DateTime @map("occurrence_date") @db.Date
+  reminderDate   DateTime @map("reminder_date") @db.Date
+  readAt         DateTime? @map("read_at") @db.Timestamptz(3)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, source, sourceId, occurrenceDate])
+  @@index([userId, readAt, reminderDate])
+  @@map("notifications")
 }

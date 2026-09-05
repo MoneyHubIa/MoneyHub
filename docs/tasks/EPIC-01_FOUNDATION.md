@@ -32,7 +32,7 @@ The initial workspace exists. The migration to the new stack is tracked by pendi
 Done
 
 ## Objective
-Replace the REST backend foundation plan with Node.js, Express, Apollo Server GraphQL, Firebase Admin token verification, and Cloud SQL PostgreSQL access.
+Replace the REST backend foundation plan with Node.js, Express, Apollo Server GraphQL, Firebase Admin token verification, and Supabase PostgreSQL access.
 
 ## Scope
 Plan app factory, server entrypoint, request ID middleware, security middleware, operational health, GraphQL schema, resolvers, and authenticated context.
@@ -100,7 +100,7 @@ Apollo Server GraphQL foundation backed by Prisma and PostgreSQL.
 ## Out of Scope
 - Creating users or profiles through GraphQL.
 - Financial domain operations.
-- Production Cloud SQL or Firebase provisioning.
+- Production Supabase PostgreSQL or Firebase provisioning.
 
 ## Acceptance Criteria
 - `/health` succeeds and `/api/v1/health` returns `404`.

@@ -12,7 +12,6 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   PieChart,
-  Tag,
   Wallet
 } from 'lucide-react-native';
 import { formatCurrency } from '../utils/formatters';

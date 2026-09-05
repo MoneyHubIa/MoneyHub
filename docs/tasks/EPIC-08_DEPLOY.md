@@ -14,7 +14,7 @@ Plan GCP infrastructure, Expo build targets, Firebase configuration, password-re
 - TASK-012 - Plan GCP and Firebase operations docs.
 - TASK-016 - Prepare deploy checklist.
 - TASK-037 - Configure production build for backend and Expo Web.
-- TASK-038 - Document GCP deployment with Cloud Run, Cloud SQL, Secret Manager, and Cloud Logging.
+- TASK-038 - Document deployment with Cloud Run, Supabase PostgreSQL, Secret Manager, and Cloud Logging.
 - TASK-039 - Document operational monitoring.
 - TASK-043 - Document Firebase Auth and Analytics project setup.
 - TASK-044 - Document Firebase identity email and recovery setup.

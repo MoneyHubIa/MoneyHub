@@ -1,6 +1,7 @@
 import { GraphQLError } from 'graphql';
 import type { GraphQLContext } from './graphql.js';
 import { requireVerifiedUserId } from './financial-categories.js';
+import { validateReminderOffsetDays, type ReminderOffsetDays } from './agenda-notifications.js';
 
 export type AccountReceivableStatus = 'PENDING' | 'RECEIVED' | 'OVERDUE' | 'CANCELLED';
 
@@ -14,6 +15,7 @@ export type AccountReceivable = {
   dueDate: Date;
   status: AccountReceivableStatus;
   receivedAt?: Date | null;
+  reminderOffsetDays?: ReminderOffsetDays;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date | null;
@@ -26,6 +28,7 @@ export type CreateAccountReceivableInput = {
   amount: string;
   dueDate: string;
   status?: AccountReceivableStatus;
+  reminderOffsetDays?: number | null;
 };
 
 export type UpdateAccountReceivableInput = {
@@ -37,6 +40,7 @@ export type UpdateAccountReceivableInput = {
   dueDate?: string;
   status?: AccountReceivableStatus;
   receivedAt?: string | null;
+  reminderOffsetDays?: number | null;
 };
 
 export type AccountReceivableRepository = {
@@ -60,6 +64,7 @@ export type AccountReceivableRepository = {
       dueDate: Date;
       status?: AccountReceivableStatus;
       receivedAt?: Date | null;
+      reminderOffsetDays?: ReminderOffsetDays;
     };
   }): Promise<AccountReceivable>;
   update(args: {
@@ -72,6 +77,7 @@ export type AccountReceivableRepository = {
       dueDate?: Date;
       status?: AccountReceivableStatus;
       receivedAt?: Date | null;
+      reminderOffsetDays?: ReminderOffsetDays;
       deletedAt?: Date;
     };
   }): Promise<AccountReceivable>;
@@ -147,6 +153,7 @@ export async function createAccountReceivable(
   }
 
   const receivedAt = status === 'RECEIVED' ? new Date() : null;
+  const reminderOffsetDays = validateReminderOffsetDays(input.reminderOffsetDays);
 
   return repository.create({
     data: {
@@ -157,7 +164,8 @@ export async function createAccountReceivable(
       amount: input.amount,
       dueDate,
       status,
-      receivedAt
+      receivedAt,
+      reminderOffsetDays
     }
   });
 }
@@ -225,6 +233,10 @@ export async function updateAccountReceivable(
       }
       data.receivedAt = received;
     }
+  }
+
+  if (input.reminderOffsetDays !== undefined) {
+    data.reminderOffsetDays = validateReminderOffsetDays(input.reminderOffsetDays);
   }
 
   if (input.categoryId !== undefined) {

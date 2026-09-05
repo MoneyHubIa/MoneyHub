@@ -1,8 +1,7 @@
 import { gql } from '@apollo/client';
-import { useApolloClient, useQuery } from '@apollo/client/react';
+import { useApolloClient, useMutation, useQuery } from '@apollo/client/react';
 import { useRouter } from 'expo-router';
 import {
-  BarChart3,
   Bot,
   CalendarClock,
   CalendarDays,
@@ -15,14 +14,13 @@ import {
   Target,
   WalletCards
 } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   useWindowDimensions,
   View
 } from 'react-native';
@@ -38,6 +36,8 @@ import { CashFlowChart } from './CashFlowChart';
 import { CategoryAnalysis } from './CategoryAnalysis';
 import { PeriodComparison } from './PeriodComparison';
 import { AiAssistant } from './AiAssistant';
+import { Agenda } from './Agenda';
+import { NotificationCenter } from './NotificationCenter';
 
 const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -72,6 +72,18 @@ const DASHBOARD_SUMMARY_QUERY = gql`
   }
 `;
 
+const SYNC_AGENDA_NOTIFICATIONS = gql`
+  mutation SyncAgendaNotifications($today: String!) {
+    syncAgendaNotifications(today: $today) {
+      id
+    }
+  }
+`;
+
+function localIsoDate(value: Date): string {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+}
+
 type DashboardSummaryData = {
   dashboardSummary?: {
     totalIncome: string;
@@ -100,6 +112,9 @@ export function DashboardShell() {
     useState<NavigationId>('dashboard');
   const [isAiChatOpen, setIsAiChatOpen] = useState<boolean>(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [notificationsReady, setNotificationsReady] = useState(false);
+  const [syncAgendaError, setSyncAgendaError] = useState(false);
+  const [syncAgendaNotifications] = useMutation(SYNC_AGENDA_NOTIFICATIONS);
   const { data: summaryData, loading: loadingSummary, refetch: refetchSummary } =
     useQuery<DashboardSummaryData>(DASHBOARD_SUMMARY_QUERY, {
       fetchPolicy: 'cache-and-network'
@@ -110,6 +125,22 @@ export function DashboardShell() {
       refetchSummary?.();
     }
   }, [activeSectionId, refetchSummary]);
+
+  const syncNotifications = useCallback(async () => {
+    setSyncAgendaError(false);
+    try {
+      await syncAgendaNotifications({ variables: { today: localIsoDate(new Date()) } });
+    } catch (error) {
+      setSyncAgendaError(true);
+      throw error;
+    } finally {
+      setNotificationsReady(true);
+    }
+  }, [syncAgendaNotifications]);
+
+  useEffect(() => {
+    void syncNotifications().catch(() => undefined);
+  }, [syncNotifications]);
 
   const activeSection =
     navigationItems.find((item) => item.id === activeSectionId) ??
@@ -129,9 +160,17 @@ export function DashboardShell() {
   return (
     <View style={[styles.shell, desktop ? styles.shellDesktop : styles.shellMobile]}>
       <View style={[styles.navigation, desktop && styles.navigationDesktop]}>
-        <View style={styles.brand}>
-          <WalletCards color="#0f766e" size={28} />
-          <Text accessibilityRole="header" style={styles.brandText}>MoneyHub</Text>
+        <View style={styles.brandRow}>
+          <View style={styles.brand}>
+            <WalletCards color="#0f766e" size={28} />
+            <Text accessibilityRole="header" style={styles.brandText}>MoneyHub</Text>
+          </View>
+          <NotificationCenter
+            enabled={notificationsReady}
+            onOpenSource={() => setActiveSectionId('agenda')}
+            onRetrySync={syncNotifications}
+            syncError={syncAgendaError}
+          />
         </View>
 
         <ScrollView
@@ -262,15 +301,15 @@ export function DashboardShell() {
             </View>
 
             <CashFlowChart
-              preferredCurrency={summaryData?.myProfile?.preferredCurrency}
+              preferredCurrency={summaryData?.myProfile?.preferredCurrency ?? 'BRL'}
             />
 
             <CategoryAnalysis
-              preferredCurrency={summaryData?.myProfile?.preferredCurrency}
+              preferredCurrency={summaryData?.myProfile?.preferredCurrency ?? 'BRL'}
             />
 
             <PeriodComparison
-              preferredCurrency={summaryData?.myProfile?.preferredCurrency}
+              preferredCurrency={summaryData?.myProfile?.preferredCurrency ?? 'BRL'}
             />
           </>
         ) : activeSectionId === 'ajustes' ? (
@@ -287,6 +326,8 @@ export function DashboardShell() {
           <RecurringTransactions />
         ) : activeSectionId === 'contas' ? (
           <CostCenters />
+        ) : activeSectionId === 'agenda' ? (
+          <Agenda />
         ) : (
           <View style={styles.header}>
             <Text style={styles.eyebrow}>MoneyHub</Text>
@@ -317,7 +358,8 @@ const styles = StyleSheet.create({
   shellMobile: { flexDirection: 'column' },
   navigation: { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0', borderBottomWidth: 1 },
   navigationDesktop: { width: 248, borderBottomWidth: 0, borderRightColor: '#e2e8f0', borderRightWidth: 1, padding: 20 },
-  brand: { alignItems: 'center', flexDirection: 'row', gap: 10, padding: 16 },
+  brandRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', padding: 16 },
+  brand: { alignItems: 'center', flexDirection: 'row', gap: 10 },
   brandText: { color: '#0f172a', fontSize: 22, fontWeight: '700' },
   navListDesktop: { gap: 6 },
   navListMobile: { gap: 8, paddingHorizontal: 12, paddingBottom: 12 },

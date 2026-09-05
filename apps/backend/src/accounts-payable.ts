@@ -1,6 +1,7 @@
 import { GraphQLError } from 'graphql';
 import type { GraphQLContext } from './graphql.js';
 import { requireVerifiedUserId } from './financial-categories.js';
+import { validateReminderOffsetDays, type ReminderOffsetDays } from './agenda-notifications.js';
 
 export type AccountPayableStatus = 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 
@@ -14,6 +15,7 @@ export type AccountPayable = {
   dueDate: Date;
   status: AccountPayableStatus;
   paidAt?: Date | null;
+  reminderOffsetDays?: ReminderOffsetDays;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date | null;
@@ -26,6 +28,7 @@ export type CreateAccountPayableInput = {
   amount: string;
   dueDate: string;
   status?: AccountPayableStatus;
+  reminderOffsetDays?: number | null;
 };
 
 export type UpdateAccountPayableInput = {
@@ -37,6 +40,7 @@ export type UpdateAccountPayableInput = {
   dueDate?: string;
   status?: AccountPayableStatus;
   paidAt?: string | null;
+  reminderOffsetDays?: number | null;
 };
 
 export type AccountPayableRepository = {
@@ -60,6 +64,7 @@ export type AccountPayableRepository = {
       dueDate: Date;
       status?: AccountPayableStatus;
       paidAt?: Date | null;
+      reminderOffsetDays?: ReminderOffsetDays;
     };
   }): Promise<AccountPayable>;
   update(args: {
@@ -72,6 +77,7 @@ export type AccountPayableRepository = {
       dueDate?: Date;
       status?: AccountPayableStatus;
       paidAt?: Date | null;
+      reminderOffsetDays?: ReminderOffsetDays;
       deletedAt?: Date;
     };
   }): Promise<AccountPayable>;
@@ -147,6 +153,7 @@ export async function createAccountPayable(
   }
 
   const paidAt = status === 'PAID' ? new Date() : null;
+  const reminderOffsetDays = validateReminderOffsetDays(input.reminderOffsetDays);
 
   return repository.create({
     data: {
@@ -157,7 +164,8 @@ export async function createAccountPayable(
       amount: input.amount,
       dueDate,
       status,
-      paidAt
+      paidAt,
+      reminderOffsetDays
     }
   });
 }
@@ -225,6 +233,10 @@ export async function updateAccountPayable(
       }
       data.paidAt = paid;
     }
+  }
+
+  if (input.reminderOffsetDays !== undefined) {
+    data.reminderOffsetDays = validateReminderOffsetDays(input.reminderOffsetDays);
   }
 
   if (input.categoryId !== undefined) {

@@ -12,6 +12,10 @@ import {
 } from '../src/accounts-receivable.js';
 import { typeDefs } from '../src/graphql.js';
 
+type IncomeFromReceivableData = Parameters<
+  NonNullable<AccountReceivableRepository['createIncomeFromReceivable']>
+>[0]['data'];
+
 function verifiedContext() {
   return {
     requestId: 'request-1',
@@ -64,6 +68,7 @@ function createRepository(overrides: Partial<AccountReceivableRepository> = {}):
         dueDate: data.dueDate,
         status: data.status ?? 'PENDING',
         receivedAt: data.receivedAt ?? null,
+        reminderOffsetDays: data.reminderOffsetDays ?? null,
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null
@@ -134,6 +139,31 @@ describe('accounts receivable', () => {
     assert.equal(result.receivedAt, null);
   });
 
+  test('persists every supported reminder offset when creating and updating an account receivable', async () => {
+    for (const reminderOffsetDays of [null, 0, 1, 3, 7]) {
+      const repository = createRepository();
+      const created = await createAccountReceivable(
+        verifiedContext(),
+        {
+          categoryId: 'cat-2',
+          description: 'Venda de Projeto',
+          amount: '8000.00',
+          dueDate: '2026-08-25T00:00:00.000Z',
+          reminderOffsetDays
+        },
+        repository
+      );
+      assert.equal(created.reminderOffsetDays, reminderOffsetDays);
+
+      const updated = await updateAccountReceivable(
+        verifiedContext(),
+        { id: 'receivable-1', reminderOffsetDays },
+        repository
+      );
+      assert.equal(updated.reminderOffsetDays, reminderOffsetDays);
+    }
+  });
+
   test('creates account receivable directly as RECEIVED setting receivedAt', async () => {
     const repository = createRepository();
     const result = await createAccountReceivable(
@@ -169,10 +199,10 @@ describe('accounts receivable', () => {
   });
 
   test('marks account receivable as RECEIVED and generates an income transaction', async () => {
-    let generatedIncome: any = null;
+    const generatedIncome: { value: IncomeFromReceivableData | null } = { value: null };
     const repository = createRepository({
       createIncomeFromReceivable: async ({ data }) => {
-        generatedIncome = data;
+        generatedIncome.value = data;
       }
     });
 
@@ -184,10 +214,10 @@ describe('accounts receivable', () => {
 
     assert.equal(result.status, 'RECEIVED');
     assert.ok(result.receivedAt instanceof Date);
-    assert.ok(generatedIncome);
-    assert.equal(generatedIncome.description, '[Recebido] Consultoria Financeira');
-    assert.equal(generatedIncome.amount, '3500.00');
-    assert.equal(generatedIncome.categoryId, 'cat-1');
+    assert.ok(generatedIncome.value);
+    assert.equal(generatedIncome.value.description, '[Recebido] Consultoria Financeira');
+    assert.equal(generatedIncome.value.amount, '3500.00');
+    assert.equal(generatedIncome.value.categoryId, 'cat-1');
   });
 
   test('soft-deletes account receivable by setting deletedAt timestamp', async () => {

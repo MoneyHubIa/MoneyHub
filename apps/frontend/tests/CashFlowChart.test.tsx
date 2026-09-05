@@ -55,8 +55,6 @@ const mockCashFlowMonthly = {
   }
 };
 
-let currentGranularity = 'DAILY';
-
 jest.mock('@apollo/client/react', () => ({
   useQuery: (_query: unknown, options: { variables?: { input?: { granularity?: string } } }) => {
     const gran = options?.variables?.input?.granularity ?? 'DAILY';
