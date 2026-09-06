@@ -35,6 +35,7 @@ import { RecurringTransactions } from './RecurringTransactions';
 import { CashFlowChart } from './CashFlowChart';
 import { CategoryAnalysis } from './CategoryAnalysis';
 import { PeriodComparison } from './PeriodComparison';
+import { AiAssistant } from './AiAssistant';
 import { Agenda } from './Agenda';
 import { NotificationCenter } from './NotificationCenter';
 
@@ -48,7 +49,6 @@ const navigationItems = [
   { id: 'contas', label: 'Centros', icon: CreditCard },
   { id: 'metas', label: 'Metas', icon: Target },
   { id: 'agenda', label: 'Agenda', icon: CalendarDays },
-  { id: 'ia', label: 'IA', icon: Bot },
   { id: 'ajustes', label: 'Ajustes', icon: Settings }
 ] as const;
 
@@ -110,6 +110,7 @@ export function DashboardShell() {
   const apolloClient = useApolloClient();
   const [activeSectionId, setActiveSectionId] =
     useState<NavigationId>('dashboard');
+  const [isAiChatOpen, setIsAiChatOpen] = useState<boolean>(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [notificationsReady, setNotificationsReady] = useState(false);
   const [syncAgendaError, setSyncAgendaError] = useState(false);
@@ -290,7 +291,11 @@ export function DashboardShell() {
                   Insights contextualizados
                 </Text>
               </View>
-              <Pressable accessibilityRole="button" style={styles.primaryAction}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setIsAiChatOpen(true)}
+                style={styles.primaryAction}
+              >
                 <Bot color="#ffffff" size={18} />
                 <Text style={styles.primaryActionText}>Consultar IA</Text>
               </Pressable>
@@ -336,6 +341,14 @@ export function DashboardShell() {
           </View>
         )}
       </ScrollView>
+
+      {/* Floating AI Financial Assistant Widget */}
+      <AiAssistant
+        isOpen={isAiChatOpen}
+        onClose={() => setIsAiChatOpen(false)}
+        onToggle={() => setIsAiChatOpen((prev) => !prev)}
+        preferredCurrency={summaryData?.myProfile?.preferredCurrency}
+      />
     </View>
   );
 }

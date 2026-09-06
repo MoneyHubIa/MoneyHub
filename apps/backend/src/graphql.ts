@@ -135,6 +135,15 @@ import {
   getPeriodComparison,
   type PeriodComparisonInput
 } from './period-comparison.js';
+import {
+  aiContextRepository,
+  buildAiFinancialContext,
+  type AiFinancialContextInput
+} from './ai-context-builder.js';
+import {
+  askAiAssistant,
+  type AskAiAssistantInput
+} from './ai-service.js';
 
 
 
@@ -871,6 +880,69 @@ export const typeDefs = `#graphql
     delta: PeriodComparisonDelta!
   }
 
+  type AiFinancialTotals {
+    income: String!
+    expenses: String!
+    balance: String!
+  }
+
+  type AiTopCategory {
+    categoryName: String!
+    amount: String!
+    percentage: Float!
+    color: String
+    icon: String
+  }
+
+  type AiUpcomingBill {
+    id: ID!
+    description: String!
+    amount: String!
+    dueDate: String!
+    status: String
+    categoryName: String
+  }
+
+  type AiFinancialContext {
+    version: String!
+    period: String!
+    currency: String!
+    generatedAt: String!
+    totals: AiFinancialTotals!
+    topExpenseCategories: [AiTopCategory!]!
+    upcomingBills: [AiUpcomingBill!]!
+    goals: [String!]!
+  }
+
+  input AiFinancialContextInput {
+    month: Int
+    year: Int
+    billsDaysAhead: Int
+  }
+
+  type AiAssistantUsage {
+    promptTokens: Int!
+    completionTokens: Int!
+    totalTokens: Int!
+  }
+
+  type AiAssistantResponse {
+    answer: String!
+    provider: String!
+    model: String!
+    latencyMs: Int!
+    usage: AiAssistantUsage!
+    contextPeriod: String!
+    contextVersion: String!
+  }
+
+  input AskAiAssistantInput {
+    message: String!
+    month: Int
+    year: Int
+    templateId: String
+  }
+
   enum AccountPayableStatus {
     PENDING
     PAID
@@ -1101,6 +1173,7 @@ export const typeDefs = `#graphql
     cashFlow(input: CashFlowInput): CashFlowResult!
     categoryAnalysis(input: CategoryAnalysisInput): CategoryAnalysisResult!
     periodComparison(input: PeriodComparisonInput): PeriodComparisonResult!
+    aiFinancialContext(input: AiFinancialContextInput): AiFinancialContext!
   }
 
   type Mutation {
@@ -1130,6 +1203,7 @@ export const typeDefs = `#graphql
     updateRecurringTransaction(input: UpdateRecurringTransactionInput!): RecurringTransaction!
     deleteRecurringTransaction(id: ID!): Boolean!
     processRecurringTransactions: ProcessRecurringResult!
+    askAiAssistant(input: AskAiAssistantInput!): AiAssistantResponse!
     createCalendarEvent(input: CreateCalendarEventInput!): CalendarEvent!
     updateCalendarEvent(input: UpdateCalendarEventInput!): CalendarEvent!
     deleteCalendarEvent(id: ID!): Boolean!
@@ -1230,6 +1304,13 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return getPeriodComparison(context, args.input, periodComparisonRepository());
+    },
+    aiFinancialContext: (
+      _parent: unknown,
+      args: { input?: AiFinancialContextInput },
+      context: GraphQLContext
+    ) => {
+      return buildAiFinancialContext(context, args.input, aiContextRepository());
     }
   },
   Mutation: {
@@ -1482,6 +1563,12 @@ export const resolvers = {
     ) => {
       return processRecurringTransactions(context, recurringTransactionRepository());
     },
+    askAiAssistant: (
+      _parent: unknown,
+      args: { input: AskAiAssistantInput },
+      context: GraphQLContext
+    ) => {
+      return askAiAssistant(context, args.input);
     createCalendarEvent: (
       _parent: unknown,
       args: { input: CreateCalendarEventInput },

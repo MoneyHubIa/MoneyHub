@@ -36,6 +36,7 @@ jest.mock('@apollo/client/react', () => ({
   useApolloClient: () => ({
     clearStore: jest.fn()
   }),
+  useMutation: () => [jest.fn(), { loading: false }],
   useQuery: () => ({
     data: {
       dashboardSummary: {
@@ -80,6 +81,19 @@ describe('MoneyHub dashboard shell', () => {
     expect(screen.getByText('R$ 5.000,00')).toBeOnTheScreen();
     expect(screen.getByText('Despesas do mes')).toBeOnTheScreen();
     expect(screen.getByText('R$ 1.800,00')).toBeOnTheScreen();
+  });
+
+  test('opens floating IA assistant when clicking Consultar IA', async () => {
+    await render(<DashboardShell />, { wrapper: Wrapper });
+    expect(
+      screen.getByRole('button', { name: 'Abrir Assistente Financeiro IA' })
+    ).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Consultar IA' }));
+
+    expect(
+      screen.getByRole('header', { name: 'Assistente Financeiro IA' })
+    ).toBeOnTheScreen();
   });
 
   test('changes the active section from the navigation', async () => {
@@ -139,4 +153,5 @@ describe('MoneyHub dashboard shell', () => {
     expect(screen.getByRole('button', { name: 'Notificações' })).toBeOnTheScreen();
   });
 });
+
 
