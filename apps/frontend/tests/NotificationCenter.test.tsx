@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { NotificationCenter } from '../src/components/NotificationCenter';
 
 const mockMarkNotificationRead = jest.fn().mockResolvedValue({ data: {} });
@@ -97,6 +98,30 @@ describe('NotificationCenter', () => {
     expect(screen.getByRole('header', { name: 'Notificações' })).toBeOnTheScreen();
     expect(screen.getByText('Conta de luz vence hoje')).toBeOnTheScreen();
     expect(screen.getByText('Reunião de planejamento amanhã')).toBeOnTheScreen();
+  });
+
+  test('opens the notification panel to the right when requested', async () => {
+    await render(<NotificationCenter panelPlacement="right" />);
+    await fireEvent.press(screen.getByRole('button'));
+
+    const panelStyle = StyleSheet.flatten(
+      screen.getByLabelText(/Painel de notifica/).props.style
+    );
+
+    expect(panelStyle.left).toBe(0);
+    expect(panelStyle.right).toBeUndefined();
+  });
+
+  test('keeps the notification panel opening to the left by default', async () => {
+    await render(<NotificationCenter />);
+    await fireEvent.press(screen.getByRole('button'));
+
+    const panelStyle = StyleSheet.flatten(
+      screen.getByLabelText(/Painel de notifica/).props.style
+    );
+
+    expect(panelStyle.right).toBe(0);
+    expect(panelStyle.left).toBeUndefined();
   });
 
   test('skips notification query until agenda notification sync is ready', async () => {
