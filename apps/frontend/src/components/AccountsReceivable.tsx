@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
   listTitle: { color: '#0f172a', fontSize: 20, fontWeight: '700' },
   filterTabs: { backgroundColor: '#f1f5f9', borderRadius: 6, flexDirection: 'row', padding: 3 },
   filterTab: { borderRadius: 4, paddingHorizontal: 12, paddingVertical: 6 },
-  filterTabActive: { backgroundColor: '#ffffff', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2 },
+  filterTabActive: { backgroundColor: '#ffffff', boxShadow: '0px 0px 2px rgba(0, 0, 0, 0.05)' },
   filterTabText: { color: '#64748b', fontSize: 13, fontWeight: '500' },
   filterTabTextActive: { color: '#0f172a', fontWeight: '700' },
   emptyCard: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, gap: 10, justifyContent: 'center', padding: 32 },

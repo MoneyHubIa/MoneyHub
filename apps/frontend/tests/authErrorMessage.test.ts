@@ -22,6 +22,10 @@ describe('authErrorMessage', () => {
       'Não foi possível conectar. Verifique sua internet e tente novamente.'
     ],
     [
+      'auth/backend-unavailable',
+      'Serviço temporariamente indisponível. Tente novamente em instantes.'
+    ],
+    [
       'auth/timeout',
       'Não foi possível conectar. Verifique sua internet e tente novamente.'
     ],

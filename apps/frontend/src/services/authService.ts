@@ -14,7 +14,7 @@ type FirebaseCredentialLike = Readonly<{ user: FirebaseUserLike }>;
 interface FirebaseAuthDependencies {
   createUser(email: string, password: string): Promise<FirebaseCredentialLike>;
   sendVerification(user: FirebaseUserLike): Promise<void>;
-  signIn(email: string, password: string): Promise<unknown>;
+  signIn(email: string, password: string): Promise<FirebaseCredentialLike>;
   signOut(): Promise<void>;
   observe(callback: (user: FirebaseUserLike | null) => void): () => void;
   getCurrentUser(): FirebaseUserLike | null;
@@ -24,7 +24,7 @@ export interface AuthService {
   register(email: string, password: string): Promise<void>;
   resendEmailVerification(): Promise<void>;
   refreshEmailVerification(): Promise<SessionUser>;
-  login(email: string, password: string): Promise<void>;
+  login(email: string, password: string): Promise<SessionUser>;
   logout(): Promise<void>;
   observeSession(callback: (user: SessionUser | null) => void): () => void;
   getIdToken(): Promise<string | null>;
@@ -72,7 +72,11 @@ export function createFirebaseAuthService(
       return toSessionUser(user);
     },
     async login(email, password) {
-      await dependencies.signIn(normalizeEmail(email), password);
+      const credential = await dependencies.signIn(
+        normalizeEmail(email),
+        password
+      );
+      return toSessionUser(credential.user);
     },
     async logout() {
       await dependencies.signOut();

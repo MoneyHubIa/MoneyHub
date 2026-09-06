@@ -1,11 +1,11 @@
 import 'dotenv/config';
 import { createServer } from 'node:http';
 import { resolve } from 'node:path';
-import { createApp } from './app.js';
-import { createFirebaseAuthRestClient } from './firebase-auth-rest.js';
-import { appLogger } from './http-logger.js';
-import { createPasswordRecoveryService } from './password-recovery.js';
-import { loadRootEnvironment, loadRuntimeConfig } from './runtime-config.js';
+import { createApp } from './core/app/app.js';
+import { createFirebaseAuthRestClient } from './modules/auth/firebase-rest/firebase-auth-rest.js';
+import { appLogger } from './core/http-logger/http-logger.js';
+import { createPasswordRecoveryService } from './modules/auth/password-recovery/password-recovery.js';
+import { loadRootEnvironment, loadRuntimeConfig } from './core/runtime-config/runtime-config.js';
 
 loadRootEnvironment();
 const { appUrl, firebaseWebApiKey } = loadRuntimeConfig();

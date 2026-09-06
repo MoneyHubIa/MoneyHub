@@ -37,5 +37,21 @@ export default [
         Buffer: 'readonly'
       }
     }
+  },
+  {
+    files: ['apps/frontend/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "Property[key.name=/^shadow(Color|Offset|Opacity|Radius)$/]",
+          message: 'React Native shadow* style props are deprecated. Use boxShadow.'
+        },
+        {
+          selector: "JSXAttribute[name.name='pointerEvents']",
+          message: 'React Native pointerEvents prop is deprecated. Use style.pointerEvents.'
+        }
+      ]
+    }
   }
 ];

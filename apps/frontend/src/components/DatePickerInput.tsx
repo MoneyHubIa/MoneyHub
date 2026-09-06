@@ -313,9 +313,7 @@ const styles = StyleSheet.create({
     gap: 12,
     maxWidth: 340,
     padding: 18,
-    shadowColor: '#000000',
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
+    boxShadow: '0px 0px 10px rgba(0, 0, 0, 0.15)',
     width: '100%'
   },
   modalHeader: {

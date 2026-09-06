@@ -408,7 +408,7 @@ export function AiAssistant({
   // When widget is closed: render Floating Action Button (FAB)
   if (!isWidgetOpen) {
     return (
-      <View pointerEvents="box-none" style={styles.fabWrapper}>
+      <View style={styles.fabWrapper}>
         <Pressable
           accessibilityLabel="Abrir Assistente Financeiro IA"
           accessibilityRole="button"
@@ -430,7 +430,7 @@ export function AiAssistant({
 
   // When widget is open: render Floating Chat Window
   return (
-    <View pointerEvents="box-none" style={styles.widgetWrapper}>
+    <View style={styles.widgetWrapper}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.chatWindow}
@@ -667,6 +667,7 @@ const styles = StyleSheet.create({
   // Floating wrapper on bottom-right
   fabWrapper: {
     bottom: 24,
+    pointerEvents: 'box-none',
     position: 'absolute',
     right: 24,
     zIndex: 999
@@ -682,10 +683,7 @@ const styles = StyleSheet.create({
     gap: 10,
     height: 52,
     paddingHorizontal: 16,
-    shadowColor: '#0f766e',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10
+    boxShadow: '0px 6px 10px rgba(15, 118, 110, 0.35)'
   },
   fabIconContainer: {
     position: 'relative'
@@ -715,6 +713,7 @@ const styles = StyleSheet.create({
     bottom: 20,
     maxHeight: '85%',
     maxWidth: '94%',
+    pointerEvents: 'box-none',
     position: 'absolute',
     right: 20,
     width: 400,
@@ -729,10 +728,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     height: 560,
     overflow: 'hidden',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.18,
-    shadowRadius: 20,
+    boxShadow: '0px 10px 20px rgba(15, 23, 42, 0.18)',
     width: '100%'
   },
   windowHeader: {

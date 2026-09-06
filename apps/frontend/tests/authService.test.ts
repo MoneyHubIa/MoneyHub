@@ -65,7 +65,13 @@ describe('Firebase auth service', () => {
       getCurrentUser: () => null
     });
 
-    await service.login(' Person@Example.com ', 'firebase-only');
+    await expect(
+      service.login(' Person@Example.com ', 'firebase-only')
+    ).resolves.toEqual({
+      uid: 'known-user',
+      email: 'person@example.com',
+      emailVerified: false
+    });
 
     expect(signIn).toHaveBeenCalledWith('person@example.com', 'firebase-only');
   });

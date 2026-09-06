@@ -11,6 +11,25 @@ function SessionProbe() {
   return <Text>{loading ? 'loading' : (user?.email ?? 'anonymous')}</Text>;
 }
 
+let loginResult: Promise<void> | undefined;
+
+function LoginProbe() {
+  const { loading, login, user } = useAuth();
+
+  return (
+    <>
+      <Text>{loading ? 'loading' : (user?.email ?? 'anonymous')}</Text>
+      <Button
+        title="Login"
+        onPress={() => {
+          loginResult = login('person@example.com', 'password');
+          void loginResult.catch(() => undefined);
+        }}
+      />
+    </>
+  );
+}
+
 let refreshResult: Promise<boolean> | undefined;
 
 function EmailVerificationProbe() {
@@ -40,6 +59,93 @@ function EmailVerificationProbe() {
 }
 
 describe('AuthProvider', () => {
+  test('signs out when backend validation fails after Firebase login', async () => {
+    let observer: ((user: {
+      uid: string;
+      email: string;
+      emailVerified: boolean;
+    } | null) => void) | undefined;
+    const firebaseUser = {
+      uid: 'firebase-uid',
+      email: 'person@example.com',
+      emailVerified: true
+    };
+    const service: AuthService = {
+      register: jest.fn(),
+      resendEmailVerification: jest.fn(),
+      refreshEmailVerification: jest.fn(),
+      login: jest.fn(async () => {
+        observer?.(firebaseUser);
+        return firebaseUser;
+      }),
+      logout: jest.fn(async () => {
+        observer?.(null);
+      }),
+      getIdToken: jest.fn(),
+      observeSession: (callback) => {
+        observer = callback;
+        callback(null);
+        return () => undefined;
+      }
+    };
+
+    await render(
+      <AuthProvider
+        service={service}
+        validateSession={async () => {
+          throw new Error('database unavailable');
+        }}
+      >
+        <LoginProbe />
+      </AuthProvider>
+    );
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Login' }));
+
+    await expect(loginResult).rejects.toMatchObject({
+      code: 'auth/backend-unavailable'
+    });
+    await waitFor(() => {
+      expect(screen.getByText('anonymous')).toBeOnTheScreen();
+    });
+    expect(service.logout).toHaveBeenCalledTimes(1);
+  });
+
+  test('signs out when a restored Firebase session cannot reach the backend', async () => {
+    const service: AuthService = {
+      register: jest.fn(),
+      resendEmailVerification: jest.fn(),
+      refreshEmailVerification: jest.fn(),
+      login: jest.fn(),
+      logout: jest.fn(),
+      getIdToken: jest.fn(),
+      observeSession: (callback) => {
+        callback({
+          uid: 'firebase-uid',
+          email: 'person@example.com',
+          emailVerified: true
+        });
+        return () => undefined;
+      }
+    };
+
+    await render(
+      <AuthProvider
+        service={service}
+        validateSession={async () => {
+          throw new Error('database unavailable');
+        }}
+      >
+        <SessionProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('anonymous')).toBeOnTheScreen();
+    });
+    expect(service.logout).toHaveBeenCalledTimes(1);
+  });
+
   test('restores the current Firebase session', async () => {
     const service: AuthService = {
       register: jest.fn(),
@@ -92,7 +198,7 @@ describe('AuthProvider', () => {
     };
 
     await render(
-      <AuthProvider service={service}>
+      <AuthProvider service={service} validateSession={async () => undefined}>
         <EmailVerificationProbe />
       </AuthProvider>
     );
