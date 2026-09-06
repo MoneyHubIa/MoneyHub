@@ -1569,6 +1569,7 @@ export const resolvers = {
       context: GraphQLContext
     ) => {
       return askAiAssistant(context, args.input);
+    },
     createCalendarEvent: (
       _parent: unknown,
       args: { input: CreateCalendarEventInput },
