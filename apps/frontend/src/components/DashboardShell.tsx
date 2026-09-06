@@ -167,6 +167,7 @@ export function DashboardShell() {
           <NotificationCenter
             enabled={notificationsReady}
             onOpenSource={() => setActiveSectionId('agenda')}
+            panelPlacement={desktop ? 'right' : 'left'}
             onRetrySync={syncNotifications}
             syncError={syncAgendaError}
           />
@@ -343,9 +344,9 @@ const styles = StyleSheet.create({
   shell: { flex: 1, minHeight: '100%', backgroundColor: '#f8fafc' },
   shellDesktop: { flexDirection: 'row' },
   shellMobile: { flexDirection: 'column' },
-  navigation: { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0', borderBottomWidth: 1 },
+  navigation: { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0', borderBottomWidth: 1, zIndex: 1 },
   navigationDesktop: { width: 248, borderBottomWidth: 0, borderRightColor: '#e2e8f0', borderRightWidth: 1, padding: 20 },
-  brandRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', padding: 16 },
+  brandRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', padding: 16, zIndex: 2 },
   brand: { alignItems: 'center', flexDirection: 'row', gap: 10 },
   brandText: { color: '#0f172a', fontSize: 22, fontWeight: '700' },
   navListDesktop: { gap: 6 },

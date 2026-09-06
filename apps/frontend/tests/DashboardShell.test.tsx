@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { PropsWithChildren } from 'react';
+import { StyleSheet } from 'react-native';
 import { DashboardShell } from '../src/components/DashboardShell';
 import { AuthProvider } from '../src/providers/AuthProvider';
 import type { AuthService } from '../src/services/authService';
@@ -122,6 +123,16 @@ describe('MoneyHub dashboard shell', () => {
     expect(screen.getByRole('button', { name: 'Sair' })).toBeOnTheScreen();
   });
 
+  test('keeps the notification panel layer above side navigation and content', async () => {
+    await render(<DashboardShell />, { wrapper: Wrapper });
+
+    const brand = screen.getByText('MoneyHub');
+    const brandRowStyle = StyleSheet.flatten(brand.parent?.parent?.props.style);
+    const navigationStyle = StyleSheet.flatten(brand.parent?.parent?.parent?.props.style);
+
+    expect(navigationStyle.zIndex).toBeGreaterThan(0);
+    expect(brandRowStyle.zIndex).toBeGreaterThan(navigationStyle.zIndex);
+  });
   test('renders notification center in dashboard navigation', async () => {
     await render(<DashboardShell />, { wrapper: Wrapper });
 

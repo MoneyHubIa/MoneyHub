@@ -57,6 +57,7 @@ type NotificationCenterProps = {
   onOpenSource?: (notification: NotificationItem) => void;
   syncError?: boolean;
   onRetrySync?: () => void | Promise<void>;
+  panelPlacement?: 'left' | 'right';
 };
 
 type NotificationsData = {
@@ -73,7 +74,8 @@ export function NotificationCenter({
   enabled = true,
   onOpenSource,
   syncError = false,
-  onRetrySync
+  onRetrySync,
+  panelPlacement = 'left'
 }: NotificationCenterProps) {
   const [open, setOpen] = useState(false);
   const [actionError, setActionError] = useState(false);
@@ -150,7 +152,7 @@ export function NotificationCenter({
       </Pressable>
 
       {open ? (
-        <View accessibilityLabel="Painel de notificações" style={styles.panel}>
+        <View accessibilityLabel="Painel de notificações" style={[styles.panel, panelPlacement === 'right' ? styles.panelRight : styles.panelLeft]}>
           <View style={styles.panelHeader}>
             <Text accessibilityRole="header" style={styles.title}>Notificações</Text>
             {unreadCount > 0 ? (
@@ -251,7 +253,9 @@ const styles = StyleSheet.create({
   trigger: { alignItems: 'center', borderColor: '#ccfbf1', borderRadius: 6, borderWidth: 1, justifyContent: 'center', minHeight: 40, minWidth: 40, padding: 8 },
   badge: { alignItems: 'center', backgroundColor: '#dc2626', borderColor: '#ffffff', borderRadius: 10, borderWidth: 1, justifyContent: 'center', minHeight: 18, minWidth: 18, paddingHorizontal: 4, position: 'absolute', right: -6, top: -6 },
   badgeText: { color: '#ffffff', fontSize: 10, fontWeight: '800' },
-  panel: { backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: 8, borderWidth: 1, elevation: 3, gap: 12, maxHeight: 420, padding: 14, position: 'absolute', right: 0, top: 48, width: 360, zIndex: 10 },
+  panel: { backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: 8, borderWidth: 1, elevation: 3, gap: 12, maxHeight: 420, padding: 14, position: 'absolute', top: 48, width: 360, zIndex: 10 },
+  panelLeft: { right: 0 },
+  panelRight: { left: 0 },
   panelHeader: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
   title: { color: '#0f172a', fontSize: 18, fontWeight: '700' },
   markAllButton: { paddingVertical: 4 },
