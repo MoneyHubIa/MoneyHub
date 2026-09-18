@@ -17,3 +17,6 @@ apps/backend/src/generated/prisma/
 .env*
 !.env.example
 apps/backend/credentials
+playwright-report/
+test-results/
+e2e/.firebase/

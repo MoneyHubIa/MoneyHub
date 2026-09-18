@@ -1,0 +1,14 @@
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true
+- tapOn: Email
+- inputText: ${E2E_EMAIL}
+- tapOn: Senha
+- inputText: ${E2E_PASSWORD}
+- tapOn: Entrar
+- assertVisible: Dashboard financeiro
+- tapOn: Sair
+- stopApp
+- launchApp
+- assertVisible: Acesse sua conta

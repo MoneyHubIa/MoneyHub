@@ -347,7 +347,9 @@ export function DashboardShell() {
         isOpen={isAiChatOpen}
         onClose={() => setIsAiChatOpen(false)}
         onToggle={() => setIsAiChatOpen((prev) => !prev)}
-        preferredCurrency={summaryData?.myProfile?.preferredCurrency}
+        {...(summaryData?.myProfile?.preferredCurrency
+          ? { preferredCurrency: summaryData.myProfile.preferredCurrency }
+          : {})}
       />
     </View>
   );

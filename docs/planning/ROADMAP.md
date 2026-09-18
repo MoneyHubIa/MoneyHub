@@ -10,8 +10,7 @@
 ## Phase 2 - Authentication
 
 - Register, login, token verification, logout.
-- Password recovery (implemented; real Firebase smoke pending) and e-mail
-  verification.
+- Password recovery and e-mail verification.
 - Profile control.
 
 ## Phase 3 - Financial Core

@@ -73,19 +73,31 @@ const mockPeriodComparisonYoY = {
   }
 };
 
+const mockRefetch = jest.fn();
+let mockQueryOverride: {
+  data: typeof mockPeriodComparisonMoM | undefined;
+  loading: boolean;
+  error: Error | null;
+} | null = null;
+
 jest.mock('@apollo/client/react', () => ({
   useQuery: (_query: unknown, options: { variables?: { input?: { comparisonYear?: number } } }) => {
     const compYear = options?.variables?.input?.comparisonYear;
+    if (mockQueryOverride) return { ...mockQueryOverride, refetch: mockRefetch };
     return {
       data: compYear === 2025 ? mockPeriodComparisonYoY : mockPeriodComparisonMoM,
       loading: false,
       error: null,
-      refetch: jest.fn()
+      refetch: mockRefetch
     };
   }
 }));
 
 describe('PeriodComparison component', () => {
+  beforeEach(() => {
+    mockQueryOverride = null;
+    mockRefetch.mockClear();
+  });
   test('renders comparison cards and custom period selectors with MoM data', async () => {
     await render(<PeriodComparison baseMonth={8} baseYear={2026} preferredCurrency="BRL" />);
 
@@ -145,5 +157,48 @@ describe('PeriodComparison component', () => {
     });
 
     expect(screen.getByText('2025')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Aumentar ano base' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Diminuir ano comparado' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Aumentar ano comparado' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Selecionar mês comparado Jan' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Atalho Trimestre Passado' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Atalho Mês Anterior' }));
+  });
+
+  test('renders loading and error states and retries', async () => {
+    mockQueryOverride = { data: undefined, loading: true, error: null };
+    const view = await render(<PeriodComparison />);
+    expect(screen.getByText('Carregando comparativo...')).toBeOnTheScreen();
+
+    mockQueryOverride = { data: undefined, loading: false, error: new Error('network') };
+    await view.rerender(<PeriodComparison />);
+    expect(screen.getByText('Erro ao carregar comparativo de períodos.')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByText('Tentar novamente'));
+    expect(mockRefetch).toHaveBeenCalledTimes(1);
+  });
+
+  test('renders negative deltas and January previous-month preset', async () => {
+    mockQueryOverride = {
+      data: {
+        periodComparison: {
+          ...mockPeriodComparisonMoM.periodComparison,
+          delta: {
+            incomeDelta: '-100.00', incomePercentage: -1,
+            expenseDelta: '-200.00', expensePercentage: -2,
+            netBalanceDelta: '-300.00', netBalancePercentage: -3,
+            savingsRateDelta: -4
+          }
+        }
+      },
+      loading: false,
+      error: null
+    };
+    await render(<PeriodComparison baseMonth={1} baseYear={2026} />);
+
+    expect(screen.getByText('-1.0% (R$ -100,00)')).toBeOnTheScreen();
+    expect(screen.getByText('-2.0% (R$ -200,00)')).toBeOnTheScreen();
+    expect(screen.getByText('-4.0 p.p.')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Atalho Mês Anterior' }));
   });
 });

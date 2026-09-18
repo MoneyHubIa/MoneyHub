@@ -6,8 +6,7 @@ MoneyHub is a universal financial management SaaS for personal and business user
 
 The foundation migration is complete. Firebase registration, login, session
 handling, profile bootstrap, logout, profile management, email verification,
-and password recovery are implemented. Password recovery still requires its
-real Firebase smoke before `TASK-019` and `EPIC-02` can be closed.
+and password recovery are implemented. `TASK-019` and `EPIC-02` are complete.
 
 ## Monorepo
 

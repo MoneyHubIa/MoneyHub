@@ -6,9 +6,14 @@ const mockCreateExpense = jest.fn();
 const mockDeleteIncome = jest.fn();
 const mockDeleteExpense = jest.fn();
 const mockRefetch = jest.fn();
+let mockTransactionsQueryOverride: {
+  data: Record<string, unknown> | undefined;
+  loading: boolean;
+  refetch: typeof mockRefetch;
+} | null = null;
 
 jest.mock('@apollo/client/react', () => ({
-  useQuery: () => ({
+  useQuery: () => mockTransactionsQueryOverride ?? ({
     data: {
       myIncomes: [
         {
@@ -61,6 +66,7 @@ jest.mock('@apollo/client/react', () => ({
 describe('Transactions Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockTransactionsQueryOverride = null;
   });
 
   test('renders header and transactions list', async () => {
@@ -96,5 +102,53 @@ describe('Transactions Component', () => {
         })
       );
     });
+  });
+
+  test('validates required transaction fields', async () => {
+    await render(<Transactions />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
+    expect(screen.getByText('Informe a descrição.')).toBeOnTheScreen();
+
+    await fireEvent.changeText(screen.getByLabelText('Descrição da transação'), 'Teste');
+    await fireEvent.changeText(screen.getByLabelText('Valor da transação'), 'inválido');
+    await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
+    expect(screen.getByText('Informe um valor válido.')).toBeOnTheScreen();
+
+    await fireEvent.changeText(screen.getByLabelText('Valor da transação'), '10');
+    await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
+    expect(screen.getByText('Selecione uma categoria.')).toBeOnTheScreen();
+  });
+
+  test('creates income and deletes both transaction types', async () => {
+    mockCreateIncome.mockResolvedValue({ data: { createIncome: { id: 'inc-2' } } });
+    await render(<Transactions />);
+
+    await fireEvent.press(screen.getByText('Receita'));
+    await fireEvent.changeText(screen.getByLabelText('Descrição da transação'), 'Projeto');
+    await fireEvent.changeText(screen.getByLabelText('Valor da transação'), '900');
+    await fireEvent.press(screen.getByRole('button', { name: 'Trabalho' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
+    expect(mockCreateIncome).toHaveBeenCalledWith(expect.objectContaining({
+      variables: { input: expect.objectContaining({ description: 'Projeto', amount: '900' }) }
+    }));
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Excluir transação Salário' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Excluir transação Mercado' }));
+    expect(mockDeleteIncome).toHaveBeenCalledWith({ variables: { id: 'inc-1' } });
+    expect(mockDeleteExpense).toHaveBeenCalledWith({ variables: { id: 'exp-1' } });
+  });
+
+  test('renders loading and empty states with safe defaults', async () => {
+    mockTransactionsQueryOverride = { data: undefined, loading: true, refetch: mockRefetch };
+    const view = await render(<Transactions />);
+    expect(screen.getByText('Crie categorias primeiro.')).toBeOnTheScreen();
+
+    mockTransactionsQueryOverride = {
+      data: { myIncomes: [], myExpenses: [], myCategories: [], myProfile: null },
+      loading: false,
+      refetch: mockRefetch
+    };
+    await view.rerender(<Transactions />);
+    expect(screen.getByText('Nenhuma transação encontrada.')).toBeOnTheScreen();
   });
 });

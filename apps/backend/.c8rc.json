@@ -1,0 +1,22 @@
+{
+  "all": true,
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/*.d.ts",
+    "src/generated/**",
+    "src/server.ts"
+  ],
+  "reporter": [
+    "text",
+    "lcov",
+    "json-summary"
+  ],
+  "report-dir": "coverage",
+  "check-coverage": true,
+  "lines": 80,
+  "branches": 80,
+  "functions": 80,
+  "statements": 80
+}

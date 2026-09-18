@@ -13,9 +13,10 @@ const noDatabaseRepository: IdentityRepository = {
 import pg from 'pg';
 
 function createPrismaClient(databaseUrl: string): PrismaClient {
+  const sslMode = new URL(databaseUrl).searchParams.get('sslmode');
   const pool = new pg.Pool({
     connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false },
+    ssl: sslMode === 'disable' ? false : { rejectUnauthorized: false },
     allowExitOnIdle: true
   });
   const adapter = new PrismaPg(pool);

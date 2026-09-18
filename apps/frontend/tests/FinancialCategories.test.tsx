@@ -90,4 +90,60 @@ describe('FinancialCategories component', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Cancelar' }));
     expect(screen.getByText('Nova Categoria')).toBeOnTheScreen();
   });
+
+  test('validates and creates a category with the selected type', async () => {
+    await render(<FinancialCategories />, { wrapper: Wrapper });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Adicionar Categoria' }));
+    expect(screen.getByText('Informe o nome da categoria.')).toBeOnTheScreen();
+
+    await fireEvent.changeText(screen.getByLabelText('Nome da categoria'), '  Lazer  ');
+    await fireEvent.press(screen.getAllByText('Despesa')[0]!);
+    await fireEvent.press(screen.getByRole('button', { name: 'Adicionar Categoria' }));
+
+    expect(mockCreateCategory).toHaveBeenCalledWith({
+      variables: {
+        input: {
+          color: '#0f766e',
+          icon: 'tag',
+          name: 'Lazer',
+          type: 'EXPENSE'
+        }
+      }
+    });
+  });
+
+  test('updates and deletes the category being edited', async () => {
+    await render(<FinancialCategories />, { wrapper: Wrapper });
+
+    await fireEvent.press(screen.getByLabelText('Editar categoria Alimentação'));
+    await fireEvent.changeText(screen.getByLabelText('Nome da categoria'), 'Mercado');
+    await fireEvent.press(screen.getAllByText('Receita')[0]!);
+    await fireEvent.press(screen.getByRole('button', { name: 'Salvar Alterações' }));
+
+    expect(mockCreateCategory).toHaveBeenCalledWith({
+      variables: {
+        input: {
+          color: '#0f766e',
+          icon: 'tag',
+          id: 'cat-1',
+          name: 'Mercado',
+          type: 'INCOME'
+        }
+      }
+    });
+
+    await fireEvent.press(screen.getByLabelText('Excluir categoria Alimentação'));
+    expect(mockCreateCategory).toHaveBeenLastCalledWith({ variables: { id: 'cat-1' } });
+  });
+
+  test('changes list filters', async () => {
+    await render(<FinancialCategories />, { wrapper: Wrapper });
+
+    await fireEvent.press(screen.getByText('Despesas'));
+    await fireEvent.press(screen.getByText('Receitas'));
+    await fireEvent.press(screen.getByText('Todas'));
+
+    expect(screen.getByText('Alimentação')).toBeOnTheScreen();
+  });
 });

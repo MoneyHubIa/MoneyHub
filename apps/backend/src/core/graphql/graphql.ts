@@ -1232,6 +1232,7 @@ export const resolvers = {
       };
     },
     myProfile: (_parent: unknown, _args: unknown, context: GraphQLContext) => {
+      if (!context.auth) throw unauthenticatedError();
       return getMyProfile(context, profileRepository());
     },
     myCategories: (_parent: unknown, args: { type?: CategoryType }, context: GraphQLContext) => {

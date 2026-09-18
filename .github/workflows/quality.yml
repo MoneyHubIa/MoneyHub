@@ -1,0 +1,96 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  APP_URL: http://127.0.0.1:3000
+  FIREBASE_PROJECT_ID: demo-moneyhub
+  FIREBASE_WEB_API_KEY: demo-api-key
+  EXPO_PUBLIC_FIREBASE_API_KEY: demo-api-key
+  EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: demo-moneyhub.firebaseapp.com
+  EXPO_PUBLIC_FIREBASE_PROJECT_ID: demo-moneyhub
+  EXPO_PUBLIC_FIREBASE_APP_ID: demo-app-id
+  EXPO_PUBLIC_FIREBASE_AUTH_EMULATOR_URL: http://127.0.0.1:9099
+  EXPO_NO_DOTENV: '1'
+  LLM_PROVIDER: mock
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run typecheck:e2e
+      - run: npm run build -w apps/backend
+      - run: npm run build:web -w apps/frontend
+
+  backend-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:coverage -w apps/backend
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: apps/backend/coverage
+          retention-days: 7
+
+  frontend-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:coverage -w apps/frontend
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: apps/frontend/coverage
+          retention-days: 7
+
+  web-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-e2e-report
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 7

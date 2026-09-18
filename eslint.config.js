@@ -21,6 +21,8 @@ export default [
         document: 'readonly',
         window: 'readonly',
         navigator: 'readonly',
+        URL: 'readonly',
+        setTimeout: 'readonly',
         describe: 'readonly',
         test: 'readonly',
         expect: 'readonly'

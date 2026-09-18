@@ -1,7 +1,7 @@
 # EPIC-02 - Authentication and Identity
 
 ## Status
-In Progress (real smoke pending)
+Done
 
 ## Feature
 Firebase Authentication.
@@ -17,7 +17,7 @@ Plan and implement secure account lifecycle with Firebase Auth, Firebase Admin t
 - [x] TASK-011 - Plan Firebase Analytics adapter.
 - [x] TASK-017 - Implement authenticated GraphQL profile bootstrap.
 - [x] TASK-018 - Implement logout and local Firebase session cleanup.
-- [ ] TASK-019 - Implement password recovery through Firebase REST endpoints (Pending).
+- [x] TASK-019 - Implement password recovery through Firebase REST endpoints.
 - [x] TASK-020 - Implement profile management.
 
 ## Tasks Detail
@@ -97,7 +97,7 @@ authorization, validation, and save flow.
 ### TASK-019 - Implement password recovery through Firebase REST endpoints
 
 ## Status
-In Progress (real smoke pending)
+Done
 
 ## Implementation Review
 
@@ -117,12 +117,12 @@ recoverable temporary failures, signs out and clears the local session after
 success, and offers a new request for missing, invalid, expired, or used
 links. Automated backend and frontend tests cover the security contract.
 
-## Remaining Acceptance
+## Completion Review
 
-`TASK-019` and `EPIC-02` remain open until a real account proves Firebase
-delivery and message content, the MoneyHub action URL, password change, action
-code non-reuse, rejection of the old password, acceptance of the new password,
-and indistinguishable submission for an unknown address.
+Real Firebase smoke confirmed delivery and message content, MoneyHub action
+URL, password change, action-code non-reuse, rejection of the old password,
+acceptance of the new password, and indistinguishable submission for an unknown
+address. `TASK-019` and `EPIC-02` are complete.
 
 ## Technical Rules
 

@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: moneyhub_e2e
+      POSTGRES_USER: moneyhub_e2e
+      POSTGRES_PASSWORD: moneyhub_e2e
+    ports:
+      - "127.0.0.1:55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moneyhub_e2e -d moneyhub_e2e"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

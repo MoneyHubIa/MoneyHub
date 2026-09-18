@@ -140,4 +140,34 @@ describe('backend foundation', () => {
     assert.equal(response.status, 401);
     assert.equal(response.body.errors[0].extensions.code, 'UNAUTHENTICATED');
   });
+
+  test('rejects malformed authorization schemes with a stable GraphQL code', async () => {
+    const response = await request(app)
+      .post('/graphql')
+      .set('authorization', 'Basic credentials')
+      .send({ query: '{ me { id } }' });
+
+    assert.equal(response.status, 401);
+    assert.equal(response.body.errors[0].extensions.code, 'UNAUTHENTICATED');
+  });
+
+  test('rejects an empty bearer token with a stable GraphQL code', async () => {
+    const response = await request(app)
+      .post('/graphql')
+      .set('authorization', 'Bearer   ')
+      .send({ query: '{ me { id } }' });
+
+    assert.equal(response.status, 401);
+    assert.equal(response.body.errors[0].extensions.code, 'UNAUTHENTICATED');
+  });
+
+  test('returns GraphQL authorization error for anonymous protected queries', async () => {
+    const response = await request(app)
+      .post('/graphql')
+      .send({ query: '{ myProfile { id fullName } }' });
+
+    assert.equal(response.status, 401);
+    assert.equal(response.body.data, null);
+    assert.equal(response.body.errors[0].extensions.code, 'UNAUTHENTICATED');
+  });
 });

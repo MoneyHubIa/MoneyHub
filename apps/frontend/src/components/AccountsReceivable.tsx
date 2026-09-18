@@ -353,6 +353,7 @@ export function AccountsReceivable() {
               {categories.map((c) => (
                 <Pressable
                   key={c.id}
+                  accessibilityLabel={c.name}
                   accessibilityRole="button"
                   onPress={() => setCategoryId(c.id)}
                   style={[

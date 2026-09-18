@@ -36,7 +36,6 @@ jest.mock('@apollo/client/react', () => ({
   useApolloClient: () => ({
     clearStore: jest.fn()
   }),
-  useMutation: () => [jest.fn(), { loading: false }],
   useQuery: () => ({
     data: {
       dashboardSummary: {

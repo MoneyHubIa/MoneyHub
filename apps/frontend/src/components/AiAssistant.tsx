@@ -6,9 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  CornerDownLeft,
   Cpu,
-  MessageSquare,
   Minus,
   RotateCcw,
   Send,
@@ -264,7 +262,6 @@ export type AiAssistantProps = Readonly<{
 }>;
 
 export function AiAssistant({
-  preferredCurrency: _preferredCurrency = 'BRL',
   initialMonth,
   initialYear,
   isOpen: controlledIsOpen,

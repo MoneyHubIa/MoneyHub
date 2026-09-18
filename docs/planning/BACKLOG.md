@@ -14,10 +14,7 @@
 - Login user with Firebase Auth.
 - Verify Firebase ID tokens in GraphQL.
 - Logout local Firebase session.
-- Recover password (implemented; real Firebase smoke pending; EPIC-02 stays
-  open until delivery/content, MoneyHub action URL, password change, code
-  non-reuse, old-password failure, new-password login, and unknown-address
-  parity are proven).
+- Recover password.
 - Verify e-mail (implemented with Firebase delivery).
 - Manage profile.
 

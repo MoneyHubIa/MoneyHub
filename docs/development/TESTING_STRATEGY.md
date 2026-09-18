@@ -29,26 +29,25 @@ Minimum coverage target is 80% for critical application code.
 
 ## Current Automated Gates
 
-Fresh operational gate evidence for the August 13, 2026 documentation refresh:
+Fresh operational gate evidence for September 15, 2026:
 
-- Backend: 72 tests.
-- Frontend: 104 tests.
-- Monorepo: 176 tests.
+- Backend: 262 tests; coverage gate passes at 80% statements/lines, 80.56% branches, and 88.83% functions.
+- Frontend: 253 tests; coverage gate passes at 88.12% statements, 80.06% branches, 83.72% functions, and 88.91% lines.
+- Exported Web smoke/accessibility subset: 7 Playwright tests pass in Chromium.
 - Lint: pass.
 - Typecheck: pass.
-- Build: pass.
-- Expo exports: Web, iOS, and Android pass.
+- Backend build and Expo export for Web, iOS, and Android pass.
 
 ## Transactional Email Smoke
 
-Password recovery closure additionally requires a real Firebase smoke:
-delivery to a known account, Firebase template/content/MoneyHub action URL
-inspection, password change and action-code non-reuse, old/new password login
-checks, and a neutral request for an unknown address.
+Password recovery real Firebase smoke confirmed delivery to a known account,
+Firebase template/content/MoneyHub action URL, password change, action-code
+non-reuse, old/new password login checks, and a neutral request for an unknown
+address.
 
 ## E2E
 
-E2E will cover iOS, Android, and Web smoke flows after the Expo foundation is stable:
+The isolated E2E harness provides PostgreSQL, Firebase Auth Emulator, backend, exported Web app, Playwright, and axe-core. Implemented flows include:
 
 - Registration.
 - Login.
@@ -57,3 +56,5 @@ E2E will cover iOS, Android, and Web smoke flows after the Expo foundation is st
 - Accounts payable creation.
 - Goal creation.
 - AI assistant query.
+
+The complete harness is `npm run test:e2e`. It requires Docker, Java 21, Node 22, and Playwright Chromium. Native flows use `.maestro/`; Web execution does not count as Android/iOS evidence.

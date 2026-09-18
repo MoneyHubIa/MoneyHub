@@ -1,0 +1,19 @@
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true
+- tapOn: Email
+- inputText: ${E2E_EMAIL}
+- tapOn: Senha
+- inputText: ${E2E_PASSWORD}
+- tapOn: Entrar
+- assertVisible: Dashboard financeiro
+- tapOn: Transações
+- tapOn: Despesa
+- tapOn: Descrição da transação
+- inputText: Despesa Maestro
+- tapOn: Valor da transação
+- inputText: "250"
+- tapOn: ${E2E_CATEGORY}
+- tapOn: Adicionar transação
+- assertVisible: Despesa Maestro

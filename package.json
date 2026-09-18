@@ -10,16 +10,21 @@
   ],
   "scripts": {
     "test": "npm run test --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present && npm run lint:e2e",
+    "lint:e2e": "eslint e2e playwright.config.ts",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "dev:backend": "npm run dev -w apps/backend",
-    "dev:frontend": "npm run dev -w apps/frontend"
+    "dev:frontend": "npm run dev -w apps/frontend",
+    "test:e2e": "node e2e/run.mjs",
+    "typecheck:e2e": "tsc -p e2e/tsconfig.json --noEmit"
   },
   "engines": {
     "node": ">=22.13.0 <23"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
     "typescript-eslint": "^8.65.0"
   }
 }

@@ -297,7 +297,11 @@ export function Transactions() {
                     <Text style={[styles.tAmount, isIncome ? styles.amountIn : styles.amountOut]}>
                       {isIncome ? '+' : '-'} {formatCurrency(t.amount, currency)}
                     </Text>
-                    <Pressable onPress={() => handleDelete(t.id, t.__typename)}>
+                    <Pressable
+                      accessibilityLabel={`Excluir transação ${t.description}`}
+                      accessibilityRole="button"
+                      onPress={() => handleDelete(t.id, t.__typename)}
+                    >
                       <Trash2 color="#ef4444" size={16} />
                     </Pressable>
                   </View>

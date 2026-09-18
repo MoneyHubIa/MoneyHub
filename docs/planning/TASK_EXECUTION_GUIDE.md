@@ -16,12 +16,14 @@ depois da conclusao do `EPIC-01`.
   no Firebase Auth Emulator.
 - `TASK-020` esta concluida. O perfil autenticado pode consultar e alterar nome,
   moeda preferida e tema pela tela Ajustes e pelo contrato GraphQL.
-- `TASK-019` esta em `In Progress (real smoke pending)`. A implementacao atual
-  usa backend Firebase Auth REST apenas no backend, falhas temporarias
-  recuperaveis com retry no app, enforcement local por janela deslizante,
+- `TASK-019` esta concluida. A recuperacao usa backend Firebase Auth REST,
+  retry no app para falhas temporarias, enforcement local por janela deslizante,
   auditoria segura e sanitizacao de `x-request-id` antes de logs ou eventos.
-- `EPIC-02` permanece aberto ate o smoke real Firebase passar.
+- `EPIC-02` esta concluido.
 - `EPIC-01` esta concluido.
+- `EPIC-07` esta em andamento. `TASK-034`, `TASK-035`, `TASK-036`, `TASK-040`,
+  `TASK-041` e `TASK-042` estao concluidas; somente a execucao e evidencia E2E
+  nativa de `TASK-015` continuam abertas.
 - Producao Firebase, Supabase PostgreSQL, GCP, deploy, proxy confiavel no Cloud Run e
   rate limit compartilhado continuam fora do escopo da fundacao; `EPIC-08`
   ainda cobre store compartilhado e revisao do comportamento
@@ -32,30 +34,26 @@ depois da conclusao do `EPIC-01`.
 
 | Area | Evidencia |
 | --- | --- |
-| Backend | 72 testes, lint, typecheck e build passam |
-| App | 104 testes, lint, typecheck e export Expo passam |
-| Monorepo | 176 testes automatizados passam |
+| Backend | 262 testes; cobertura global >=80%; lint, typecheck e build passam |
+| App | 253 testes; cobertura global >=80%; lint, typecheck e export Expo passam |
+| E2E Web | 13 testes passam no Chromium com PostgreSQL, Firebase Auth Emulator, backend, acessibilidade, autenticacao, financas e mock AI |
 | Bundles | Expo export passa para Web, iOS e Android |
 | Firebase Auth | Auth Emulator valida registro, login, ID token e restauracao da sessao |
 | PostgreSQL | schema de identidade baselined; `prisma migrate status` reporta banco atualizado |
 
-## Evidencias de Smoke Ainda Pendentes
+## Evidencias de Smoke Confirmadas
 
 - Entrega real do e-mail e conteudo final enviado pelo Firebase.
 - `Action URL` do MoneyHub apontando para `${APP_URL}/reset-password`.
-- Troca efetiva de senha na conta real.
-- Nao reutilizacao do action code apos confirmacao.
-- Falha do login com a senha antiga.
-- Sucesso do login com a senha nova.
+- Troca efetiva de senha na conta real e nao reutilizacao do action code.
+- Falha do login com a senha antiga e sucesso com a senha nova.
 - Paridade de resposta para endereco de e-mail desconhecido.
 
 ## Execucao Imediata
 
 | Ordem | Task | Acao | Condicao de conclusao |
 | --- | --- | --- | --- |
-| 1 | `TASK-019` | Executar smoke real da recuperacao implementada | Entrega/conteudo Firebase, URL MoneyHub, troca de senha, nao reutilizacao do codigo, falha da senha antiga, sucesso da senha nova e paridade para endereco desconhecido comprovadas |
-| 2 | `TASK-021` | Implementar categorias financeiras | Contrato, migration, resolvers, interface e testes concluidos |
-| 3 | `TASK-014` | Implementar fundacao de agenda | Contrato, persistence, interface e testes concluidos |
+| 1 | `TASK-015` | Executar E2E nativo | Android/iOS development builds e fluxos Maestro com evidencia |
 
 `TASK-012` e `TASK-043` podem avancar em paralelo por serem documentais e nao
 alterarem o gate de fundacao.
@@ -65,15 +63,14 @@ alterarem o gate de fundacao.
 | Task | Estado da dependencia |
 | --- | --- |
 | `TASK-018` | Liberada por `TASK-009`; definir escopo de logout antes de iniciar |
-| `TASK-035`, `TASK-041`, `TASK-042` | Fundacao Expo e adapters existem; podem ser planejadas/executadas |
-| `TASK-034`, `TASK-040` | Fundacao GraphQL e contexto Firebase Admin existem; podem avancar |
+| `TASK-035`, `TASK-041`, `TASK-042` | Concluidas; cobertura Expo, adapters e smoke Web foram verificados |
+| `TASK-034`, `TASK-040` | Concluidas; cobertura GraphQL e contexto Firebase Admin foram verificados |
 | `TASK-037` | Builds locais existem; ainda depende das decisoes de producao |
 
 ## Tasks Ainda Bloqueadas
 
 | Tasks | Bloqueio |
 | --- | --- |
-| `TASK-021` a `TASK-033` | Bootstrap de identidade, autorizacao e modelos de dominio |
 | `TASK-014`, `TASK-045` a `TASK-047` | Identidade persistida e fundacao de agenda |
 | `TASK-016`, `TASK-038`, `TASK-039` | Decisoes e documentacao de infraestrutura de producao, store compartilhado e revisao de `trust proxy`/`X-Forwarded-For` para Cloud Run |
 

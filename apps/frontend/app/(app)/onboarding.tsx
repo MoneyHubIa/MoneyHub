@@ -74,6 +74,7 @@ export default function OnboardingScreen() {
           <View style={styles.field}>
             <Text style={styles.label}>Nome Completo</Text>
             <TextInput
+              accessibilityLabel="Nome completo"
               autoCapitalize="words"
               editable={!loading}
               onChangeText={setFullName}
@@ -88,6 +89,8 @@ export default function OnboardingScreen() {
             <View style={styles.buttonGroup}>
               {['BRL', 'USD', 'EUR'].map((c) => (
                 <Pressable
+                  accessibilityLabel={`Moeda ${c}`}
+                  accessibilityRole="button"
                   key={c}
                   disabled={loading}
                   onPress={() => setCurrency(c)}
@@ -112,6 +115,8 @@ export default function OnboardingScreen() {
             <View style={styles.buttonGroup}>
               {['SYSTEM', 'LIGHT', 'DARK'].map((t) => (
                 <Pressable
+                  accessibilityLabel={`Tema ${t}`}
+                  accessibilityRole="button"
                   key={t}
                   disabled={loading}
                   onPress={() => setTheme(t)}

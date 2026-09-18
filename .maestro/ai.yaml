@@ -1,0 +1,15 @@
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true
+- tapOn: Email
+- inputText: ${E2E_EMAIL}
+- tapOn: Senha
+- inputText: ${E2E_PASSWORD}
+- tapOn: Entrar
+- assertVisible: Dashboard financeiro
+- tapOn: Abrir Assistente Financeiro IA
+- tapOn: Mensagem para a IA
+- inputText: Qual e meu resumo financeiro?
+- tapOn: Enviar mensagem
+- assertVisible: Qual e meu resumo financeiro?

@@ -133,10 +133,10 @@ Firebase does not expose the original verification timestamp, so `email_verified
 - After a successful password reset confirmation, the client signs out the
   local session before it offers navigation back to login.
 - Password recovery does not create or bootstrap local user or profile records.
-- TASK-019 and EPIC-02 remain open until a real Firebase smoke proves delivery,
-  email content, the MoneyHub action URL, successful password change, code
-  non-reuse, old-password rejection, new-password login, and unknown-address
-  response parity.
+- TASK-019 real Firebase smoke confirmed delivery, email content, the MoneyHub
+  action URL, successful password change, code non-reuse, old-password
+  rejection, new-password login, and unknown-address response parity.
+  EPIC-02 is complete.
 
 ### Profile Bootstrap
 
