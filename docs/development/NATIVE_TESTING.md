@@ -26,11 +26,19 @@ Execute os fluxos:
 
 ```sh
 maestro test \
+  --no-reinstall-driver \
+  --udid emulator-5554 \
   -e APP_ID=com.moneyhub.e2e \
+  -e E2E_DEV_SERVER_URL="http://172.30.160.1:8081" \
   -e E2E_EMAIL=usuario@example.test \
   -e E2E_PASSWORD=Senha-E2E-123! \
   -e E2E_CATEGORY="Geral E2E" \
   .maestro/
 ```
+
+Os fluxos limpam o estado local antes de cada teste. No Android development build,
+`E2E_DEV_SERVER_URL` identifica o cartão do Metro que deve ser selecionado novamente
+depois dessa limpeza. Use o URL exibido no launcher do development build. No Windows,
+`--no-reinstall-driver` evita reinstalar a instrumentação Maestro entre execuções.
 
 TalkBack e VoiceOver ainda exigem inspeção manual: ordem de foco, descrição dos controles, estado disabled/loading e anúncio de erros. Expo export ou viewport móvel Web não contam como evidência nativa. A conclusão da TASK-015 exige registro de execução real nos dois sistemas.

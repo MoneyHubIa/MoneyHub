@@ -18,7 +18,8 @@ Planning does not change the task or epic implementation status.
 - Done: TASK-034, TASK-035, TASK-036, TASK-040, TASK-041, TASK-042.
 - In progress: TASK-015.
 - The full Web E2E stack passes locally in Chromium: 13 tests covering PostgreSQL, Firebase Auth Emulator, backend health/GraphQL, accessibility, authentication, finance, mock AI, and cleanup.
-- Android and iOS Maestro flows exist, but real device/simulator evidence is still required.
+- The Android development build passed all three Maestro flows (`auth`, `financial`, and `ai`) on `emulator-5554` on 2026-09-24. Manual TalkBack inspection of authentication and transaction creation also passed.
+- iOS Maestro execution and manual VoiceOver inspection still require a macOS host with Xcode. TASK-015 and EPIC-07 remain in progress until that evidence is recorded.
 
 See [EPIC-07 verification evidence](../development/EPIC_07_VERIFICATION.md).
 

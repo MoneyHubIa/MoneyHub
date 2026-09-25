@@ -19,7 +19,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     android: {
       ...config.android,
-      ...(nativeE2e ? { package: 'com.moneyhub.e2e' } : {})
+      ...(nativeE2e ? { package: 'com.moneyhub.e2e', googleServicesFile: './google-services.e2e.json' } : {})
     },
     ios: {
       ...config.ios,

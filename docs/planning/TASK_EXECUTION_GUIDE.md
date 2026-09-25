@@ -22,8 +22,9 @@ depois da conclusao do `EPIC-01`.
 - `EPIC-02` esta concluido.
 - `EPIC-01` esta concluido.
 - `EPIC-07` esta em andamento. `TASK-034`, `TASK-035`, `TASK-036`, `TASK-040`,
-  `TASK-041` e `TASK-042` estao concluidas; somente a execucao e evidencia E2E
-  nativa de `TASK-015` continuam abertas.
+  `TASK-041` e `TASK-042` estao concluidas. O Android passou nos tres fluxos
+  Maestro e na inspecao manual com TalkBack em 2026-09-24; somente a execucao
+  iOS com Maestro e a inspecao com VoiceOver continuam abertas na `TASK-015`.
 - Producao Firebase, Supabase PostgreSQL, GCP, deploy, proxy confiavel no Cloud Run e
   rate limit compartilhado continuam fora do escopo da fundacao; `EPIC-08`
   ainda cobre store compartilhado e revisao do comportamento
@@ -37,6 +38,7 @@ depois da conclusao do `EPIC-01`.
 | Backend | 262 testes; cobertura global >=80%; lint, typecheck e build passam |
 | App | 253 testes; cobertura global >=80%; lint, typecheck e export Expo passam |
 | E2E Web | 13 testes passam no Chromium com PostgreSQL, Firebase Auth Emulator, backend, acessibilidade, autenticacao, financas e mock AI |
+| E2E Android | 3/3 fluxos Maestro passam no `emulator-5554`; login e criacao de transacao passam na inspecao manual com TalkBack |
 | Bundles | Expo export passa para Web, iOS e Android |
 | Firebase Auth | Auth Emulator valida registro, login, ID token e restauracao da sessao |
 | PostgreSQL | schema de identidade baselined; `prisma migrate status` reporta banco atualizado |
@@ -53,7 +55,7 @@ depois da conclusao do `EPIC-01`.
 
 | Ordem | Task | Acao | Condicao de conclusao |
 | --- | --- | --- | --- |
-| 1 | `TASK-015` | Executar E2E nativo | Android/iOS development builds e fluxos Maestro com evidencia |
+| 1 | `TASK-015` | Executar E2E nativo no iOS e inspecionar com VoiceOver | Development build iOS, tres fluxos Maestro e verificacao manual com evidencia |
 
 `TASK-012` e `TASK-043` podem avancar em paralelo por serem documentais e nao
 alterarem o gate de fundacao.

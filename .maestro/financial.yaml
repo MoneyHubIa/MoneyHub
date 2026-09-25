@@ -2,6 +2,19 @@ appId: ${APP_ID}
 ---
 - launchApp:
     clearState: true
+- extendedWaitUntil:
+    visible: ${E2E_DEV_SERVER_URL}
+    timeout: 60000
+- tapOn: ${E2E_DEV_SERVER_URL}
+- tapOn:
+    text: Continue
+    optional: true
+- tapOn:
+    text: Close
+    optional: true
+- extendedWaitUntil:
+    visible: Email
+    timeout: 120000
 - tapOn: Email
 - inputText: ${E2E_EMAIL}
 - tapOn: Senha
