@@ -7,6 +7,7 @@ import { expressMiddleware } from '@as-integrations/express4';
 import cors from 'cors';
 import express, { type Express, type Request, type RequestHandler } from 'express';
 import { rateLimit } from 'express-rate-limit';
+import 'helmet';
 import { z } from 'zod';
 import {
   verifyFirebaseIdToken,
