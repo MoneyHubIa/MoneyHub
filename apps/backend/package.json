@@ -11,7 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx --test tests/**/*.test.ts",
     "test:coverage": "c8 npm test",
-    "lint": "eslint src tests",
+    "lint": "eslint app.ts src tests",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
     "db:migrate": "prisma migrate deploy",
