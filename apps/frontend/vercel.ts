@@ -1,3 +1,5 @@
+import { routes, type VercelConfig } from '@vercel/config/v1';
+
 function requiredBackendUrl(value: string | undefined): string {
   const backendUrl = value?.replace(/\/+$/, '');
 
@@ -10,21 +12,21 @@ function requiredBackendUrl(value: string | undefined): string {
 
 const backendUrl = requiredBackendUrl(process.env.BACKEND_URL);
 
-export const config = {
+export const config: VercelConfig = {
   buildCommand: 'npm run build:web',
   outputDirectory: 'dist',
   cleanUrls: true,
   framework: null,
   rewrites: [
-    { source: '/graphql', destination: `${backendUrl}/graphql` },
-    {
-      source: '/auth/password-recovery',
-      destination: `${backendUrl}/auth/password-recovery`
-    },
-    {
-      source: '/auth/password-recovery/:path*',
-      destination: `${backendUrl}/auth/password-recovery/:path*`
-    },
-    { source: '/:path*', destination: '/' }
+    routes.rewrite('/graphql', `${backendUrl}/graphql`),
+    routes.rewrite(
+      '/auth/password-recovery',
+      `${backendUrl}/auth/password-recovery`
+    ),
+    routes.rewrite(
+      '/auth/password-recovery/:path*',
+      `${backendUrl}/auth/password-recovery/:path*`
+    ),
+    routes.rewrite('/:path*', '/')
   ]
 };
