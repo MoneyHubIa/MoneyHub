@@ -5,8 +5,8 @@ import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@as-integrations/express4';
 import cors from 'cors';
 import express, { type Express, type Request } from 'express';
-import rateLimit from 'express-rate-limit';
-import helmet from 'helmet';
+import { rateLimit } from 'express-rate-limit';
+import { default as helmet } from 'helmet';
 import { z } from 'zod';
 import {
   verifyFirebaseIdToken,
