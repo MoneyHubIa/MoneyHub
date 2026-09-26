@@ -37,8 +37,8 @@ The first Web smoke exposed a real export failure: Expo could not inline Firebas
 - Manual TalkBack inspection passed for authentication and transaction creation on Android.
 - `.github/workflows/quality.yml` runs quality, both coverage gates, and Web E2E on Node 22.
 
-## Open evidence
+## Scope decision and residual limitation
 
-- iOS development build and Maestro flows have not been executed. They require macOS, Xcode, and the native Firebase test configuration. TASK-015 and EPIC-07 remain in progress until iOS evidence is recorded.
-- Automated axe checks and the completed Android TalkBack inspection do not replace the remaining iOS VoiceOver inspection.
+- iOS development build, Maestro flows, and VoiceOver inspection were not executed. On 2026-09-26, the user explicitly accepted TASK-015 and EPIC-07 closure without iOS evidence. This does not demonstrate iOS behavior or VoiceOver accessibility.
+- Automated axe checks and the completed Android TalkBack inspection do not replace the omitted iOS VoiceOver inspection.
 - The product has no implemented goals feature. Goal E2E remains outside the executable acceptance set until that feature exists.

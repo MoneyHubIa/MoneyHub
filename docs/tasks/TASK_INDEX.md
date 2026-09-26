@@ -16,7 +16,7 @@
 | TASK-012 | Plan GCP and Firebase operations docs | Pending | EPIC-08 |
 | TASK-013 | Implement AI context builder | Done | EPIC-05 |
 | TASK-014 | Implement agenda foundation | Done | EPIC-06 |
-| TASK-015 | Configure E2E tests | In Progress | EPIC-07 |
+| TASK-015 | Configure E2E tests | Done | EPIC-07 |
 | TASK-016 | Prepare deploy checklist | Pending | EPIC-08 |
 | TASK-017 | Implement authenticated GraphQL profile bootstrap | Done | EPIC-02 |
 | TASK-018 | Implement logout and local Firebase session cleanup | Done | EPIC-02 |

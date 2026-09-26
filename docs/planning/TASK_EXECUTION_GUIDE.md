@@ -21,10 +21,11 @@ depois da conclusao do `EPIC-01`.
   auditoria segura e sanitizacao de `x-request-id` antes de logs ou eventos.
 - `EPIC-02` esta concluido.
 - `EPIC-01` esta concluido.
-- `EPIC-07` esta em andamento. `TASK-034`, `TASK-035`, `TASK-036`, `TASK-040`,
-  `TASK-041` e `TASK-042` estao concluidas. O Android passou nos tres fluxos
-  Maestro e na inspecao manual com TalkBack em 2026-09-24; somente a execucao
-  iOS com Maestro e a inspecao com VoiceOver continuam abertas na `TASK-015`.
+- `EPIC-07` esta concluido. `TASK-015`, `TASK-034`, `TASK-035`, `TASK-036`,
+  `TASK-040`, `TASK-041` e `TASK-042` estao concluidas. O Android passou nos
+  tres fluxos Maestro e na inspecao manual com TalkBack em 2026-09-24. Em
+  2026-09-26, o usuario aceitou encerrar o epic sem execucao iOS/VoiceOver;
+  essa cobertura permanece sem evidencia.
 - Producao Firebase, Supabase PostgreSQL, GCP, deploy, proxy confiavel no Cloud Run e
   rate limit compartilhado continuam fora do escopo da fundacao; `EPIC-08`
   ainda cobre store compartilhado e revisao do comportamento
@@ -55,7 +56,7 @@ depois da conclusao do `EPIC-01`.
 
 | Ordem | Task | Acao | Condicao de conclusao |
 | --- | --- | --- | --- |
-| 1 | `TASK-015` | Executar E2E nativo no iOS e inspecionar com VoiceOver | Development build iOS, tres fluxos Maestro e verificacao manual com evidencia |
+| 1 | `TASK-012` | Planejar documentacao operacional de GCP e Firebase | Escopo, dependencias, responsabilidades e criterios de aceite documentados para EPIC-08 |
 
 `TASK-012` e `TASK-043` podem avancar em paralelo por serem documentais e nao
 alterarem o gate de fundacao.
