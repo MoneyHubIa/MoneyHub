@@ -96,6 +96,22 @@ android {
         versionName "0.1.0"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
+
+        if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DCMAKE_OBJECT_PATH_MAX=240'
+                }
+            }
+        }
+    }
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        externalNativeBuild {
+            cmake {
+                // Keep native object paths below the Windows toolchain path limit.
+                buildStagingDirectory file("$rootDir/../../../.cxx/android-app")
+            }
+        }
     }
     signingConfigs {
         debug {
