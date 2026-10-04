@@ -115,7 +115,7 @@ Firebase does not expose the original verification timestamp, so `email_verified
 - Request initiation permits 5 attempts per source IP per rolling 15 minutes.
   Verify and confirm each permit 10 attempts per source IP per rolling
   15 minutes. The current store is in-process; shared multi-instance enforcement
-  and reviewed trusted-proxy configuration remain EPIC-08 deployment work.
+  and reviewed trusted-proxy configuration are future scale-hardening work.
 - Recovery operations are audited with only `requestId`, internal `status`, the
   SHA-256 hash of the normalized email for initiation events, and an
   allowlisted provider code when one is safe to retain. Raw email, password,

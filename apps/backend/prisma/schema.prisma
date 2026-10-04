@@ -25,6 +25,7 @@ model User {
   recurringTransactions RecurringTransaction[]
   calendarEvents        CalendarEvent[]
   notifications         Notification[]
+  financialGoals        FinancialGoal[]
 
   @@map("users")
 }
@@ -228,4 +229,39 @@ model Notification {
   @@unique([userId, source, sourceId, occurrenceDate])
   @@index([userId, readAt, reminderDate])
   @@map("notifications")
+}
+
+model FinancialGoal {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  name              String    @db.VarChar(120)
+  description       String?   @db.VarChar(500)
+  targetAmount      Decimal   @map("target_amount") @db.Decimal(14, 2)
+  accumulatedAmount Decimal   @default(0) @map("accumulated_amount") @db.Decimal(14, 2)
+  startDate         DateTime  @map("start_date") @db.Date
+  deadline          DateTime  @db.Date
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt         DateTime? @map("deleted_at") @db.Timestamptz(3)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movements         FinancialGoalMovement[]
+
+  @@index([userId, deletedAt, deadline])
+  @@map("financial_goals")
+}
+
+model FinancialGoalMovement {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  goalId      String   @map("goal_id") @db.Uuid
+  type        String   @db.VarChar(20)
+  amount      Decimal  @db.Decimal(14, 2)
+  occurredOn  DateTime @map("occurred_on") @db.Date
+  notes       String?  @db.VarChar(500)
+  operationId String   @map("operation_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  goal        FinancialGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@unique([goalId, operationId])
+  @@index([goalId, createdAt, id])
+  @@map("financial_goal_movements")
 }

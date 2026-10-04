@@ -44,6 +44,7 @@ function unauthenticatedContext(): GraphQLContext {
 
 function createMockRepository(overrides?: Partial<AiContextRepository>): AiContextRepository {
   return {
+    getGoals: async () => [],
     getUserCurrency: async () => 'BRL',
     getTotals: async () => ({
       income: 12500,
@@ -98,7 +99,8 @@ describe('AI Context Builder Service (TASK-013)', () => {
 
   test('builds complete financial context for authenticated user', async () => {
     const repository = createMockRepository({
-      getUserCurrency: async () => 'USD'
+      getGoals: async () => [],
+    getUserCurrency: async () => 'USD'
     });
 
     const input: AiFinancialContextInput = {
@@ -158,7 +160,8 @@ describe('AI Context Builder Service (TASK-013)', () => {
 
   test('falls back to BRL if user currency is empty or invalid', async () => {
     const repository = createMockRepository({
-      getUserCurrency: async () => ''
+      getGoals: async () => [],
+    getUserCurrency: async () => ''
     });
 
     const context = await buildAiFinancialContext(verifiedContext(), undefined, repository);
@@ -253,4 +256,20 @@ describe('AI Context Builder Service (TASK-013)', () => {
       }
     );
   });
+});
+
+test('includes real goals, prioritizes overdue and nearest deadline, capped at 10', async () => {
+  const goals = Array.from({ length: 12 }, (_, index) => ({
+    id: `goal-${index}`, userId: 'user-uuid-1', name: `Meta ${index}`, description: null,
+    targetAmount: '1000.00', accumulatedAmount: index === 0 ? '1000.00' : '250.00',
+    startDate: new Date('2025-01-01'), deadline: new Date(`2025-01-${String(index + 1).padStart(2, '0')}`),
+    createdAt: new Date(), updatedAt: new Date(), deletedAt: null
+  }));
+  const repository = createMockRepository({ getGoals: async userId => {
+    assert.equal(userId, 'user-uuid-1'); return goals;
+  } });
+  const context = await buildAiFinancialContext(verifiedContext(), undefined, repository);
+  assert.equal(context.goals.length, 10);
+  assert.match(context.goals[0]!, /Meta 1.*1000.00.*250.00.*25.*2025-01-02/);
+  assert.ok(!context.goals.some(g => g.includes('Meta 0;')));
 });

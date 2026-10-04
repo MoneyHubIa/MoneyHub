@@ -1,3 +1,4 @@
+import { financialGoalsTypeDefs, financialGoalsResolvers } from '../../modules/finance/financial-goals/financial-goals-graphql.js';
 import { GraphQLError } from 'graphql';
 import type { Prisma } from '../../generated/prisma/client.js';
 import type { AuthContext } from '../../modules/auth/authentication/auth.js';
@@ -616,6 +617,7 @@ function agendaNotificationsRepository(): AgendaNotificationsRepository {
 }
 
 export const typeDefs = `#graphql
+  ${financialGoalsTypeDefs}
   type Health {
     status: String!
     service: String!
@@ -1215,6 +1217,7 @@ export const typeDefs = `#graphql
 
 export const resolvers = {
   Query: {
+    ...financialGoalsResolvers.Query,
     health: () => ({
       status: 'ok',
       service: 'moneyhub-backend',
@@ -1315,6 +1318,7 @@ export const resolvers = {
     }
   },
   Mutation: {
+    ...financialGoalsResolvers.Mutation,
     bootstrapProfile: async (
       _parent: unknown,
       args: { input: BootstrapProfileInput },
@@ -1610,6 +1614,8 @@ export const resolvers = {
       return markAllNotificationsRead(context, agendaNotificationsRepository());
     }
   },
+  FinancialGoal: financialGoalsResolvers.FinancialGoal,
+  FinancialGoalMovement: financialGoalsResolvers.FinancialGoalMovement,
   CalendarEvent: {
     scheduledDate: (parent: CalendarEvent) => parent.scheduledDate.toISOString().slice(0, 10),
     recurrenceEndDate: (parent: CalendarEvent) => parent.recurrenceEndDate?.toISOString().slice(0, 10) ?? null,

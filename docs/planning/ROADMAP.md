@@ -38,7 +38,9 @@
 
 - E2E tests.
 - Security review.
-- GCP and Firebase deployment documentation.
-- Shared password-recovery rate limiting and reviewed trusted-proxy/X-Forwarded-
-  For behavior remain pre-deployment work for multi-instance Cloud Run
-  deployment; the current in-process limiter is not suitable there (EPIC-08).
+- Vercel and Firebase deployment documentation.
+- Production deployment of frontend and backend, database migrations, logs, and
+  alerts.
+- Reassess shared password-recovery rate limiting and trusted-proxy/
+  `X-Forwarded-For` behavior before intentional horizontal scaling; the current
+  in-process limiter is not suitable for multiple instances.

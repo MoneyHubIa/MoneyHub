@@ -2,18 +2,19 @@
 
 ## Status
 
-The file lists the active application configuration and the remaining target
-infrastructure keys. GraphQL, PostgreSQL, Firebase client, Firebase Admin, the
-Auth Emulator, and the Firebase REST password-recovery flow are implemented.
-Broad GCP and production provisioning remain pending in `EPIC-08`.
+The file lists the active application configuration. GraphQL, PostgreSQL,
+Firebase client, Firebase Admin, the Auth Emulator, and the Firebase REST
+password-recovery flow are implemented. Production provisioning on Vercel is
+complete for the frontend and backend; Supabase migrations, operational logs,
+and alerts are active.
 
 ## Shared Application Origin
 
 - For local development, `APP_URL` is defined once in the repository root `.env`.
 - Locally, the backend serves the Expo Web build and GraphQL from this origin.
 - On Vercel, set `APP_URL` in the backend project to the public frontend origin.
-  The backend entrypoint serves the API only; the frontend project must proxy
-  `/graphql` and `/auth/password-recovery` to the backend in a later deployment step.
+  The backend entrypoint serves the API only; the frontend Vercel project
+  proxies `/graphql` and `/auth/password-recovery` to the backend.
 - Web uses the relative `/graphql` path. Native clients resolve `/graphql`
   against `APP_URL` from the Expo public configuration.
 - Password recovery uses relative `/auth/password-recovery` on production Web;
