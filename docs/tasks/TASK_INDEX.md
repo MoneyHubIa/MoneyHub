@@ -13,11 +13,11 @@
 | TASK-009 | Implement Firebase Auth app foundation | Done | EPIC-02 |
 | TASK-010 | Plan Firebase Admin auth context | Done | EPIC-02 |
 | TASK-011 | Plan Firebase Analytics adapter | Done | EPIC-02 |
-| TASK-012 | Plan GCP and Firebase operations docs | Pending | EPIC-08 |
+| TASK-012 | Plan Vercel and Firebase operations docs | Done | EPIC-08 |
 | TASK-013 | Implement AI context builder | Done | EPIC-05 |
 | TASK-014 | Implement agenda foundation | Done | EPIC-06 |
 | TASK-015 | Configure E2E tests | Done | EPIC-07 |
-| TASK-016 | Prepare deploy checklist | Pending | EPIC-08 |
+| TASK-016 | Prepare deploy checklist | Done | EPIC-08 |
 | TASK-017 | Implement authenticated GraphQL profile bootstrap | Done | EPIC-02 |
 | TASK-018 | Implement logout and local Firebase session cleanup | Done | EPIC-02 |
 | TASK-019 | Implement password recovery with Firebase REST endpoints | Done | EPIC-02 |
@@ -38,14 +38,14 @@
 | TASK-034 | Configure backend GraphQL coverage thresholds | Done | EPIC-07 |
 | TASK-035 | Configure Expo app coverage thresholds | Done | EPIC-07 |
 | TASK-036 | Add Firebase authentication E2E flow | Done | EPIC-07 |
-| TASK-037 | Configure production build | Pending | EPIC-08 |
-| TASK-038 | Document GCP deployment | Pending | EPIC-08 |
-| TASK-039 | Document operational monitoring | Pending | EPIC-08 |
+| TASK-037 | Configure production build | Done | EPIC-08 |
+| TASK-038 | Document Vercel deployment | Done | EPIC-08 |
+| TASK-039 | Document operational monitoring | Done | EPIC-08 |
 | TASK-040 | Add Firebase Admin auth context tests | Done | EPIC-07 |
 | TASK-041 | Add Firebase Analytics adapter tests | Done | EPIC-07 |
 | TASK-042 | Add Expo Web smoke build verification | Done | EPIC-07 |
-| TASK-043 | Document Firebase Auth and Analytics project setup | Pending | EPIC-08 |
-| TASK-044 | Document Firebase identity email and recovery setup | Pending | EPIC-08 |
+| TASK-043 | Document Firebase Auth and Analytics project setup | Done | EPIC-08 |
+| TASK-044 | Document Firebase identity email and recovery setup | Done | EPIC-08 |
 | TASK-045 | Implement financial reminders | Done | EPIC-06 |
 | TASK-046 | Implement notification center | Done | EPIC-06 |
 | TASK-047 | Implement recurring events | Done | EPIC-06 |
@@ -53,6 +53,7 @@
 | TASK-049 | Implement TypeScript Expo app foundation | Done | EPIC-01 |
 | TASK-050 | Migrate database from Cloud SQL to Supabase PostgreSQL | Done | EPIC-01 |
 | TASK-051 | Implement AI financial assistant screen | Done | EPIC-05 |
+| TASK-052 | [Implementar metas financeiras](TASK-052_FINANCIAL_GOALS.md) | Done (local) | EPIC-03/04/05 |
 
 `TASK-019` is complete. Firebase password recovery passed real smoke for
 delivery/content, MoneyHub action URL, password replacement, code non-reuse,

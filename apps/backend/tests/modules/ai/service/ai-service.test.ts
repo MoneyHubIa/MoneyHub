@@ -54,6 +54,7 @@ function unauthenticatedContext(): GraphQLContext {
 
 function createMockContextRepository(): AiContextRepository {
   return {
+    getGoals: async () => [],
     getUserCurrency: async () => 'BRL',
     getTotals: async () => ({ income: 8000, expenses: 3000 }),
     getTopExpenseCategories: async () => [
@@ -212,7 +213,8 @@ describe('AI Assistant Service & Mutation (TASK-033)', () => {
 
   test('fails fast on invalid message without invoking database repository', async () => {
     const throwingRepo: AiContextRepository = {
-      getUserCurrency: async () => {
+      getGoals: async () => [],
+    getUserCurrency: async () => {
         throw new Error('Database must not be queried for invalid message');
       },
       getTotals: async () => {

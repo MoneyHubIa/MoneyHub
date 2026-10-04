@@ -1,3 +1,4 @@
+import { FinancialGoals } from './FinancialGoals';
 import { gql } from '@apollo/client';
 import { useApolloClient, useMutation, useQuery } from '@apollo/client/react';
 import { useRouter } from 'expo-router';
@@ -65,6 +66,7 @@ const DASHBOARD_SUMMARY_QUERY = gql`
       month
       year
     }
+    financialGoalsSummary { count totalAccumulated totalTarget }
     myProfile {
       id
       preferredCurrency
@@ -85,6 +87,7 @@ function localIsoDate(value: Date): string {
 }
 
 type DashboardSummaryData = {
+  financialGoalsSummary?: { count: number; totalAccumulated: string; totalTarget: string };
   dashboardSummary?: {
     totalIncome: string;
     totalExpense: string;
@@ -284,6 +287,20 @@ export function DashboardShell() {
               </View>
             </View>
 
+            <View accessibilityLabel="Metas no dashboard" style={styles.kpiCard}>
+              <Text style={styles.kpiLabel}>Metas financeiras · todos os períodos</Text>
+              {loadingSummary && !summaryData?.financialGoalsSummary ? (
+                <ActivityIndicator color="#0f766e" size="small" />
+              ) : (
+                <>
+                  <Text style={styles.kpiValue}>{formatCurrency(summaryData?.financialGoalsSummary?.totalAccumulated, summaryData?.myProfile?.preferredCurrency)}</Text>
+                  <Text style={styles.subtitle}>{summaryData?.financialGoalsSummary?.count ?? 0} metas · alvo {formatCurrency(summaryData?.financialGoalsSummary?.totalTarget, summaryData?.myProfile?.preferredCurrency)}</Text>
+                </>
+              )}
+              <Pressable accessibilityRole="button" accessibilityLabel="Ver metas" onPress={() => setActiveSectionId('metas')}>
+                <Text style={styles.eyebrow}>Ver metas</Text>
+              </Pressable>
+            </View>
             <View style={styles.assistantPanel}>
               <View style={styles.panelCopy}>
                 <Text style={styles.eyebrow}>IA Financeira</Text>
@@ -327,6 +344,8 @@ export function DashboardShell() {
           <RecurringTransactions />
         ) : activeSectionId === 'contas' ? (
           <CostCenters />
+        ) : activeSectionId === 'metas' ? (
+          <FinancialGoals preferredCurrency={summaryData?.myProfile?.preferredCurrency ?? 'BRL'} />
         ) : activeSectionId === 'agenda' ? (
           <Agenda />
         ) : (

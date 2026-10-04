@@ -26,11 +26,13 @@ depois da conclusao do `EPIC-01`.
   tres fluxos Maestro e na inspecao manual com TalkBack em 2026-09-24. Em
   2026-09-26, o usuario aceitou encerrar o epic sem execucao iOS/VoiceOver;
   essa cobertura permanece sem evidencia.
-- Producao Firebase, Supabase PostgreSQL, GCP, deploy, proxy confiavel no Cloud Run e
-  rate limit compartilhado continuam fora do escopo da fundacao; `EPIC-08`
-  ainda cobre store compartilhado e revisao do comportamento
-  `trust proxy`/`X-Forwarded-For` antes de qualquer deploy Cloud Run com varias
-  instancias.
+- `EPIC-08` esta concluido. Vercel e a plataforma oficial: frontend e backend
+  estao publicados, as migrations de producao foram aplicadas, `/health`,
+  GraphQL autenticado e recuperacao de senha foram validados, e logs e alertas
+  da Vercel estao ativos.
+- Store compartilhado para rate limit de recuperacao e revisao de
+  `trust proxy`/`X-Forwarded-For` ficam como hardening futuro, antes de escalar
+  intencionalmente o backend para varias instancias.
 
 ## Evidencias Disponiveis
 
@@ -54,12 +56,7 @@ depois da conclusao do `EPIC-01`.
 
 ## Execucao Imediata
 
-| Ordem | Task | Acao | Condicao de conclusao |
-| --- | --- | --- | --- |
-| 1 | `TASK-012` | Planejar documentacao operacional de GCP e Firebase | Escopo, dependencias, responsabilidades e criterios de aceite documentados para EPIC-08 |
-
-`TASK-012` e `TASK-043` podem avancar em paralelo por serem documentais e nao
-alterarem o gate de fundacao.
+Nao ha task pendente no `EPIC-08`.
 
 ## Dependencias Liberadas
 
@@ -68,14 +65,12 @@ alterarem o gate de fundacao.
 | `TASK-018` | Liberada por `TASK-009`; definir escopo de logout antes de iniciar |
 | `TASK-035`, `TASK-041`, `TASK-042` | Concluidas; cobertura Expo, adapters e smoke Web foram verificados |
 | `TASK-034`, `TASK-040` | Concluidas; cobertura GraphQL e contexto Firebase Admin foram verificados |
-| `TASK-037` | Builds locais existem; ainda depende das decisoes de producao |
+| `TASK-037` | Concluida; builds e deploys de producao na Vercel foram configurados |
 
 ## Tasks Ainda Bloqueadas
 
-| Tasks | Bloqueio |
-| --- | --- |
-| `TASK-014`, `TASK-045` a `TASK-047` | Identidade persistida e fundacao de agenda |
-| `TASK-016`, `TASK-038`, `TASK-039` | Decisoes e documentacao de infraestrutura de producao, store compartilhado e revisao de `trust proxy`/`X-Forwarded-For` para Cloud Run |
+Nao ha task bloqueada no backlog atual. O rate limit compartilhado e a revisao
+de proxy sao melhorias para escala futura, nao bloqueios do deploy concluido.
 
 ## Comandos de Aceite
 

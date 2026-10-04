@@ -39,6 +39,13 @@ service-account JSON. `DIRECT_URL` is for the separate migration process when
 that process requires a direct database connection. `PORT`, `NODE_ENV`,
 `RESEND_FROM_EMAIL`, and `RESEND_API_KEY` are not required Vercel settings.
 
-After deployment, test `/health` and an authenticated `/graphql` operation.
-`/health` alone does not prove Firebase Admin or PostgreSQL connectivity.
-Environment-variable changes require a new deployment.
+Production verification is complete: `/health`, an authenticated `/graphql`
+operation, password recovery, and the production database migrations all
+passed. `/health` alone does not prove Firebase Admin or PostgreSQL
+connectivity. Environment-variable changes require a new deployment.
+
+Vercel logs and alerts are active for the deployed backend.
+
+## Metas financeiras (TASK-052)
+
+A migration aditiva 20261004000000_financial_goals deve preceder o redeploy do backend que expõe as metas. Aplicação em produção não faz parte da implementação local. Procedimento completo: [Metas financeiras — migration e Vercel](FINANCIAL_GOALS_DEPLOYMENT.md).

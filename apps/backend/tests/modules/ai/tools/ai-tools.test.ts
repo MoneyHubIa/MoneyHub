@@ -5,6 +5,7 @@ import type { AiContextRepository } from '../../../../src/modules/ai/context-bui
 
 function createMockRepository(): AiContextRepository {
   return {
+    getGoals: async () => [],
     async getUserCurrency() {
       return 'BRL';
     },

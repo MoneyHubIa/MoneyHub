@@ -52,8 +52,8 @@ POST /auth/password-recovery/confirm
   confirmation bucket return `429 RATE_LIMITED`; provider outages or missing
   recovery-service wiring return `503 RECOVERY_UNAVAILABLE`.
 
-The current implementation keeps these three buckets in-process only. EPIC-08
-must replace them with a shared store for multi-instance deployment while
+The current implementation keeps these three buckets in-process only. Before
+intentional multi-instance scaling, replace them with a shared store while
 preserving the distinct 5/10/10 initiation, verify, and confirm limits.
 
 ## Initial Schema
@@ -94,3 +94,42 @@ type Query {
 - Resolvers must not contain business rules.
 - Validation must run before service execution.
 - GraphQL errors must use stable extension codes.
+
+## Metas financeiras — TASK-052
+
+Todas as operações exigem usuário autenticado, e-mail verificado e perfil bootstrap. Proprietário vem do contexto. Meta alheia ou excluída: NOT_FOUND; validação e operação reutilizada com payload diferente: BAD_USER_INPUT. Sem edição ou exclusão de movimentos; correções por novo aporte/retirada.
+
+Queries: myFinancialGoals, financialGoal(id: ID!), financialGoalsSummary. Summary retorna count, activeCount, completedCount, overdueCount, totalAccumulated e totalTarget de todas as metas não excluídas, independente do mês.
+
+Mutations: createFinancialGoal(input), updateFinancialGoal(input), deleteFinancialGoal(id) e recordFinancialGoalMovement(input). Alvo e valores monetários trafegam como String decimal; startDate, deadline e occurredOn usam YYYY-MM-DD.
+
+FinancialGoal inclui id, name, description, targetAmount, accumulatedAmount, remainingAmount, progress (Float, pode superar 100), status (ACTIVE/COMPLETED/OVERDUE), startDate, deadline, createdAt, updatedAt e movements(after: ID). Página fixa de 20 movimentos; cursor é ID de movimento da mesma meta. Campos nodes, hasNextPage, endCursor. Histórico ordenado por createdAt DESC e id DESC.
+
+CreateFinancialGoalInput exige name, targetAmount, startDate, deadline; description opcional. UpdateFinancialGoalInput exige id, demais campos opcionais; description: null limpa descrição. Campos obrigatórios não aceitam null na edição. Saldo é zero ao cadastrar e só muda por movimentos.
+
+RecordFinancialGoalMovementInput exige goalId, type (CONTRIBUTION/WITHDRAWAL), amount, occurredOn e operationId (UUID). notes opcional. Retentativas idênticas conservam operationId; retorna meta atual sem duplicar movimento. Payload diferente exige novo UUID.
+
+Exemplo:
+
+```graphql
+mutation Aportar($input: RecordFinancialGoalMovementInput!) {
+  recordFinancialGoalMovement(input: $input) {
+    id accumulatedAmount progress status
+    movements { nodes { id type amount occurredOn notes } hasNextPage endCursor }
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "goalId": "11111111-1111-4111-8111-111111111111",
+    "type": "CONTRIBUTION",
+    "amount": "250.00",
+    "occurredOn": "2026-10-04",
+    "operationId": "22222222-2222-4222-8222-222222222222"
+  }
+}
+```
+
+AiFinancialContext.goals mantém [String!]!, com até 10 metas reais: atrasadas, depois ativas por prazo, depois concluídas. Cada string contém nome, alvo, acumulado, progresso, prazo e estado. Movimentos de metas não entram nos totais mensais nem no fluxo de caixa.

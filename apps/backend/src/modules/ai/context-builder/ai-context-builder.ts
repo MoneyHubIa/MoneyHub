@@ -1,3 +1,5 @@
+import { financialGoalStatus, financialGoalProgress, type FinancialGoal } from '../../finance/financial-goals/financial-goals.js';
+import { financialGoalsRepository } from '../../finance/financial-goals/financial-goals-repository.js';
 import { GraphQLError } from 'graphql';
 import type { GraphQLContext } from '../../../core/graphql/graphql.js';
 import { requireVerifiedUserId } from '../../finance/financial-categories/financial-categories.js';
@@ -60,6 +62,7 @@ export type RawUpcomingBill = {
 };
 
 export type AiContextRepository = {
+  getGoals(userId: string): Promise<FinancialGoal[]>;
   getUserCurrency(userId: string): Promise<string>;
   getTotals(userId: string, startDate: Date, endDate: Date): Promise<{ income: number; expenses: number }>;
   getTopExpenseCategories(
@@ -78,6 +81,7 @@ export type AiContextRepository = {
 
 export function aiContextRepository(prismaGetter = getPrismaClient): AiContextRepository {
   return {
+    getGoals: userId => financialGoalsRepository(prismaGetter).list(userId),
     async getUserCurrency(userId: string): Promise<string> {
       const prisma = prismaGetter();
       const profile = await prisma.profile.findUnique({
@@ -241,11 +245,12 @@ export async function buildAiFinancialContext(
   const fromDate = new Date(Date.UTC(thirtyDaysAgo.getUTCFullYear(), thirtyDaysAgo.getUTCMonth(), thirtyDaysAgo.getUTCDate(), 0, 0, 0, 0));
   const toDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999) + billsDaysAhead * 24 * 60 * 60 * 1000);
 
-  const [userCurrency, totals, rawTopCategories, rawUpcomingBills] = await Promise.all([
+  const [userCurrency, totals, rawTopCategories, rawUpcomingBills, rawGoals] = await Promise.all([
     repository.getUserCurrency(userId),
     repository.getTotals(userId, startDate, endDate),
     repository.getTopExpenseCategories(userId, startDate, endDate, 5),
-    repository.getUpcomingBills(userId, fromDate, toDate, 10)
+    repository.getUpcomingBills(userId, fromDate, toDate, 10),
+    repository.getGoals(userId)
   ]);
 
   const currency = userCurrency?.trim() ? userCurrency.trim() : 'BRL';
@@ -289,6 +294,11 @@ export async function buildAiFinancialContext(
     },
     topExpenseCategories,
     upcomingBills,
-    goals: []
+    goals: rawGoals.filter(goal => !goal.deletedAt).sort((left, right) => {
+      const priority = (goal: FinancialGoal) => financialGoalStatus(goal, now) === 'OVERDUE' ? 0 : financialGoalStatus(goal, now) === 'ACTIVE' ? 1 : 2;
+      return priority(left) - priority(right) || left.deadline.getTime() - right.deadline.getTime() || left.id.localeCompare(right.id);
+    }).slice(0, 10).map(goal =>
+      `${goal.name}; alvo: ${goal.targetAmount}; acumulado: ${goal.accumulatedAmount}; progresso: ${financialGoalProgress(goal)}%; prazo: ${goal.deadline.toISOString().slice(0, 10)}; estado: ${financialGoalStatus(goal, now)}`
+    )
   };
 }
