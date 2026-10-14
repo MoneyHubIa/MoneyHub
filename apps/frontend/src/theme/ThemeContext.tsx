@@ -82,7 +82,13 @@ export function ThemeProvider({
 export function useTheme(): ThemeContextValue {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    return {
+      theme: tokens.dark,
+      isDark: true,
+      mode: 'dark',
+      toggleTheme: () => undefined,
+      setThemeMode: () => undefined
+    };
   }
   return context;
 }

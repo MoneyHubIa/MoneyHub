@@ -58,7 +58,10 @@ const themes: Array<{ value: ProfileTheme; label: string }> = [
   { value: 'DARK', label: 'Escuro' }
 ];
 
+import { useTheme } from '../theme/ThemeContext';
+
 export function ProfileSettings() {
+  const { theme: appTheme, setThemeMode } = useTheme();
   const { resendEmailVerification, refreshEmailVerification } = useAuth();
   const { data, error, loading } = useQuery<MyProfileData>(MY_PROFILE_QUERY);
   const [saveProfile, { loading: saving }] = useMutation<UpdateProfileData>(
@@ -85,11 +88,25 @@ export function ProfileSettings() {
     setTheme(data.myProfile.theme);
   }, [data]);
 
+  const handleThemeChange = (newTheme: ProfileTheme) => {
+    setTheme(newTheme);
+    if (newTheme === 'LIGHT') {
+      setThemeMode('light');
+    } else if (newTheme === 'DARK') {
+      setThemeMode('dark');
+    }
+  };
+
   const persistProfile = async (input: UpdateProfileInput) => {
     setVerificationMessage(null);
     await saveProfile({
       variables: { input }
     });
+    if (input.theme === 'LIGHT') {
+      setThemeMode('light');
+    } else if (input.theme === 'DARK') {
+      setThemeMode('dark');
+    }
     rejectedProfileInput.current = null;
     setFullName(input.fullName);
     setVerificationRequired(false);
@@ -192,25 +209,26 @@ export function ProfileSettings() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>Conta</Text>
-        <Text accessibilityRole="header" style={styles.title}>Ajustes de perfil</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.eyebrow, { color: appTheme.income }]}>Conta</Text>
+        <Text accessibilityRole="header" style={[styles.title, { color: appTheme.textPrimary }]}>Ajustes de perfil</Text>
+        <Text style={[styles.subtitle, { color: appTheme.textSecondary }]}>
           Personalize a forma como o MoneyHub funciona para você.
         </Text>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.label}>Nome completo</Text>
+      <View style={[styles.card, { backgroundColor: appTheme.bgSurface, borderColor: appTheme.border }]}>
+        <Text style={[styles.label, { color: appTheme.textSecondary }]}>Nome completo</Text>
         <TextInput
           accessibilityLabel="Nome completo"
           autoCapitalize="words"
           onChangeText={setFullName}
           placeholder="Seu nome"
-          style={styles.input}
+          placeholderTextColor={appTheme.textMuted}
+          style={[styles.input, { backgroundColor: appTheme.bgElevated, borderColor: appTheme.borderElevated, color: appTheme.textPrimary }]}
           value={fullName}
         />
 
-        <Text style={styles.label}>Moeda preferida</Text>
+        <Text style={[styles.label, { color: appTheme.textSecondary }]}>Moeda preferida</Text>
         <View style={styles.choiceRow}>
           {currencies.map((currency) => (
             <Pressable
@@ -221,17 +239,18 @@ export function ProfileSettings() {
               onPress={() => setPreferredCurrency(currency)}
               style={[
                 styles.choice,
+                { backgroundColor: preferredCurrency === currency ? appTheme.income : appTheme.bgElevated, borderColor: preferredCurrency === currency ? appTheme.income : appTheme.borderElevated },
                 preferredCurrency === currency && styles.choiceSelected
               ]}
             >
-              <Text style={preferredCurrency === currency ? styles.choiceTextSelected : styles.choiceText}>
+              <Text style={preferredCurrency === currency ? styles.choiceTextSelected : [styles.choiceText, { color: appTheme.textSecondary }]}>
                 {currency}
               </Text>
             </Pressable>
           ))}
         </View>
 
-        <Text style={styles.label}>Tema</Text>
+        <Text style={[styles.label, { color: appTheme.textSecondary }]}>Tema</Text>
         <View style={styles.choiceRow}>
           {themes.map((option) => (
             <Pressable
@@ -239,10 +258,14 @@ export function ProfileSettings() {
               accessibilityRole="button"
               accessibilityState={{ selected: theme === option.value }}
               key={option.value}
-              onPress={() => setTheme(option.value)}
-              style={[styles.choice, theme === option.value && styles.choiceSelected]}
+              onPress={() => handleThemeChange(option.value)}
+              style={[
+                styles.choice,
+                { backgroundColor: theme === option.value ? appTheme.income : appTheme.bgElevated, borderColor: theme === option.value ? appTheme.income : appTheme.borderElevated },
+                theme === option.value && styles.choiceSelected
+              ]}
             >
-              <Text style={theme === option.value ? styles.choiceTextSelected : styles.choiceText}>
+              <Text style={theme === option.value ? styles.choiceTextSelected : [styles.choiceText, { color: appTheme.textSecondary }]}>
                 {option.label}
               </Text>
             </Pressable>
@@ -250,7 +273,7 @@ export function ProfileSettings() {
         </View>
 
         {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
-        {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
+        {successMessage ? <Text style={[styles.successText, { color: appTheme.income }]}>{successMessage}</Text> : null}
 
         {verificationRequired ? (
           <View
