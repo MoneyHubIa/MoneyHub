@@ -1,15 +1,27 @@
 import { gql } from '@apollo/client';
 import { useMutation, useQuery } from '@apollo/client/react';
-import { ArrowDownCircle, ArrowUpCircle, Plus, Trash2 } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Calendar,
+  Plus,
+  Tag,
+  Trash2
+} from 'lucide-react-native';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View
 } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
+import { formatCurrency, formatDate } from '../utils/formatters';
+import { Badge } from './ui/Badge';
+import { Card } from './ui/Card';
 
 const MY_TRANSACTIONS_QUERY = gql`
   query MyTransactions {
@@ -39,8 +51,6 @@ const MY_TRANSACTIONS_QUERY = gql`
     }
   }
 `;
-
-import { formatCurrency, formatDate } from '../utils/formatters';
 
 const CREATE_INCOME = gql`
   mutation CreateIncome($input: CreateIncomeInput!) {
@@ -86,7 +96,8 @@ type Category = {
   color: string;
 };
 
-export function Transactions() {
+export function Transactions(): React.JSX.Element {
+  const { theme } = useTheme();
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -108,15 +119,18 @@ export function Transactions() {
     onCompleted: () => resetForm(),
     onError: (err) => setErrorMessage(err.message)
   });
+
   const [createExpense, { loading: creatingE }] = useMutation(CREATE_EXPENSE, {
     refetchQueries: ['DashboardSummary', 'MyTransactions'],
     onCompleted: () => resetForm(),
     onError: (err) => setErrorMessage(err.message)
   });
+
   const [deleteIncome] = useMutation(DELETE_INCOME, {
     refetchQueries: ['DashboardSummary', 'MyTransactions'],
     onCompleted: () => refetch()
   });
+
   const [deleteExpense] = useMutation(DELETE_EXPENSE, {
     refetchQueries: ['DashboardSummary', 'MyTransactions'],
     onCompleted: () => refetch()
@@ -166,146 +180,256 @@ export function Transactions() {
     (c) => c.type === type || c.type === 'BOTH'
   );
 
-  const currency = data?.myProfile?.preferredCurrency ?? 'BRL';
+  const currency = (data?.myProfile?.preferredCurrency ?? 'BRL') as 'BRL' | 'USD' | 'EUR';
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>Finanças</Text>
-        <Text accessibilityRole="header" style={styles.title}>
+        <Text style={[styles.eyebrow, { color: theme.income }]}>FLUXO FINANCEIRO</Text>
+        <Text
+          accessibilityRole="header"
+          style={[styles.title, { color: theme.textPrimary }]}
+        >
           Transações
         </Text>
-        <Text style={styles.subtitle}>Gerencie suas receitas e despesas.</Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+          Gerencie e acompanhe o extrato de todas as suas receitas e despesas realizadas.
+        </Text>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Nova Transação</Text>
-        {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
+      {/* Form Nova Transação */}
+      <Card style={styles.card} variant="surface">
+        <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
+          Nova Transação
+        </Text>
 
+        {errorMessage && (
+          <View style={[styles.errorBox, { backgroundColor: theme.expenseBadge }]}>
+            <Text style={[styles.errorText, { color: theme.expense }]}>{errorMessage}</Text>
+          </View>
+        )}
+
+        {/* Tipo: Despesa ou Receita */}
         <View style={styles.typeSelector}>
           <Pressable
-            onPress={() => { setType('EXPENSE'); setCategoryId(''); }}
-            style={[styles.typeOption, type === 'EXPENSE' && styles.expenseOptionActive]}
+            onPress={() => {
+              setType('EXPENSE');
+              setCategoryId('');
+            }}
+            style={[
+              styles.typeOption,
+              {
+                backgroundColor: type === 'EXPENSE' ? theme.expenseBadge : theme.bgElevated,
+                borderColor: type === 'EXPENSE' ? theme.expense : theme.borderElevated
+              }
+            ]}
           >
-            <Text style={[styles.typeOptionText, type === 'EXPENSE' && styles.typeOptionTextActive]}>
+            <Text
+              style={[
+                styles.typeOptionText,
+                { color: type === 'EXPENSE' ? theme.expense : theme.textSecondary }
+              ]}
+            >
               Despesa
             </Text>
           </Pressable>
+
           <Pressable
-            onPress={() => { setType('INCOME'); setCategoryId(''); }}
-            style={[styles.typeOption, type === 'INCOME' && styles.incomeOptionActive]}
+            onPress={() => {
+              setType('INCOME');
+              setCategoryId('');
+            }}
+            style={[
+              styles.typeOption,
+              {
+                backgroundColor: type === 'INCOME' ? theme.incomeBadge : theme.bgElevated,
+                borderColor: type === 'INCOME' ? theme.income : theme.borderElevated
+              }
+            ]}
           >
-            <Text style={[styles.typeOptionText, type === 'INCOME' && styles.typeOptionTextActive]}>
+            <Text
+              style={[
+                styles.typeOptionText,
+                { color: type === 'INCOME' ? theme.income : theme.textSecondary }
+              ]}
+            >
               Receita
             </Text>
           </Pressable>
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Descrição</Text>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>Descrição</Text>
           <TextInput
             accessibilityLabel="Descrição da transação"
             onChangeText={setDescription}
             placeholder="Ex: Supermercado"
-            style={styles.input}
+            placeholderTextColor={theme.textMuted}
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.bgElevated,
+                borderColor: theme.borderElevated,
+                color: theme.textPrimary
+              }
+            ]}
             value={description}
           />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Valor ({currency})</Text>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>Valor ({currency})</Text>
           <TextInput
             accessibilityLabel="Valor da transação"
             keyboardType="numeric"
             onChangeText={setAmount}
             placeholder="Ex: 150.00"
-            style={styles.input}
+            placeholderTextColor={theme.textMuted}
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.bgElevated,
+                borderColor: theme.borderElevated,
+                color: theme.textPrimary
+              }
+            ]}
             value={amount}
           />
         </View>
 
+        {/* Categoria */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Categoria</Text>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>Categoria</Text>
           <View style={styles.catGrid}>
             {availableCategories.length === 0 && (
-              <Text style={styles.emptyText}>Crie categorias primeiro.</Text>
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                Crie categorias primeiro.
+              </Text>
             )}
-            {availableCategories.map((c) => (
-              <Pressable
-                accessibilityLabel={c.name}
-                accessibilityRole="button"
-                key={c.id}
-                onPress={() => setCategoryId(c.id)}
-                style={[
-                  styles.catOption,
-                  categoryId === c.id && { borderColor: c.color, backgroundColor: c.color + '10' }
-                ]}
-              >
-                <Text style={{ color: c.color, fontSize: 13, fontWeight: '600' }}>{c.name}</Text>
-              </Pressable>
-            ))}
+            {availableCategories.map((c) => {
+              const isSelected = categoryId === c.id;
+              return (
+                <Pressable
+                  accessibilityLabel={c.name}
+                  accessibilityRole="button"
+                  key={c.id}
+                  onPress={() => setCategoryId(c.id)}
+                  style={[
+                    styles.catOption,
+                    {
+                      backgroundColor: isSelected ? c.color : theme.bgElevated,
+                      borderColor: c.color
+                    }
+                  ]}
+                >
+                  <Tag color={isSelected ? '#FFFFFF' : c.color} size={13} style={{ marginRight: 4 }} />
+                  <Text
+                    style={{
+                      color: isSelected ? '#FFFFFF' : c.color,
+                      fontSize: 13,
+                      fontWeight: '600'
+                    }}
+                  >
+                    {c.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
+        {/* Botão Adicionar */}
         <Pressable
           accessibilityLabel="Adicionar transação"
           accessibilityRole="button"
           disabled={creatingI || creatingE}
           onPress={handleCreate}
-          style={styles.createButton}
+          style={[
+            styles.createButton,
+            { backgroundColor: type === 'INCOME' ? theme.income : theme.expense },
+            (creatingI || creatingE) && { opacity: 0.7 }
+          ]}
         >
           {creatingI || creatingE ? (
-            <ActivityIndicator color="#ffffff" size="small" />
+            <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
             <>
-              <Plus color="#ffffff" size={18} />
+              <Plus color="#FFFFFF" size={18} />
               <Text style={styles.createButtonText}>Adicionar</Text>
             </>
           )}
         </Pressable>
-      </View>
+      </Card>
 
+      {/* Extrato / Lista */}
       {loading ? (
-        <ActivityIndicator color="#0f766e" size="large" style={{ marginTop: 24 }} />
+        <ActivityIndicator color={theme.income} size="large" style={{ marginTop: 24 }} />
       ) : (
         <View style={styles.list}>
           {transactions.length === 0 ? (
-            <Text style={styles.emptyText}>Nenhuma transação encontrada.</Text>
+            <Card style={styles.emptyCard} variant="surface">
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                Nenhuma transação encontrada.
+              </Text>
+            </Card>
           ) : (
             transactions.map((t) => {
               const cat = data?.myCategories.find((c) => c.id === t.categoryId);
               const isIncome = t.__typename === 'Income';
+
               return (
-                <View key={t.id} style={styles.transactionCard}>
+                <Card key={t.id} style={styles.transactionCard} variant="surface">
                   <View style={styles.tLeft}>
                     {isIncome ? (
-                      <ArrowUpCircle color="#059669" size={24} />
+                      <ArrowUpCircle color={theme.income} size={28} />
                     ) : (
-                      <ArrowDownCircle color="#ef4444" size={24} />
+                      <ArrowDownCircle color={theme.expense} size={28} />
                     )}
-                    <View>
-                      <Text style={styles.tDesc}>{t.description}</Text>
-                      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                        <Text style={[styles.tCat, { color: cat?.color || '#64748b' }]}>
-                          {cat?.name || 'Sem categoria'}
+                    <View style={styles.tInfo}>
+                      <Text style={[styles.tDesc, { color: theme.textPrimary }]}>
+                        {t.description}
+                      </Text>
+                      <View style={styles.tMetaRow}>
+                        {cat && (
+                          <View
+                            style={[
+                              styles.catPill,
+                              { backgroundColor: cat.color + '20' }
+                            ]}
+                          >
+                            <Text style={[styles.tCat, { color: cat.color }]}>
+                              {cat.name}
+                            </Text>
+                          </View>
+                        )}
+                        <Text style={[styles.tDate, { color: theme.textMuted }]}>
+                          • {formatDate(t.occurredAt, currency)}
                         </Text>
-                        <Text style={{ color: '#94a3b8', fontSize: 12 }}>• {formatDate(t.occurredAt, currency)}</Text>
                       </View>
                     </View>
                   </View>
+
                   <View style={styles.tRight}>
-                    <Text style={[styles.tAmount, isIncome ? styles.amountIn : styles.amountOut]}>
+                    <Text
+                      style={[
+                        styles.tAmount,
+                        { color: isIncome ? theme.income : theme.expense }
+                      ]}
+                    >
                       {isIncome ? '+' : '-'} {formatCurrency(t.amount, currency)}
                     </Text>
+
                     <Pressable
                       accessibilityLabel={`Excluir transação ${t.description}`}
                       accessibilityRole="button"
                       onPress={() => handleDelete(t.id, t.__typename)}
+                      style={[styles.deleteButton, { backgroundColor: theme.bgElevated }]}
                     >
-                      <Trash2 color="#ef4444" size={16} />
+                      <Trash2 color={theme.expense} size={15} />
                     </Pressable>
                   </View>
-                </View>
+                </Card>
               );
             })
           )}
@@ -316,35 +440,157 @@ export function Transactions() {
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 20 },
-  header: { gap: 8 },
-  eyebrow: { color: '#0f766e', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
-  title: { color: '#0f172a', fontSize: 26, fontWeight: '700' },
-  subtitle: { color: '#64748b', fontSize: 15, lineHeight: 22 },
-  card: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, gap: 14, padding: 20 },
-  cardTitle: { color: '#0f172a', fontSize: 18, fontWeight: '700' },
-  errorText: { color: '#dc2626', fontSize: 13, backgroundColor: '#fef2f2', padding: 8, borderRadius: 4 },
-  typeSelector: { flexDirection: 'row', gap: 10 },
-  typeOption: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 6, borderWidth: 1, borderColor: '#cbd5e1' },
-  expenseOptionActive: { backgroundColor: '#fef2f2', borderColor: '#ef4444' },
-  incomeOptionActive: { backgroundColor: '#ecfdf5', borderColor: '#059669' },
-  typeOptionText: { fontSize: 14, fontWeight: '600', color: '#475569' },
-  typeOptionTextActive: { color: '#0f172a' },
-  formGroup: { gap: 6 },
-  label: { color: '#334155', fontSize: 14, fontWeight: '600' },
-  input: { borderColor: '#cbd5e1', borderRadius: 6, borderWidth: 1, fontSize: 14, minHeight: 42, paddingHorizontal: 12, color: '#0f172a' },
-  catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  catOption: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#e2e8f0' },
-  createButton: { alignItems: 'center', backgroundColor: '#0f172a', borderRadius: 6, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 42, paddingHorizontal: 16 },
-  createButtonText: { color: '#ffffff', fontSize: 14, fontWeight: '700' },
-  list: { gap: 10 },
-  emptyText: { color: '#64748b', fontSize: 14, fontStyle: 'italic' },
-  transactionCard: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 6, borderWidth: 1, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  tLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  tDesc: { color: '#0f172a', fontSize: 15, fontWeight: '600' },
-  tCat: { fontSize: 12, fontWeight: '500', marginTop: 2 },
-  tRight: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  tAmount: { fontSize: 16, fontWeight: '700' },
-  amountIn: { color: '#059669' },
-  amountOut: { color: '#ef4444' }
+  catGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  catOption: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 7
+  },
+  catPill: {
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2
+  },
+  container: {
+    gap: 20
+  },
+  createButton: {
+    alignItems: 'center',
+    borderRadius: 8,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingHorizontal: 16
+  },
+  createButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  deleteButton: {
+    alignItems: 'center',
+    borderRadius: 6,
+    height: 32,
+    justifyContent: 'center',
+    width: 32
+  },
+  emptyCard: {
+    alignItems: 'center',
+    padding: 32
+  },
+  emptyText: {
+    fontSize: 14,
+    fontStyle: 'italic'
+  },
+  errorBox: {
+    borderRadius: 6,
+    padding: 10
+  },
+  errorText: {
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5
+  },
+  formGroup: {
+    gap: 6
+  },
+  header: {
+    gap: 6
+  },
+  input: {
+    borderRadius: 8,
+    borderWidth: 1,
+    fontSize: 14,
+    minHeight: 44,
+    paddingHorizontal: 12
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  list: {
+    gap: 10
+  },
+  subtitle: {
+    fontSize: 14,
+    lineHeight: 20
+  },
+  tAmount: {
+    fontSize: 16,
+    fontWeight: '700'
+  },
+  tCat: {
+    fontSize: 11,
+    fontWeight: '700'
+  },
+  tDate: {
+    fontSize: 12
+  },
+  tDesc: {
+    fontSize: 15,
+    fontWeight: '700'
+  },
+  tInfo: {
+    gap: 4
+  },
+  tLeft: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12
+  },
+  tMetaRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8
+  },
+  tRight: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 16
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '700'
+  },
+  transactionCard: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 14
+  },
+  typeOption: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    paddingVertical: 10
+  },
+  typeOptionText: {
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  typeSelector: {
+    flexDirection: 'row',
+    gap: 10
+  },
+  card: {
+    gap: 14,
+    padding: 20
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700'
+  }
 });

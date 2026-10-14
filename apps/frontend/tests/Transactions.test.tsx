@@ -1,6 +1,13 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Transactions } from '../src/components/Transactions';
 
+import type { PropsWithChildren } from 'react';
+import { ThemeProvider } from '../src/theme/ThemeContext';
+
+function Wrapper({ children }: PropsWithChildren) {
+  return <ThemeProvider>{children}</ThemeProvider>;
+}
+
 const mockCreateIncome = jest.fn();
 const mockCreateExpense = jest.fn();
 const mockDeleteIncome = jest.fn();
@@ -70,7 +77,7 @@ describe('Transactions Component', () => {
   });
 
   test('renders header and transactions list', async () => {
-    await render(<Transactions />);
+    await render(<Transactions />, { wrapper: Wrapper });
 
     expect(screen.getByRole('header', { name: 'Transações' })).toBeOnTheScreen();
     expect(screen.getByText('Salário')).toBeOnTheScreen();
@@ -82,7 +89,7 @@ describe('Transactions Component', () => {
   test('creates a new expense when form is filled', async () => {
     mockCreateExpense.mockResolvedValue({ data: { createExpense: { id: 'exp-2' } } });
 
-    await render(<Transactions />);
+    await render(<Transactions />, { wrapper: Wrapper });
 
     await fireEvent.changeText(screen.getByPlaceholderText('Ex: Supermercado'), 'Aluguel');
     await fireEvent.changeText(screen.getByPlaceholderText('Ex: 150.00'), '1800');
@@ -105,7 +112,7 @@ describe('Transactions Component', () => {
   });
 
   test('validates required transaction fields', async () => {
-    await render(<Transactions />);
+    await render(<Transactions />, { wrapper: Wrapper });
     await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
     expect(screen.getByText('Informe a descrição.')).toBeOnTheScreen();
 
@@ -121,7 +128,7 @@ describe('Transactions Component', () => {
 
   test('creates income and deletes both transaction types', async () => {
     mockCreateIncome.mockResolvedValue({ data: { createIncome: { id: 'inc-2' } } });
-    await render(<Transactions />);
+    await render(<Transactions />, { wrapper: Wrapper });
 
     await fireEvent.press(screen.getByText('Receita'));
     await fireEvent.changeText(screen.getByLabelText('Descrição da transação'), 'Projeto');
@@ -140,7 +147,7 @@ describe('Transactions Component', () => {
 
   test('renders loading and empty states with safe defaults', async () => {
     mockTransactionsQueryOverride = { data: undefined, loading: true, refetch: mockRefetch };
-    const view = await render(<Transactions />);
+    const view = await render(<Transactions />, { wrapper: Wrapper });
     expect(screen.getByText('Crie categorias primeiro.')).toBeOnTheScreen();
 
     mockTransactionsQueryOverride = {
