@@ -2,16 +2,19 @@ import { gql } from '@apollo/client';
 import { useMutation, useQuery } from '@apollo/client/react';
 import {
   AlertCircle,
+  Bell,
   Calendar,
   CalendarClock,
+  Check,
   CheckCircle2,
   Clock,
   Pencil,
   PlusCircle,
   Tag,
-  Trash2
+  Trash2,
+  X
 } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -21,6 +24,16 @@ import {
   TextInput,
   View
 } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
+import {
+  formatCurrency,
+  formatDate,
+  formatISOToRegionalDate,
+  parseRegionalDateToISO
+} from '../utils/formatters';
+import { DatePickerInput } from './DatePickerInput';
+import { Badge } from './ui/Badge';
+import { Card } from './ui/Card';
 
 const MY_ACCOUNTS_RECEIVABLE_QUERY = gql`
   query MyAccountsReceivable($status: AccountReceivableStatus) {
@@ -95,9 +108,6 @@ const DELETE_ACCOUNT_RECEIVABLE = gql`
   }
 `;
 
-import { formatCurrency, formatDate, formatISOToRegionalDate, parseRegionalDateToISO } from '../utils/formatters';
-import { DatePickerInput } from './DatePickerInput';
-
 export type AccountReceivableItem = {
   id: string;
   categoryId: string;
@@ -132,7 +142,8 @@ type CostCenter = {
   description?: string | null;
 };
 
-export function AccountsReceivable() {
+export function AccountsReceivable(): React.JSX.Element {
+  const { theme } = useTheme();
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState(() => {
@@ -162,7 +173,7 @@ export function AccountsReceivable() {
   });
 
   const [createReceivable, { loading: creating }] = useMutation(CREATE_ACCOUNT_RECEIVABLE, {
-    refetchQueries: ['MyAccountsReceivable', 'DashboardSummary', 'MyIncomes'],
+    refetchQueries: ['MyAccountsReceivable', 'DashboardSummary'],
     onCompleted: () => resetForm(),
     onError: (err) => setErrorMessage(err.message)
   });
@@ -174,13 +185,13 @@ export function AccountsReceivable() {
   });
 
   const [markReceived, { loading: markingReceived }] = useMutation(MARK_ACCOUNT_RECEIVABLE_RECEIVED, {
-    refetchQueries: ['MyAccountsReceivable', 'DashboardSummary', 'MyIncomes'],
+    refetchQueries: ['MyAccountsReceivable', 'DashboardSummary'],
     onCompleted: () => refetch(),
     onError: (err) => setErrorMessage(err.message)
   });
 
   const [deleteReceivable] = useMutation(DELETE_ACCOUNT_RECEIVABLE, {
-    refetchQueries: ['MyAccountsReceivable', 'DashboardSummary', 'MyIncomes'],
+    refetchQueries: ['MyAccountsReceivable', 'DashboardSummary'],
     onCompleted: () => refetch(),
     onError: (err) => setErrorMessage(err.message)
   });
@@ -196,6 +207,19 @@ export function AccountsReceivable() {
     refetch();
   };
 
+  const categories = (data?.myCategories ?? []).filter(
+    (c) => c.type === 'INCOME' || c.type === 'BOTH'
+  );
+  const costCenters = data?.myCostCenters ?? [];
+  const currency = (data?.myProfile?.preferredCurrency ?? 'BRL') as 'BRL' | 'USD' | 'EUR';
+
+  useEffect(() => {
+    const firstCat = categories[0];
+    if (firstCat && !categoryId) {
+      setCategoryId(firstCat.id);
+    }
+  }, [categories, categoryId]);
+
   const handleSave = async () => {
     if (!description.trim()) {
       setErrorMessage('Informe uma descrição.');
@@ -209,6 +233,7 @@ export function AccountsReceivable() {
       setErrorMessage('Selecione uma categoria.');
       return;
     }
+
     const isoDueDate = parseRegionalDateToISO(dueDate, currency);
     if (!isoDueDate) {
       setErrorMessage('Informe uma data de vencimento válida.');
@@ -246,18 +271,6 @@ export function AccountsReceivable() {
   };
 
   const items = data?.myAccountsReceivable ?? [];
-  const categories = (data?.myCategories ?? []).filter(
-    (c) => c.type === 'INCOME' || c.type === 'BOTH'
-  );
-  const costCenters = data?.myCostCenters ?? [];
-  const currency = data?.myProfile?.preferredCurrency ?? 'BRL';
-
-  useEffect(() => {
-    const firstCat = categories[0];
-    if (firstCat && !categoryId) {
-      setCategoryId(firstCat.id);
-    }
-  }, [categories, categoryId]);
 
   const totalPending = items
     .filter((i) => i.status === 'PENDING')
@@ -268,65 +281,115 @@ export function AccountsReceivable() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>Receitas Previstas</Text>
-        <Text accessibilityRole="header" style={styles.title}>
+        <Text style={[styles.eyebrow, { color: theme.income }]}>RECEITAS PREVISTAS</Text>
+        <Text
+          accessibilityRole="header"
+          style={[styles.title, { color: theme.textPrimary }]}
+        >
           Contas a Receber
         </Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
           Gerencie previsões de recebimento, prazos e confirme a baixa dos valores recebidos.
         </Text>
       </View>
 
+      {/* 3 KPIs */}
       <View style={styles.kpiRow}>
-        <View style={styles.kpiCard}>
-          <Text style={styles.kpiLabel}>Total a Receber (Pendente)</Text>
-          <Text style={[styles.kpiValue, styles.pendingAmount]}>
+        <Card style={styles.kpiCard} variant="surface">
+          <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>
+            Total a Receber (Pendente)
+          </Text>
+          <Text style={[styles.kpiValue, { color: theme.income }]}>
             {formatCurrency(totalPending.toString(), currency)}
           </Text>
-        </View>
-        <View style={styles.kpiCard}>
-          <Text style={styles.kpiLabel}>Contas Pendentes</Text>
-          <Text style={styles.kpiValue}>{countPending}</Text>
-        </View>
-        <View style={styles.kpiCard}>
-          <Text style={styles.kpiLabel}>Contas Recebidas</Text>
-          <Text style={[styles.kpiValue, styles.receivedCount]}>{countReceived}</Text>
-        </View>
+        </Card>
+
+        <Card style={styles.kpiCard} variant="surface">
+          <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>
+            Contas Pendentes
+          </Text>
+          <Text style={[styles.kpiValue, { color: theme.warning }]}>
+            {countPending}
+          </Text>
+        </Card>
+
+        <Card style={styles.kpiCard} variant="surface">
+          <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>
+            Contas Recebidas
+          </Text>
+          <Text style={[styles.kpiValue, { color: theme.income }]}>
+            {countReceived}
+          </Text>
+        </Card>
       </View>
 
-      <View style={styles.formCard}>
-        <Text style={styles.formTitle}>{editingId ? 'Editar Conta a Receber' : 'Agendar Nova Conta a Receber'}</Text>
+      {/* Form Criar / Editar */}
+      <Card
+        style={[
+          styles.formCard,
+          editingId ? { borderColor: theme.income } : {}
+        ]}
+        variant={editingId ? 'elevated' : 'surface'}
+      >
+        <View style={styles.cardHeader}>
+          <Text style={[styles.formTitle, { color: theme.textPrimary }]}>
+            {editingId ? 'Editar Conta a Receber' : 'Agendar Nova Conta a Receber'}
+          </Text>
+          {editingId && (
+            <Pressable onPress={resetForm} style={styles.cancelLink}>
+              <X color={theme.textSecondary} size={16} />
+              <Text style={[styles.cancelLinkText, { color: theme.textSecondary }]}>
+                Cancelar edição
+              </Text>
+            </Pressable>
+          )}
+        </View>
 
-        {errorMessage ? (
-          <View style={styles.errorBox}>
-            <AlertCircle color="#dc2626" size={16} />
-            <Text style={styles.errorText}>{errorMessage}</Text>
+        {errorMessage && (
+          <View style={[styles.errorBox, { backgroundColor: theme.expenseBadge }]}>
+            <AlertCircle color={theme.expense} size={16} />
+            <Text style={[styles.errorText, { color: theme.expense }]}>{errorMessage}</Text>
           </View>
-        ) : null}
+        )}
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Descrição</Text>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>Descrição</Text>
           <TextInput
             accessibilityLabel="Descrição da conta a receber"
             onChangeText={setDescription}
             placeholder="Ex: Fatura Cliente Y, Consultoria mensal"
-            placeholderTextColor="#94a3b8"
-            style={styles.input}
+            placeholderTextColor={theme.textMuted}
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.bgElevated,
+                borderColor: theme.borderElevated,
+                color: theme.textPrimary
+              }
+            ]}
             value={description}
           />
         </View>
 
         <View style={styles.inputRow}>
           <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={styles.label}>Valor ({currency})</Text>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>Valor ({currency})</Text>
             <TextInput
               accessibilityLabel="Valor da conta a receber"
               keyboardType="decimal-pad"
               onChangeText={setAmount}
               placeholder="0,00"
-              placeholderTextColor="#94a3b8"
-              style={styles.input}
+              placeholderTextColor={theme.textMuted}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: theme.bgElevated,
+                  borderColor: theme.borderElevated,
+                  color: theme.textPrimary
+                }
+              ]}
               value={amount}
             />
           </View>
@@ -342,133 +405,211 @@ export function AccountsReceivable() {
           </View>
         </View>
 
+        {/* Categorias de Receita */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Categoria de Receita</Text>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>Categoria de Receita</Text>
           {categories.length === 0 ? (
-            <Text style={styles.emptyCategoriesText}>
+            <Text style={[styles.emptyCategoriesText, { color: theme.expense }]}>
               Nenhuma categoria de receita encontrada. Cadastre uma categoria na aba Categorias.
             </Text>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagSelector}>
-              {categories.map((c) => (
-                <Pressable
-                  key={c.id}
-                  accessibilityLabel={c.name}
-                  accessibilityRole="button"
-                  onPress={() => setCategoryId(c.id)}
-                  style={[
-                    styles.tagBadge,
-                    categoryId === c.id && styles.tagBadgeSelected,
-                    { borderColor: c.color || '#cbd5e1' }
-                  ]}
-                >
-                  <Tag color={categoryId === c.id ? '#ffffff' : c.color || '#475569'} size={14} />
-                  <Text style={[styles.tagText, categoryId === c.id && styles.tagTextSelected]}>
-                    {c.name}
-                  </Text>
-                </Pressable>
-              ))}
+              {categories.map((c) => {
+                const isSelected = categoryId === c.id;
+                return (
+                  <Pressable
+                    accessibilityLabel={c.name}
+                    accessibilityRole="button"
+                    key={c.id}
+                    onPress={() => setCategoryId(c.id)}
+                    style={[
+                      styles.tagBadge,
+                      {
+                        backgroundColor: isSelected ? c.color || theme.income : theme.bgElevated,
+                        borderColor: c.color || theme.borderElevated
+                      }
+                    ]}
+                  >
+                    <Tag color={isSelected ? '#FFFFFF' : c.color || theme.textSecondary} size={14} />
+                    <Text
+                      style={[
+                        styles.tagText,
+                        { color: isSelected ? '#FFFFFF' : theme.textPrimary },
+                        isSelected && styles.tagTextSelected
+                      ]}
+                    >
+                      {c.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </ScrollView>
           )}
         </View>
 
-        {costCenters.length > 0 ? (
+        {/* Centros de Custo */}
+        {costCenters.length > 0 && (
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Centro de Custo (Opcional)</Text>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>
+              Centro de Custo (Opcional)
+            </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagSelector}>
               <Pressable
                 onPress={() => setCostCenterId('')}
-                style={[styles.tagBadge, !costCenterId && styles.tagBadgeSelected]}
+                style={[
+                  styles.tagBadge,
+                  {
+                    backgroundColor: !costCenterId ? theme.income : theme.bgElevated,
+                    borderColor: !costCenterId ? theme.income : theme.borderElevated
+                  }
+                ]}
               >
-                <Text style={[styles.tagText, !costCenterId && styles.tagTextSelected]}>
+                <Text
+                  style={[
+                    styles.tagText,
+                    { color: !costCenterId ? '#FFFFFF' : theme.textSecondary },
+                    !costCenterId && styles.tagTextSelected
+                  ]}
+                >
                   Nenhum
                 </Text>
               </Pressable>
-              {costCenters.map((cc) => (
-                <Pressable
-                  key={cc.id}
-                  onPress={() => setCostCenterId(cc.id)}
-                  style={[
-                    styles.tagBadge,
-                    costCenterId === cc.id && styles.tagBadgeSelected
-                  ]}
-                >
-                  <Text style={[styles.tagText, costCenterId === cc.id && styles.tagTextSelected]}>
-                    {cc.name}
-                  </Text>
-                </Pressable>
-              ))}
+              {costCenters.map((cc) => {
+                const isSelected = costCenterId === cc.id;
+                return (
+                  <Pressable
+                    key={cc.id}
+                    onPress={() => setCostCenterId(cc.id)}
+                    style={[
+                      styles.tagBadge,
+                      {
+                        backgroundColor: isSelected ? theme.income : theme.bgElevated,
+                        borderColor: isSelected ? theme.income : theme.borderElevated
+                      }
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.tagText,
+                        { color: isSelected ? '#FFFFFF' : theme.textPrimary },
+                        isSelected && styles.tagTextSelected
+                      ]}
+                    >
+                      {cc.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </ScrollView>
           </View>
-        ) : null}
+        )}
 
+        {/* Lembrete */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Lembrete</Text>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>Lembrete de Vencimento</Text>
           <View style={styles.optionRow}>
-            {reminderOptions.map((option) => (
-              <Pressable
-                key={option.label}
-                accessibilityRole="button"
-                accessibilityState={{ selected: reminderOffsetDays === option.value }}
-                onPress={() => setReminderOffsetDays(option.value)}
-                style={[styles.optionButton, reminderOffsetDays === option.value && styles.optionButtonSelected]}
-              >
-                <Text style={[styles.optionText, reminderOffsetDays === option.value && styles.optionTextSelected]}>
-                  {option.label}
-                </Text>
-              </Pressable>
-            ))}
+            {reminderOptions.map((option) => {
+              const isSelected = reminderOffsetDays === option.value;
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                  key={option.label}
+                  onPress={() => setReminderOffsetDays(option.value)}
+                  style={[
+                    styles.optionButton,
+                    {
+                      backgroundColor: isSelected ? theme.income : theme.bgElevated,
+                      borderColor: isSelected ? theme.income : theme.borderElevated
+                    }
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.optionText,
+                      { color: isSelected ? '#FFFFFF' : theme.textSecondary },
+                      isSelected && styles.optionTextSelected
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
+        {/* Botão Salvar / Atualizar */}
         <Pressable
           accessibilityRole="button"
           disabled={creating || updating}
           onPress={handleSave}
-          style={[styles.submitButton, (creating || updating) && styles.submitButtonDisabled]}
+          style={[
+            styles.submitButton,
+            { backgroundColor: theme.income },
+            (creating || updating) && styles.submitButtonDisabled
+          ]}
         >
           {creating || updating ? (
-            <ActivityIndicator color="#ffffff" size="small" />
+            <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
             <>
-              <PlusCircle color="#ffffff" size={18} />
-              <Text style={styles.submitButtonText}>{editingId ? 'Atualizar Conta a Receber' : 'Agendar Conta a Receber'}</Text>
+              {editingId ? (
+                <Check color="#FFFFFF" size={18} />
+              ) : (
+                <PlusCircle color="#FFFFFF" size={18} />
+              )}
+              <Text style={styles.submitButtonText}>
+                {editingId ? 'Atualizar Conta a Receber' : 'Agendar Conta a Receber'}
+              </Text>
             </>
           )}
         </Pressable>
-      </View>
+      </Card>
 
+      {/* Lista de Contas */}
       <View style={styles.listSection}>
         <View style={styles.listHeader}>
-          <Text style={styles.listTitle}>Contas Agendadas</Text>
+          <Text style={[styles.listTitle, { color: theme.textPrimary }]}>
+            Contas Agendadas
+          </Text>
 
-          <View style={styles.filterTabs}>
-            {(['ALL', 'PENDING', 'RECEIVED'] as const).map((tab) => (
-              <Pressable
-                key={tab}
-                onPress={() => setActiveStatusFilter(tab)}
-                style={[styles.filterTab, activeStatusFilter === tab && styles.filterTabActive]}
-              >
-                <Text
+          <View style={[styles.filterTabs, { backgroundColor: theme.bgElevated }]}>
+            {(['ALL', 'PENDING', 'RECEIVED'] as const).map((tab) => {
+              const isActive = activeStatusFilter === tab;
+              return (
+                <Pressable
+                  key={tab}
+                  onPress={() => setActiveStatusFilter(tab)}
                   style={[
-                    styles.filterTabText,
-                    activeStatusFilter === tab && styles.filterTabTextActive
+                    styles.filterTab,
+                    isActive && [styles.filterTabActive, { backgroundColor: theme.bgSurface }]
                   ]}
                 >
-                  {tab === 'ALL' ? 'Todas' : tab === 'PENDING' ? 'Pendentes' : 'Recebidas'}
-                </Text>
-              </Pressable>
-            ))}
+                  <Text
+                    style={[
+                      styles.filterTabText,
+                      { color: isActive ? theme.textPrimary : theme.textSecondary },
+                      isActive && styles.filterTabTextActive
+                    ]}
+                  >
+                    {tab === 'ALL' ? 'Todas' : tab === 'PENDING' ? 'Pendentes' : 'Recebidas'}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
         {loading ? (
-          <ActivityIndicator color="#0f766e" size="large" style={{ marginVertical: 32 }} />
+          <ActivityIndicator color={theme.income} size="large" style={{ marginVertical: 32 }} />
         ) : items.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <CalendarClock color="#94a3b8" size={36} />
-            <Text style={styles.emptyText}>Nenhuma conta a receber encontrada.</Text>
-          </View>
+          <Card style={styles.emptyCard} variant="surface">
+            <CalendarClock color={theme.textMuted} size={36} />
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              Nenhuma conta a receber encontrada.
+            </Text>
+          </Card>
         ) : (
           <View style={styles.itemsList}>
             {items.map((item) => {
@@ -476,48 +617,55 @@ export function AccountsReceivable() {
               const isReceived = item.status === 'RECEIVED';
 
               return (
-                <View key={item.id} style={styles.itemCard}>
+                <Card key={item.id} style={styles.itemCard} variant="surface">
                   <View style={styles.itemMain}>
                     <View style={styles.itemHeaderRow}>
-                      <Text style={styles.itemDescription}>{item.description}</Text>
-                      <View
-                        style={[
-                          styles.statusBadge,
-                          isReceived ? styles.statusBadgeReceived : styles.statusBadgePending
-                        ]}
-                      >
-                        {isReceived ? (
-                          <CheckCircle2 color="#059669" size={12} />
-                        ) : (
-                          <Clock color="#d97706" size={12} />
-                        )}
-                        <Text
-                          style={[
-                            styles.statusText,
-                            isReceived ? styles.statusTextReceived : styles.statusTextPending
-                          ]}
-                        >
-                          {isReceived ? 'Recebido' : 'Pendente'}
-                        </Text>
-                      </View>
+                      <Text style={[styles.itemDescription, { color: theme.textPrimary }]}>
+                        {item.description}
+                      </Text>
+                      <Badge
+                        icon={isReceived ? CheckCircle2 : Clock}
+                        label={isReceived ? 'Recebido' : 'Pendente'}
+                        tone={isReceived ? 'income' : 'warning'}
+                      />
                     </View>
 
                     <View style={styles.itemMetaRow}>
                       <View style={styles.itemMeta}>
-                        <Calendar color="#64748b" size={14} />
-                        <Text style={styles.metaText}>Vencimento: {formatDate(item.dueDate, currency)}</Text>
+                        <Calendar color={theme.textSecondary} size={13} />
+                        <Text style={[styles.metaText, { color: theme.textSecondary }]}>
+                          Vencimento: {formatDate(item.dueDate, currency)}
+                        </Text>
                       </View>
 
-                      {cat ? (
-                        <View style={[styles.catBadge, { backgroundColor: cat.color + '18' }]}>
-                          <Text style={[styles.catBadgeText, { color: cat.color }]}>{cat.name}</Text>
+                      {cat && (
+                        <View style={[styles.catBadge, { backgroundColor: cat.color + '22' }]}>
+                          <Text style={[styles.catBadgeText, { color: cat.color }]}>
+                            {cat.name}
+                          </Text>
                         </View>
-                      ) : null}
+                      )}
+
+                      {item.reminderOffsetDays !== null && item.reminderOffsetDays !== undefined && (
+                        <View style={[styles.reminderBadge, { backgroundColor: theme.bgElevated }]}>
+                          <Bell color={theme.textSecondary} size={11} />
+                          <Text style={[styles.reminderText, { color: theme.textSecondary }]}>
+                            {item.reminderOffsetDays === 0
+                              ? 'Lembrete no dia'
+                              : `${item.reminderOffsetDays}d antes`}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   </View>
 
                   <View style={styles.itemActions}>
-                    <Text style={styles.itemAmount}>
+                    <Text
+                      style={[
+                        styles.itemAmount,
+                        { color: isReceived ? theme.textSecondary : theme.income }
+                      ]}
+                    >
                       {formatCurrency(item.amount, currency)}
                     </Text>
 
@@ -526,32 +674,33 @@ export function AccountsReceivable() {
                         accessibilityLabel={`Editar ${item.description}`}
                         accessibilityRole="button"
                         onPress={() => handleEdit(item)}
-                        style={styles.editButton}
+                        style={[styles.editButton, { backgroundColor: theme.bgElevated }]}
                       >
-                        <Pencil color="#0f766e" size={16} />
+                        <Pencil color={theme.textSecondary} size={15} />
                       </Pressable>
-                      {!isReceived ? (
+
+                      {!isReceived && (
                         <Pressable
                           accessibilityRole="button"
                           disabled={markingReceived}
                           onPress={() => markReceived({ variables: { id: item.id } })}
-                          style={styles.receiveButton}
+                          style={[styles.payButton, { backgroundColor: theme.income }]}
                         >
-                          <CheckCircle2 color="#ffffff" size={14} />
-                          <Text style={styles.receiveButtonText}>Dar Baixa</Text>
+                          <CheckCircle2 color="#FFFFFF" size={13} />
+                          <Text style={styles.payButtonText}>Dar Baixa</Text>
                         </Pressable>
-                      ) : null}
+                      )}
 
                       <Pressable
                         accessibilityRole="button"
                         onPress={() => deleteReceivable({ variables: { id: item.id } })}
-                        style={styles.deleteButton}
+                        style={[styles.deleteButton, { backgroundColor: theme.bgElevated }]}
                       >
-                        <Trash2 color="#dc2626" size={16} />
+                        <Trash2 color={theme.expense} size={15} />
                       </Pressable>
                     </View>
                   </View>
-                </View>
+                </Card>
               );
             })}
           </View>
@@ -562,70 +711,304 @@ export function AccountsReceivable() {
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 20, paddingBottom: 40 },
-  header: { gap: 6 },
-  eyebrow: { color: '#0f766e', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
-  title: { color: '#0f172a', fontSize: 26, fontWeight: '700' },
-  subtitle: { color: '#64748b', fontSize: 15, lineHeight: 22 },
-  kpiRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  kpiCard: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, flex: 1, minWidth: 160, padding: 16 },
-  kpiLabel: { color: '#64748b', fontSize: 13 },
-  kpiValue: { color: '#0f172a', fontSize: 22, fontWeight: '700', marginTop: 4 },
-  pendingAmount: { color: '#059669' },
-  receivedCount: { color: '#059669' },
-  formCard: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, gap: 14, padding: 20 },
-  formTitle: { color: '#0f172a', fontSize: 18, fontWeight: '700' },
-  errorBox: { alignItems: 'center', backgroundColor: '#fef2f2', borderColor: '#fecaca', borderRadius: 6, borderWidth: 1, flexDirection: 'row', gap: 8, padding: 10 },
-  errorText: { color: '#b91c1c', fontSize: 14, fontWeight: '500' },
-  inputGroup: { gap: 6 },
-  inputRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  label: { color: '#334155', fontSize: 13, fontWeight: '600' },
-  input: { backgroundColor: '#f8fafc', borderColor: '#cbd5e1', borderRadius: 6, borderWidth: 1, color: '#0f172a', fontSize: 14, minHeight: 42, paddingHorizontal: 12 },
-  tagSelector: { flexDirection: 'row', gap: 8, paddingVertical: 4 },
-  tagBadge: { alignItems: 'center', backgroundColor: '#f8fafc', borderColor: '#cbd5e1', borderRadius: 6, borderWidth: 1, flexDirection: 'row', gap: 6, paddingHorizontal: 12, paddingVertical: 8 },
-  tagBadgeSelected: { backgroundColor: '#0f766e', borderColor: '#0f766e' },
-  tagText: { color: '#475569', fontSize: 13, fontWeight: '500' },
-  tagTextSelected: { color: '#ffffff', fontWeight: '700' },
-  optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  optionButton: { borderColor: '#cbd5e1', borderRadius: 6, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 7 },
-  optionButtonSelected: { backgroundColor: '#0f766e', borderColor: '#0f766e' },
-  optionText: { color: '#475569', fontSize: 12, fontWeight: '600' },
-  optionTextSelected: { color: '#ffffff' },
-  emptyCategoriesText: { color: '#b91c1c', fontSize: 13, paddingVertical: 4 },
-  submitButton: { alignItems: 'center', backgroundColor: '#0f766e', borderRadius: 6, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 44, marginTop: 4, paddingHorizontal: 16 },
-  submitButtonDisabled: { opacity: 0.7 },
-  submitButtonText: { color: '#ffffff', fontSize: 14, fontWeight: '700' },
-  listSection: { gap: 14 },
-  listHeader: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
-  listTitle: { color: '#0f172a', fontSize: 20, fontWeight: '700' },
-  filterTabs: { backgroundColor: '#f1f5f9', borderRadius: 6, flexDirection: 'row', padding: 3 },
-  filterTab: { borderRadius: 4, paddingHorizontal: 12, paddingVertical: 6 },
-  filterTabActive: { backgroundColor: '#ffffff', boxShadow: '0px 0px 2px rgba(0, 0, 0, 0.05)' },
-  filterTabText: { color: '#64748b', fontSize: 13, fontWeight: '500' },
-  filterTabTextActive: { color: '#0f172a', fontWeight: '700' },
-  emptyCard: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, gap: 10, justifyContent: 'center', padding: 32 },
-  emptyText: { color: '#94a3b8', fontSize: 14 },
-  itemsList: { gap: 10 },
-  itemCard: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12, padding: 16 },
-  itemMain: { flex: 1, minWidth: 200, gap: 6 },
-  itemHeaderRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-  itemDescription: { color: '#0f172a', fontSize: 16, fontWeight: '600' },
-  statusBadge: { alignItems: 'center', borderRadius: 4, flexDirection: 'row', gap: 4, paddingHorizontal: 6, paddingVertical: 2 },
-  statusBadgePending: { backgroundColor: '#fef3c7' },
-  statusBadgeReceived: { backgroundColor: '#dcfce7' },
-  statusText: { fontSize: 11, fontWeight: '700' },
-  statusTextPending: { color: '#b45309' },
-  statusTextReceived: { color: '#15803d' },
-  itemMetaRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  itemMeta: { alignItems: 'center', flexDirection: 'row', gap: 4 },
-  metaText: { color: '#64748b', fontSize: 12 },
-  catBadge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
-  catBadgeText: { fontSize: 11, fontWeight: '600' },
-  itemActions: { alignItems: 'flex-end', gap: 8 },
-  itemAmount: { color: '#059669', fontSize: 17, fontWeight: '700' },
-  actionButtonsRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-  receiveButton: { alignItems: 'center', backgroundColor: '#059669', borderRadius: 4, flexDirection: 'row', gap: 4, paddingHorizontal: 10, paddingVertical: 6 },
-  receiveButtonText: { color: '#ffffff', fontSize: 12, fontWeight: '600' },
-  editButton: { padding: 4 },
-  deleteButton: { padding: 4 }
+  actionButtonsRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8
+  },
+  cancelLink: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4
+  },
+  cancelLinkText: {
+    fontSize: 13
+  },
+  cardHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4
+  },
+  catBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2
+  },
+  catBadgeText: {
+    fontSize: 11,
+    fontWeight: '700'
+  },
+  container: {
+    gap: 20,
+    paddingBottom: 40
+  },
+  deleteButton: {
+    alignItems: 'center',
+    borderRadius: 6,
+    height: 32,
+    justifyContent: 'center',
+    width: 32
+  },
+  editButton: {
+    alignItems: 'center',
+    borderRadius: 6,
+    height: 32,
+    justifyContent: 'center',
+    width: 32
+  },
+  emptyCard: {
+    alignItems: 'center',
+    gap: 10,
+    justifyContent: 'center',
+    padding: 32
+  },
+  emptyCategoriesText: {
+    fontSize: 13,
+    paddingVertical: 4
+  },
+  emptyText: {
+    fontSize: 14,
+    fontStyle: 'italic'
+  },
+  errorBox: {
+    alignItems: 'center',
+    borderRadius: 6,
+    flexDirection: 'row',
+    gap: 8,
+    padding: 10
+  },
+  errorText: {
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5
+  },
+  filterTab: {
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6
+  },
+  filterTabActive: {
+    elevation: 1
+  },
+  filterTabText: {
+    fontSize: 13,
+    fontWeight: '500'
+  },
+  filterTabTextActive: {
+    fontWeight: '700'
+  },
+  filterTabs: {
+    borderRadius: 8,
+    flexDirection: 'row',
+    padding: 3
+  },
+  formCard: {
+    gap: 14,
+    padding: 20
+  },
+  formTitle: {
+    fontSize: 18,
+    fontWeight: '700'
+  },
+  header: {
+    gap: 6
+  },
+  input: {
+    borderRadius: 8,
+    borderWidth: 1,
+    fontSize: 14,
+    minHeight: 44,
+    paddingHorizontal: 12
+  },
+  inputGroup: {
+    gap: 6
+  },
+  inputRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
+  },
+  itemActions: {
+    alignItems: 'flex-end',
+    gap: 8
+  },
+  itemAmount: {
+    fontSize: 17,
+    fontWeight: '700'
+  },
+  itemCard: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between',
+    padding: 16
+  },
+  itemDescription: {
+    fontSize: 16,
+    fontWeight: '700'
+  },
+  itemHeaderRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8
+  },
+  itemMain: {
+    flex: 1,
+    gap: 6,
+    minWidth: 200
+  },
+  itemMeta: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4
+  },
+  itemMetaRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  itemsList: {
+    gap: 10
+  },
+  kpiCard: {
+    flex: 1,
+    minWidth: 160,
+    padding: 16
+  },
+  kpiLabel: {
+    fontSize: 13,
+    fontWeight: '500'
+  },
+  kpiRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
+  },
+  kpiValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 4
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  listHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between'
+  },
+  listSection: {
+    gap: 14
+  },
+  listTitle: {
+    fontSize: 20,
+    fontWeight: '700'
+  },
+  metaText: {
+    fontSize: 12
+  },
+  optionButton: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 7
+  },
+  optionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  optionText: {
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  optionTextSelected: {
+    fontWeight: '700'
+  },
+  payButton: {
+    alignItems: 'center',
+    borderRadius: 6,
+    flexDirection: 'row',
+    gap: 4,
+    height: 32,
+    paddingHorizontal: 10
+  },
+  payButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  reminderBadge: {
+    alignItems: 'center',
+    borderRadius: 6,
+    flexDirection: 'row',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2
+  },
+  reminderText: {
+    fontSize: 11,
+    fontWeight: '500'
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700'
+  },
+  submitButton: {
+    alignItems: 'center',
+    borderRadius: 8,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    minHeight: 44,
+    marginTop: 4,
+    paddingHorizontal: 16
+  },
+  submitButtonDisabled: {
+    opacity: 0.7
+  },
+  submitButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  subtitle: {
+    fontSize: 14,
+    lineHeight: 20
+  },
+  tagBadge: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  tagSelector: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 4
+  },
+  tagText: {
+    fontSize: 13,
+    fontWeight: '500'
+  },
+  tagTextSelected: {
+    fontWeight: '700'
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '700'
+  }
 });
