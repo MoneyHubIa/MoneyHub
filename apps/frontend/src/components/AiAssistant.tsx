@@ -15,7 +15,7 @@ import {
   X,
   Zap
 } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -27,6 +27,7 @@ import {
   TextInput,
   View
 } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
 
 export const ASK_AI_ASSISTANT_MUTATION = gql`
   mutation AskAiAssistant($input: AskAiAssistantInput!) {
@@ -68,9 +69,9 @@ export type AskAiAssistantData = {
 
 export type AskAiAssistantInput = {
   message: string;
-  month?: number;
-  year?: number;
-  templateId?: string;
+  month?: number | undefined;
+  year?: number | undefined;
+  templateId?: string | undefined;
 };
 
 export type ChatMessage = {
@@ -78,9 +79,9 @@ export type ChatMessage = {
   sender: 'user' | 'assistant';
   content: string;
   timestamp: Date;
-  model?: string;
-  latencyMs?: number;
-  tokens?: number;
+  model?: string | undefined;
+  latencyMs?: number | undefined;
+  tokens?: number | undefined;
 };
 
 const QUICK_PROMPTS = [
@@ -125,14 +126,17 @@ const MONTH_NAMES = [
 type FormattedAiMessageProps = Readonly<{
   content: string;
   isUser: boolean;
+  textColor: string;
+  brandColor: string;
 }>;
 
 function renderInlineTokens(
   text: string,
   isUser: boolean,
-  keyPrefix: string
+  keyPrefix: string,
+  textColor: string,
+  brandColor: string
 ): React.ReactNode[] {
-  // Matches **bold**, *italic*, and `code`
   const tokenRegex = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
   const parts = text.split(tokenRegex);
 
@@ -144,7 +148,7 @@ function renderInlineTokens(
           key={key}
           style={[
             styles.messageContent,
-            isUser ? styles.userBold : styles.assistantBold
+            { color: isUser ? '#FFFFFF' : textColor, fontWeight: '700' }
           ]}
         >
           {part.slice(2, -2)}
@@ -153,14 +157,27 @@ function renderInlineTokens(
     }
     if (part.startsWith('`') && part.endsWith('`') && part.length >= 2) {
       return (
-        <Text key={key} style={[styles.messageContent, styles.inlineCode]}>
+        <Text
+          key={key}
+          style={[
+            styles.messageContent,
+            styles.inlineCode,
+            { color: brandColor }
+          ]}
+        >
           {part.slice(1, -1)}
         </Text>
       );
     }
     if (part.startsWith('*') && part.endsWith('*') && part.length >= 2) {
       return (
-        <Text key={key} style={[styles.messageContent, styles.italicText]}>
+        <Text
+          key={key}
+          style={[
+            styles.messageContent,
+            { color: isUser ? '#FFFFFF' : textColor, fontStyle: 'italic' }
+          ]}
+        >
           {part.slice(1, -1)}
         </Text>
       );
@@ -170,7 +187,7 @@ function renderInlineTokens(
         key={key}
         style={[
           styles.messageContent,
-          isUser ? styles.userContent : styles.assistantContent
+          { color: isUser ? '#FFFFFF' : textColor }
         ]}
       >
         {part}
@@ -179,7 +196,12 @@ function renderInlineTokens(
   });
 }
 
-function FormattedAiMessage({ content, isUser }: FormattedAiMessageProps) {
+function FormattedAiMessage({
+  content,
+  isUser,
+  textColor,
+  brandColor
+}: FormattedAiMessageProps): React.JSX.Element {
   const lines = content.split('\n');
 
   return (
@@ -192,7 +214,6 @@ function FormattedAiMessage({ content, isUser }: FormattedAiMessageProps) {
           return <View key={lineKey} style={styles.paragraphGap} />;
         }
 
-        // Headings: ### Heading, ## Heading, # Heading
         const headingMatch = trimmed.match(/^(#{1,3})\s+(.*)$/);
         if (headingMatch) {
           const headingText = headingMatch[2] ?? '';
@@ -201,7 +222,7 @@ function FormattedAiMessage({ content, isUser }: FormattedAiMessageProps) {
               <Text
                 style={[
                   styles.headingText,
-                  isUser ? styles.userBold : styles.assistantHeading
+                  { color: isUser ? '#FFFFFF' : textColor, fontWeight: '700' }
                 ]}
               >
                 {headingText}
@@ -210,41 +231,38 @@ function FormattedAiMessage({ content, isUser }: FormattedAiMessageProps) {
           );
         }
 
-        // Bullet lists: * item, - item, • item
         const bulletMatch = trimmed.match(/^[\*\-•]\s+(.*)$/);
         if (bulletMatch) {
           const bulletText = bulletMatch[1] ?? '';
           return (
             <View key={lineKey} style={styles.bulletRow}>
-              <Text style={[styles.bulletDot, isUser && styles.userBullet]}>•</Text>
+              <Text style={[styles.bulletDot, { color: isUser ? '#FFFFFF' : brandColor }]}>•</Text>
               <Text style={styles.bulletTextWrapper}>
-                {renderInlineTokens(bulletText, isUser, lineKey)}
+                {renderInlineTokens(bulletText, isUser, lineKey, textColor, brandColor)}
               </Text>
             </View>
           );
         }
 
-        // Numbered lists: 1. item, 1) item
         const numberMatch = trimmed.match(/^(\d+[\.\)])\s+(.*)$/);
         if (numberMatch) {
           const numPrefix = numberMatch[1] ?? '';
           const itemText = numberMatch[2] ?? '';
           return (
             <View key={lineKey} style={styles.bulletRow}>
-              <Text style={[styles.numberPrefix, isUser && styles.userBullet]}>
+              <Text style={[styles.numberPrefix, { color: isUser ? '#FFFFFF' : brandColor }]}>
                 {numPrefix}
               </Text>
               <Text style={styles.bulletTextWrapper}>
-                {renderInlineTokens(itemText, isUser, lineKey)}
+                {renderInlineTokens(itemText, isUser, lineKey, textColor, brandColor)}
               </Text>
             </View>
           );
         }
 
-        // Regular line
         return (
           <Text key={lineKey} style={styles.paragraphLine}>
-            {renderInlineTokens(line, isUser, lineKey)}
+            {renderInlineTokens(line, isUser, lineKey, textColor, brandColor)}
           </Text>
         );
       })}
@@ -253,21 +271,24 @@ function FormattedAiMessage({ content, isUser }: FormattedAiMessageProps) {
 }
 
 export type AiAssistantProps = Readonly<{
-  preferredCurrency?: string;
-  initialMonth?: number;
-  initialYear?: number;
-  isOpen?: boolean;
-  onClose?: () => void;
-  onToggle?: () => void;
+  preferredCurrency?: string | undefined;
+  initialMonth?: number | undefined;
+  initialYear?: number | undefined;
+  isOpen?: boolean | undefined;
+  viewMode?: 'fullscreen' | 'floating' | undefined;
+  onClose?: (() => void) | undefined;
+  onToggle?: (() => void) | undefined;
 }>;
 
 export function AiAssistant({
   initialMonth,
   initialYear,
   isOpen: controlledIsOpen,
+  viewMode = 'floating',
   onClose,
   onToggle
-}: AiAssistantProps) {
+}: AiAssistantProps): React.JSX.Element {
+  const { theme } = useTheme();
   const currentDate = new Date();
   const [internalIsOpen, setInternalIsOpen] = useState<boolean>(true);
   const isWidgetOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
@@ -395,60 +416,92 @@ export function AiAssistant({
   };
 
   useEffect(() => {
-    if (isWidgetOpen) {
+    if (isWidgetOpen || viewMode === 'fullscreen') {
       flatListRef.current?.scrollToEnd({ animated: true });
     }
-  }, [messages, loading, isWidgetOpen]);
+  }, [messages, loading, isWidgetOpen, viewMode]);
 
   const monthLabel = MONTH_NAMES[selectedMonth - 1] ?? `Mês ${selectedMonth}`;
 
-  // When widget is closed: render Floating Action Button (FAB)
-  if (!isWidgetOpen) {
+  // When widget is closed and in floating mode: render FAB
+  if (viewMode === 'floating' && !isWidgetOpen) {
     return (
       <View style={styles.fabWrapper}>
         <Pressable
           accessibilityLabel="Abrir Assistente Financeiro IA"
           accessibilityRole="button"
           onPress={handleToggle}
-          style={styles.fabButton}
+          style={[styles.fabButton, { backgroundColor: theme.brandAI }]}
         >
           <View style={styles.fabIconContainer}>
             <Bot color="#ffffff" size={24} />
-            <View style={styles.fabOnlineDot} />
+            <View style={[styles.fabOnlineDot, { backgroundColor: theme.income }]} />
           </View>
           <View style={styles.fabLabelContainer}>
             <Text style={styles.fabLabel}>IA Financeira</Text>
-            <Sparkles color="#6ee7b7" size={13} />
+            <Sparkles color="#A7F3D0" size={13} />
           </View>
         </Pressable>
       </View>
     );
   }
 
-  // When widget is open: render Floating Chat Window
+  const isFullscreen = viewMode === 'fullscreen';
+
   return (
-    <View style={styles.widgetWrapper}>
+    <View
+      style={
+        isFullscreen
+          ? [styles.fullscreenContainer, { backgroundColor: theme.bgSurface, borderColor: theme.border }]
+          : styles.widgetWrapper
+      }
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.chatWindow}
+        style={[
+          styles.chatWindow,
+          {
+            backgroundColor: theme.bgSurface,
+            borderColor: theme.border
+          },
+          isFullscreen && styles.chatWindowFullscreen
+        ]}
       >
         {/* Header Bar */}
-        <View style={styles.windowHeader}>
+        <View
+          style={[
+            styles.windowHeader,
+            {
+              backgroundColor: theme.bgElevated,
+              borderBottomColor: theme.borderElevated
+            }
+          ]}
+        >
           <View style={styles.headerLeft}>
-            <View style={styles.headerAvatar}>
-              <Bot color="#0f766e" size={20} />
-              <View style={styles.headerDot} />
+            <View
+              style={[
+                styles.headerAvatar,
+                { backgroundColor: theme.bgSurface, borderColor: theme.brandAI }
+              ]}
+            >
+              <Bot color={theme.brandAI} size={20} />
+              <View style={[styles.headerDot, { backgroundColor: theme.income }]} />
             </View>
             <View>
               <View style={styles.headerTitleRow}>
-                <Text accessibilityRole="header" style={styles.headerTitle}>
+                <Text
+                  accessibilityRole="header"
+                  style={[styles.headerTitle, { color: theme.textPrimary }]}
+                >
                   Assistente Financeiro IA
                 </Text>
-                <View style={styles.onlineBadge}>
-                  <Text style={styles.onlineText}>Online</Text>
+                <View style={[styles.onlineBadge, { backgroundColor: theme.incomeBadge }]}>
+                  <Text style={[styles.onlineText, { color: theme.income }]}>Online</Text>
                 </View>
               </View>
-              <Text style={styles.headerSubtitle}>MoneyHub AI • llama3.1:8b</Text>
+              <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
+                MoneyHub AI • llama3.1:8b
+              </Text>
             </View>
           </View>
 
@@ -457,57 +510,81 @@ export function AiAssistant({
               accessibilityLabel="Limpar conversa"
               accessibilityRole="button"
               onPress={handleResetConversation}
-              style={styles.iconButton}
+              style={[styles.iconButton, { backgroundColor: theme.bgSurface }]}
             >
-              <RotateCcw color="#64748b" size={15} />
+              <RotateCcw color={theme.textSecondary} size={15} />
             </Pressable>
-            <Pressable
-              accessibilityLabel="Minimizar assistente"
-              accessibilityRole="button"
-              onPress={handleClose}
-              style={styles.iconButton}
-            >
-              <Minus color="#64748b" size={16} />
-            </Pressable>
-            <Pressable
-              accessibilityLabel="Fechar assistente"
-              accessibilityRole="button"
-              onPress={handleClose}
-              style={[styles.iconButton, styles.closeButton]}
-            >
-              <X color="#64748b" size={16} />
-            </Pressable>
+
+            {!isFullscreen && (
+              <>
+                <Pressable
+                  accessibilityLabel="Minimizar assistente"
+                  accessibilityRole="button"
+                  onPress={handleClose}
+                  style={[styles.iconButton, { backgroundColor: theme.bgSurface }]}
+                >
+                  <Minus color={theme.textSecondary} size={16} />
+                </Pressable>
+                <Pressable
+                  accessibilityLabel="Fechar assistente"
+                  accessibilityRole="button"
+                  onPress={handleClose}
+                  style={[styles.iconButton, { backgroundColor: theme.bgSurface }]}
+                >
+                  <X color={theme.textSecondary} size={16} />
+                </Pressable>
+              </>
+            )}
           </View>
         </View>
 
         {/* Period Selector Bar */}
-        <View style={styles.periodBar}>
+        <View
+          style={[
+            styles.periodBar,
+            {
+              backgroundColor: theme.bgSurface,
+              borderBottomColor: theme.borderElevated
+            }
+          ]}
+        >
           <Pressable
             accessibilityLabel="Mês anterior"
             accessibilityRole="button"
             onPress={handlePreviousMonth}
-            style={styles.periodNavBtn}
+            style={[styles.periodNavBtn, { backgroundColor: theme.bgElevated }]}
           >
-            <ChevronLeft color="#475569" size={16} />
+            <ChevronLeft color={theme.textSecondary} size={16} />
           </Pressable>
           <View style={styles.periodCenter}>
-            <Calendar color="#0f766e" size={14} />
-            <Text style={styles.periodText}>
-              Contexto: <Text style={styles.periodTextHighlight}>{monthLabel} de {selectedYear}</Text>
+            <Calendar color={theme.brandAI} size={14} />
+            <Text style={[styles.periodText, { color: theme.textSecondary }]}>
+              Contexto:{' '}
+              <Text style={[styles.periodTextHighlight, { color: theme.brandAI }]}>
+                {monthLabel} de {selectedYear}
+              </Text>
             </Text>
           </View>
           <Pressable
             accessibilityLabel="Próximo mês"
             accessibilityRole="button"
             onPress={handleNextMonth}
-            style={styles.periodNavBtn}
+            style={[styles.periodNavBtn, { backgroundColor: theme.bgElevated }]}
           >
-            <ChevronRight color="#475569" size={16} />
+            <ChevronRight color={theme.textSecondary} size={16} />
           </Pressable>
         </View>
 
         {/* Quick Prompts Bar */}
-        <View style={styles.quickPromptsBar}>
+        <View
+          style={[
+            styles.quickPromptsBar,
+            {
+              backgroundColor: theme.bgElevated,
+              borderBottomColor: theme.borderElevated
+            }
+          ]}
+        >
           <FlatList
             data={QUICK_PROMPTS}
             horizontal
@@ -522,11 +599,17 @@ export function AiAssistant({
                   onPress={() => handleSendMessage(item.prompt, item.templateId)}
                   style={[
                     styles.quickPill,
+                    {
+                      backgroundColor: theme.bgSurface,
+                      borderColor: theme.borderElevated
+                    },
                     loading && styles.quickPillDisabled
                   ]}
                 >
-                  <Icon color="#0f766e" size={13} />
-                  <Text style={styles.quickPillText}>{item.label}</Text>
+                  <Icon color={theme.brandAI} size={13} />
+                  <Text style={[styles.quickPillText, { color: theme.textPrimary }]}>
+                    {item.label}
+                  </Text>
                 </Pressable>
               );
             }}
@@ -551,7 +634,12 @@ export function AiAssistant({
                   ]}
                 >
                   {!isUser && (
-                    <View style={styles.assistantAvatar}>
+                    <View
+                      style={[
+                        styles.assistantAvatar,
+                        { backgroundColor: theme.brandAI }
+                      ]}
+                    >
                       <Bot color="#ffffff" size={14} />
                     </View>
                   )}
@@ -559,65 +647,82 @@ export function AiAssistant({
                   <View
                     style={[
                       styles.messageBubble,
-                      isUser ? styles.userBubble : styles.assistantBubble
+                      isUser
+                        ? [styles.userBubble, { backgroundColor: theme.brandAI }]
+                        : [
+                            styles.assistantBubble,
+                            {
+                              backgroundColor: theme.bgElevated,
+                              borderColor: theme.borderElevated
+                            }
+                          ]
                     ]}
                   >
-                    <FormattedAiMessage content={item.content} isUser={isUser} />
+                    <FormattedAiMessage
+                      brandColor={theme.brandAI}
+                      content={item.content}
+                      isUser={isUser}
+                      textColor={theme.textPrimary}
+                    />
 
-                    <View style={styles.messageFooter}>
-                      {!isUser && item.model && (
-                        <View style={styles.modelBadge}>
-                          <Cpu color="#64748b" size={10} />
-                          <Text style={styles.modelBadgeText}>{item.model}</Text>
-                        </View>
-                      )}
-                      {!isUser && typeof item.latencyMs === 'number' && (
-                        <View style={styles.latencyBadge}>
-                          <Clock color="#059669" size={10} />
-                          <Text style={styles.latencyBadgeText}>
-                            {(item.latencyMs / 1000).toFixed(1)}s
-                          </Text>
-                        </View>
-                      )}
-                    </View>
+                    {!isUser && (item.model || item.latencyMs !== undefined) && (
+                      <View style={styles.messageFooter}>
+                        {item.model && (
+                          <View
+                            style={[
+                              styles.modelBadge,
+                              { backgroundColor: theme.bgSurface, borderColor: theme.borderElevated }
+                            ]}
+                          >
+                            <Cpu color={theme.textMuted} size={10} />
+                            <Text style={[styles.modelBadgeText, { color: theme.textSecondary }]}>
+                              {item.model}
+                            </Text>
+                          </View>
+                        )}
+                        {item.latencyMs !== undefined && (
+                          <View
+                            style={[
+                              styles.latencyBadge,
+                              { backgroundColor: theme.incomeBadge, borderColor: theme.income }
+                            ]}
+                          >
+                            <Clock color={theme.income} size={10} />
+                            <Text style={[styles.latencyBadgeText, { color: theme.income }]}>
+                              {(item.latencyMs / 1000).toFixed(1)}s
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
                   </View>
-
-                  {isUser && (
-                    <View style={styles.userAvatar}>
-                      <User color="#ffffff" size={14} />
-                    </View>
-                  )}
                 </View>
               );
             }}
-            testID="chat-messages-list"
           />
 
-          {/* Loading Indicator */}
           {loading && (
-            <View style={[styles.messageRow, styles.assistantRow]}>
-              <View style={styles.assistantAvatar}>
-                <Bot color="#ffffff" size={14} />
-              </View>
-              <View style={[styles.messageBubble, styles.assistantBubble, styles.loadingBubble]}>
-                <ActivityIndicator color="#0f766e" size="small" />
-                <Text style={styles.loadingText}>
-                  Consultando IA e analisando suas finanças...
-                </Text>
-              </View>
+            <View
+              style={[
+                styles.loadingBubble,
+                { backgroundColor: theme.bgElevated, borderColor: theme.borderElevated }
+              ]}
+            >
+              <ActivityIndicator color={theme.brandAI} size="small" />
+              <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+                Consultando IA e analisando suas finanças...
+              </Text>
             </View>
           )}
 
-          {/* Error Notice */}
           {error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>
+            <View style={[styles.errorBox, { backgroundColor: theme.expenseBadge }]}>
+              <Text style={[styles.errorText, { color: theme.expense }]}>
                 Não foi possível obter resposta da IA: {error.message}
               </Text>
               <Pressable
-                accessibilityRole="button"
                 onPress={() => handleSendMessage()}
-                style={styles.retryButton}
+                style={[styles.retryButton, { backgroundColor: theme.expense }]}
               >
                 <Text style={styles.retryButtonText}>Tentar novamente</Text>
               </Pressable>
@@ -626,18 +731,32 @@ export function AiAssistant({
         </View>
 
         {/* Input Bar */}
-        <View style={styles.inputBar}>
+        <View
+          style={[
+            styles.inputBar,
+            {
+              backgroundColor: theme.bgElevated,
+              borderTopColor: theme.borderElevated
+            }
+          ]}
+        >
           <TextInput
             accessibilityLabel="Mensagem para a IA"
-            editable={!loading}
             multiline
             onChangeText={setInputText}
-            onSubmitEditing={() => handleSendMessage()}
-            placeholder="Pergunte sobre seus gastos, contas ou saldo..."
-            placeholderTextColor="#94a3b8"
-            style={styles.textInput}
+            placeholder="Pergunte sobre seus gastos, receitas ou metas..."
+            placeholderTextColor={theme.textMuted}
+            style={[
+              styles.textInput,
+              {
+                backgroundColor: theme.bgSurface,
+                borderColor: theme.borderElevated,
+                color: theme.textPrimary
+              }
+            ]}
             value={inputText}
           />
+
           <Pressable
             accessibilityLabel="Enviar mensagem"
             accessibilityRole="button"
@@ -645,13 +764,14 @@ export function AiAssistant({
             onPress={() => handleSendMessage()}
             style={[
               styles.sendButton,
+              { backgroundColor: theme.brandAI },
               (!inputText.trim() || loading) && styles.sendButtonDisabled
             ]}
           >
             {loading ? (
               <ActivityIndicator color="#ffffff" size="small" />
             ) : (
-              <Send color="#ffffff" size={16} />
+              <Send color="#ffffff" size={17} />
             )}
           </Pressable>
         </View>
@@ -661,292 +781,25 @@ export function AiAssistant({
 }
 
 const styles = StyleSheet.create({
-  // Floating wrapper on bottom-right
-  fabWrapper: {
-    bottom: 24,
-    pointerEvents: 'box-none',
-    position: 'absolute',
-    right: 24,
-    zIndex: 999
-  },
-  fabButton: {
+  assistantAvatar: {
     alignItems: 'center',
-    backgroundColor: '#0f766e',
-    borderColor: '#115e59',
-    borderRadius: 28,
-    borderWidth: 1,
-    elevation: 8,
-    flexDirection: 'row',
-    gap: 10,
-    height: 52,
-    paddingHorizontal: 16,
-    boxShadow: '0px 6px 10px rgba(15, 118, 110, 0.35)'
-  },
-  fabIconContainer: {
-    position: 'relative'
-  },
-  fabOnlineDot: {
-    backgroundColor: '#22c55e',
-    borderColor: '#0f766e',
-    borderRadius: 5,
-    borderWidth: 1.5,
-    bottom: -2,
-    height: 10,
-    position: 'absolute',
-    right: -2,
-    width: 10
-  },
-  fabLabelContainer: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 6
-  },
-  fabLabel: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  widgetWrapper: {
-    bottom: 20,
-    maxHeight: '85%',
-    maxWidth: '94%',
-    pointerEvents: 'box-none',
-    position: 'absolute',
-    right: 20,
-    width: 400,
-    zIndex: 999
-  },
-  chatWindow: {
-    backgroundColor: '#ffffff',
-    borderColor: '#cbd5e1',
-    borderRadius: 12,
-    borderWidth: 1,
-    elevation: 12,
-    flexDirection: 'column',
-    height: 560,
-    overflow: 'hidden',
-    boxShadow: '0px 10px 20px rgba(15, 23, 42, 0.18)',
-    width: '100%'
-  },
-  windowHeader: {
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderBottomColor: '#e2e8f0',
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 10
-  },
-  headerLeft: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10
-  },
-  headerAvatar: {
-    alignItems: 'center',
-    backgroundColor: '#ecfdf5',
-    borderColor: '#a7f3d0',
-    borderRadius: 8,
-    borderWidth: 1,
-    height: 36,
-    justifyContent: 'center',
-    position: 'relative',
-    width: 36
-  },
-  headerDot: {
-    backgroundColor: '#16a34a',
-    borderRadius: 4,
-    bottom: -1,
-    height: 7,
-    position: 'absolute',
-    right: -1,
-    width: 7
-  },
-  headerTitleRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 6
-  },
-  headerTitle: {
-    color: '#0f172a',
-    fontSize: 15,
-    fontWeight: '700'
-  },
-  onlineBadge: {
-    backgroundColor: '#f0fdf4',
-    borderColor: '#bbf7d0',
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 5,
-    paddingVertical: 1
-  },
-  onlineText: {
-    color: '#15803d',
-    fontSize: 10,
-    fontWeight: '600'
-  },
-  headerSubtitle: {
-    color: '#64748b',
-    fontSize: 11
-  },
-  headerControls: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 4
-  },
-  iconButton: {
-    alignItems: 'center',
-    borderRadius: 4,
+    borderRadius: 14,
     height: 28,
     justifyContent: 'center',
+    marginRight: 6,
     width: 28
   },
-  closeButton: {
-    backgroundColor: '#f1f5f9'
-  },
-  periodBar: {
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderBottomColor: '#e2e8f0',
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
-    paddingVertical: 6
-  },
-  periodNavBtn: {
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    borderRadius: 4,
-    borderWidth: 1,
-    height: 26,
-    justifyContent: 'center',
-    width: 26
-  },
-  periodCenter: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 6
-  },
-  periodText: {
-    color: '#475569',
-    fontSize: 12
-  },
-  periodTextHighlight: {
-    color: '#0f172a',
-    fontWeight: '700'
-  },
-  quickPromptsBar: {
-    backgroundColor: '#ffffff',
-    borderBottomColor: '#f1f5f9',
-    borderBottomWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 8
-  },
-  quickPill: {
-    alignItems: 'center',
-    backgroundColor: '#f0fdfa',
-    borderColor: '#99f6e4',
-    borderRadius: 14,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 5,
-    marginRight: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5
-  },
-  quickPillDisabled: {
-    opacity: 0.5
-  },
-  quickPillText: {
-    color: '#0f766e',
-    fontSize: 12,
-    fontWeight: '600'
-  },
-  messagesContainer: {
-    backgroundColor: '#f8fafc',
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10
-  },
-  messageListContent: {
-    gap: 10,
-    paddingBottom: 4
-  },
-  messageRow: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: 8,
-    marginVertical: 2
-  },
-  userRow: {
-    justifyContent: 'flex-end'
+  assistantBubble: {
+    borderTopLeftRadius: 4,
+    borderWidth: 1
   },
   assistantRow: {
     justifyContent: 'flex-start'
   },
-  assistantAvatar: {
-    alignItems: 'center',
-    backgroundColor: '#0f766e',
-    borderRadius: 14,
-    height: 28,
-    justifyContent: 'center',
-    width: 28
-  },
-  userAvatar: {
-    alignItems: 'center',
-    backgroundColor: '#3b82f6',
-    borderRadius: 14,
-    height: 28,
-    justifyContent: 'center',
-    width: 28
-  },
-  messageBubble: {
-    borderRadius: 8,
-    maxWidth: '85%',
-    padding: 10
-  },
-  userBubble: {
-    backgroundColor: '#0f766e',
-    borderBottomRightRadius: 2
-  },
-  assistantBubble: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    borderTopLeftRadius: 2,
-    borderWidth: 1
-  },
-  messageContent: {
-    fontSize: 13,
-    lineHeight: 19
-  },
-  userContent: {
-    color: '#ffffff'
-  },
-  assistantContent: {
-    color: '#1e293b'
-  },
-  formattedContainer: {
-    gap: 3
-  },
-  paragraphGap: {
-    height: 6
-  },
-  paragraphLine: {
-    flexDirection: 'row',
-    flexWrap: 'wrap'
-  },
-  headingBlock: {
-    marginVertical: 3
-  },
-  headingText: {
+  bulletDot: {
     fontSize: 14,
-    fontWeight: '700'
-  },
-  assistantHeading: {
-    color: '#0f172a'
+    fontWeight: '700',
+    lineHeight: 19
   },
   bulletRow: {
     alignItems: 'flex-start',
@@ -954,148 +807,346 @@ const styles = StyleSheet.create({
     gap: 5,
     marginVertical: 1
   },
-  bulletDot: {
-    color: '#0f766e',
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 19
-  },
-  numberPrefix: {
-    color: '#0f766e',
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 19
-  },
-  userBullet: {
-    color: '#ffffff'
-  },
   bulletTextWrapper: {
     flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
     lineHeight: 19
   },
-  userBold: {
+  chatWindow: {
+    borderRadius: 14,
+    borderWidth: 1,
+    elevation: 8,
+    height: 520,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    width: 380
+  },
+  chatWindowFullscreen: {
+    borderRadius: 12,
+    elevation: 0,
+    height: '100%',
+    shadowOpacity: 0,
+    width: '100%'
+  },
+  errorBox: {
+    borderRadius: 6,
+    gap: 6,
+    margin: 8,
+    padding: 10
+  },
+  errorText: {
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  fabButton: {
+    alignItems: 'center',
+    borderRadius: 28,
+    elevation: 6,
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8
+  },
+  fabIconContainer: {
+    position: 'relative'
+  },
+  fabLabel: {
     color: '#ffffff',
+    fontSize: 14,
     fontWeight: '700'
   },
-  assistantBold: {
-    color: '#0f172a',
+  fabLabelContainer: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4
+  },
+  fabOnlineDot: {
+    borderColor: '#ffffff',
+    borderRadius: 5,
+    borderWidth: 1.5,
+    bottom: -1,
+    height: 10,
+    position: 'absolute',
+    right: -1,
+    width: 10
+  },
+  fabWrapper: {
+    bottom: 24,
+    position: 'absolute',
+    right: 24,
+    zIndex: 999
+  },
+  formattedContainer: {
+    gap: 2
+  },
+  fullscreenContainer: {
+    borderRadius: 12,
+    borderWidth: 1,
+    flex: 1,
+    minHeight: 600,
+    width: '100%'
+  },
+  headerAvatar: {
+    alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 1.5,
+    height: 36,
+    justifyContent: 'center',
+    position: 'relative',
+    width: 36
+  },
+  headerControls: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6
+  },
+  headerDot: {
+    borderColor: '#ffffff',
+    borderRadius: 4,
+    borderWidth: 1,
+    bottom: 0,
+    height: 8,
+    position: 'absolute',
+    right: 0,
+    width: 8
+  },
+  headerLeft: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    marginTop: 1
+  },
+  headerTitle: {
+    fontSize: 15,
     fontWeight: '700'
   },
-  italicText: {
-    fontStyle: 'italic'
+  headerTitleRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6
+  },
+  headingBlock: {
+    marginVertical: 4
+  },
+  headingText: {
+    fontSize: 14
+  },
+  iconButton: {
+    alignItems: 'center',
+    borderRadius: 6,
+    height: 30,
+    justifyContent: 'center',
+    width: 30
   },
   inlineCode: {
-    backgroundColor: '#f1f5f9',
     borderRadius: 4,
-    color: '#0f766e',
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     paddingHorizontal: 4
   },
-  messageFooter: {
-    alignItems: 'center',
+  inputBar: {
+    alignItems: 'flex-end',
+    borderTopWidth: 1,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 6
-  },
-  modelBadge: {
-    alignItems: 'center',
-    backgroundColor: '#f1f5f9',
-    borderColor: '#cbd5e1',
-    borderRadius: 4,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 3,
-    paddingHorizontal: 5,
-    paddingVertical: 1
-  },
-  modelBadgeText: {
-    color: '#475569',
-    fontSize: 9,
-    fontWeight: '600'
+    gap: 8,
+    padding: 10
   },
   latencyBadge: {
     alignItems: 'center',
-    backgroundColor: '#ecfdf5',
-    borderColor: '#a7f3d0',
     borderRadius: 4,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 3,
-    paddingHorizontal: 5,
-    paddingVertical: 1
+    paddingHorizontal: 6,
+    paddingVertical: 2
   },
   latencyBadgeText: {
-    color: '#065f46',
     fontSize: 9,
     fontWeight: '700'
   },
   loadingBubble: {
     alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: 8,
+    borderWidth: 1,
     flexDirection: 'row',
-    gap: 8
+    gap: 8,
+    marginHorizontal: 12,
+    marginVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8
   },
   loadingText: {
-    color: '#64748b',
     fontSize: 12,
     fontStyle: 'italic'
   },
-  errorBox: {
-    backgroundColor: '#fef2f2',
-    borderColor: '#fecaca',
-    borderRadius: 6,
-    borderWidth: 1,
-    gap: 4,
-    marginTop: 6,
-    padding: 8
+  messageBubble: {
+    borderRadius: 14,
+    maxWidth: '82%',
+    paddingHorizontal: 12,
+    paddingVertical: 10
   },
-  errorText: {
-    color: '#991b1b',
-    fontSize: 12
+  messageContent: {
+    fontSize: 13,
+    lineHeight: 19
   },
-  retryButton: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#fee2e2',
+  messageFooter: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 6
+  },
+  messageListContent: {
+    gap: 10,
+    padding: 12
+  },
+  messageRow: {
+    flexDirection: 'row',
+    marginVertical: 2
+  },
+  messagesContainer: {
+    flex: 1
+  },
+  modelBadge: {
+    alignItems: 'center',
     borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2
   },
-  retryButtonText: {
-    color: '#991b1b',
-    fontSize: 11,
+  modelBadgeText: {
+    fontSize: 9,
+    fontWeight: '600'
+  },
+  numberPrefix: {
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 19
+  },
+  onlineBadge: {
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 1
+  },
+  onlineText: {
+    fontSize: 10,
     fontWeight: '700'
   },
-  inputBar: {
-    alignItems: 'flex-end',
-    backgroundColor: '#ffffff',
-    borderTopColor: '#e2e8f0',
-    borderTopWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
-    padding: 8
+  paragraphGap: {
+    height: 4
   },
-  textInput: {
-    color: '#0f172a',
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
-    maxHeight: 80,
-    minHeight: 38,
+  paragraphLine: {
+    lineHeight: 19
+  },
+  periodBar: {
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  periodCenter: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6
+  },
+  periodNavBtn: {
+    alignItems: 'center',
+    borderRadius: 6,
+    height: 28,
+    justifyContent: 'center',
+    width: 28
+  },
+  periodText: {
+    fontSize: 12
+  },
+  periodTextHighlight: {
+    fontWeight: '700'
+  },
+  quickPill: {
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    marginRight: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6
+  },
+  quickPillDisabled: {
+    opacity: 0.5
+  },
+  quickPillText: {
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  quickPromptsBar: {
+    borderBottomWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 8
   },
+  retryButton: {
+    alignSelf: 'flex-start',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4
+  },
+  retryButtonText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700'
+  },
   sendButton: {
     alignItems: 'center',
-    backgroundColor: '#0f766e',
-    borderRadius: 6,
-    height: 38,
+    borderRadius: 8,
+    height: 40,
     justifyContent: 'center',
-    width: 38
+    width: 40
   },
   sendButtonDisabled: {
-    backgroundColor: '#94a3b8',
-    opacity: 0.7
+    opacity: 0.5
+  },
+  textInput: {
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    fontSize: 13,
+    maxHeight: 80,
+    minHeight: 40,
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  userBubble: {
+    borderTopRightRadius: 4
+  },
+  userRow: {
+    justifyContent: 'flex-end'
+  },
+  widgetWrapper: {
+    bottom: 24,
+    position: 'absolute',
+    right: 24,
+    zIndex: 999
+  },
+  windowHeader: {
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10
   }
 });
