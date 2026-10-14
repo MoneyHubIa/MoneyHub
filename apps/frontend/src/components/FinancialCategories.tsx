@@ -1,15 +1,36 @@
 import { gql } from '@apollo/client';
 import { useMutation, useQuery } from '@apollo/client/react';
-import { Check, Pencil, Plus, Tag, Trash2, X } from 'lucide-react-native';
-import { useState } from 'react';
+import {
+  Briefcase,
+  Car,
+  Check,
+  GraduationCap,
+  HeartPulse,
+  Home,
+  LucideIcon,
+  Pencil,
+  Plane,
+  Plus,
+  ShoppingCart,
+  Tag,
+  Trash2,
+  Utensils,
+  X
+} from 'lucide-react-native';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View
 } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
+import { Badge } from './ui/Badge';
+import { Button } from './ui/Button';
+import { Card } from './ui/Card';
+import { Input } from './ui/Input';
 
 const MY_CATEGORIES_QUERY = gql`
   query MyCategories($type: CategoryType) {
@@ -63,13 +84,44 @@ type Category = {
   createdAt: string;
 };
 
-const COLOR_OPTIONS = ['#0f766e', '#2563eb', '#d97706', '#dc2626', '#7c3aed', '#059669', '#475569'];
+// As 9 cores solicitadas no Design System + a cor clássica compatível
+export const CATEGORY_COLORS = [
+  '#0f766e',
+  '#10B981',
+  '#06B6D4',
+  '#3B82F6',
+  '#6366F1',
+  '#8B5CF6',
+  '#EC4899',
+  '#F43F5E',
+  '#F59E0B',
+  '#84CC16'
+];
 
-export function FinancialCategories() {
+export const CATEGORY_ICONS: Array<{ name: string; icon: LucideIcon; label: string }> = [
+  { name: 'tag', icon: Tag, label: 'Geral' },
+  { name: 'shopping-cart', icon: ShoppingCart, label: 'Compras' },
+  { name: 'home', icon: Home, label: 'Moradia' },
+  { name: 'utensils', icon: Utensils, label: 'Refeição' },
+  { name: 'car', icon: Car, label: 'Transporte' },
+  { name: 'briefcase', icon: Briefcase, label: 'Trabalho' },
+  { name: 'heart-pulse', icon: HeartPulse, label: 'Saúde' },
+  { name: 'graduation-cap', icon: GraduationCap, label: 'Educação' },
+  { name: 'plane', icon: Plane, label: 'Viagem' }
+];
+
+function getCategoryIcon(iconName: string): LucideIcon {
+  const found = CATEGORY_ICONS.find((item) => item.name === iconName);
+  return found ? found.icon : Tag;
+}
+
+export function FinancialCategories(): React.JSX.Element {
+  const { theme } = useTheme();
   const [activeType, setActiveType] = useState<'ALL' | 'INCOME' | 'EXPENSE'>('ALL');
   const [name, setName] = useState('');
   const [type, setType] = useState<'INCOME' | 'EXPENSE' | 'BOTH'>('BOTH');
   const [selectedColor, setSelectedColor] = useState('#0f766e');
+  const [selectedIcon, setSelectedIcon] = useState('tag');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -82,6 +134,7 @@ export function FinancialCategories() {
     setName('');
     setType('BOTH');
     setSelectedColor('#0f766e');
+    setSelectedIcon('tag');
     setEditingId(null);
     setErrorMessage(null);
     refetch();
@@ -117,7 +170,7 @@ export function FinancialCategories() {
             name: name.trim(),
             type,
             color: selectedColor,
-            icon: 'tag'
+            icon: selectedIcon
           }
         }
       });
@@ -128,7 +181,7 @@ export function FinancialCategories() {
             name: name.trim(),
             type,
             color: selectedColor,
-            icon: 'tag'
+            icon: selectedIcon
           }
         }
       });
@@ -140,6 +193,7 @@ export function FinancialCategories() {
     setName(cat.name);
     setType(cat.type);
     setSelectedColor(cat.color || '#0f766e');
+    setSelectedIcon(cat.icon || 'tag');
     setErrorMessage(null);
   };
 
@@ -158,164 +212,301 @@ export function FinancialCategories() {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>Finanças</Text>
-        <Text accessibilityRole="header" style={styles.title}>
+        <Text style={[styles.eyebrow, { color: theme.income }]}>GESTÃO FINANCEIRA</Text>
+        <Text
+          accessibilityRole="header"
+          style={[styles.title, { color: theme.textPrimary }]}
+        >
           Categorias Financeiras
         </Text>
-        <Text style={styles.subtitle}>
-          Organize suas receitas e despesas com categorias personalizadas.
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+          Organize e classifique suas receitas e despesas com categorias personalizadas, cores e ícones.
         </Text>
       </View>
 
-      {/* Form Criar/Editar Categoria */}
-      <View style={[styles.card, editingId && styles.cardEditing]}>
+      {/* Form Criar / Editar Categoria */}
+      <Card
+        style={[
+          styles.formCard,
+          editingId ? { borderColor: theme.income } : {}
+        ]}
+        variant={editingId ? 'elevated' : 'surface'}
+      >
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>
+          <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
             {editingId ? 'Editar Categoria' : 'Nova Categoria'}
           </Text>
-          {editingId ? (
+          {editingId && (
             <Pressable onPress={cancelEdit} style={styles.cancelLink}>
-              <X color="#64748b" size={16} />
-              <Text style={styles.cancelLinkText}>Cancelar edição</Text>
+              <X color={theme.textSecondary} size={16} />
+              <Text style={[styles.cancelLinkText, { color: theme.textSecondary }]}>
+                Cancelar edição
+              </Text>
             </Pressable>
-          ) : null}
+          )}
         </View>
 
-        {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
+        {errorMessage && (
+          <View style={[styles.errorBox, { backgroundColor: theme.expenseBadge }]}>
+            <Text style={[styles.errorText, { color: theme.expense }]}>{errorMessage}</Text>
+          </View>
+        )}
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Nome da Categoria</Text>
-          <TextInput
-            accessibilityLabel="Nome da categoria"
-            onChangeText={setName}
-            placeholder="Ex: Alimentação, Salário, Lazer"
-            placeholderTextColor="#94a3b8"
-            style={styles.input}
-            value={name}
-          />
-        </View>
+        <Input
+          accessibilityLabel="Nome da categoria"
+          label="Nome da Categoria"
+          onChangeText={setName}
+          placeholder="Ex: Alimentação, Salário, Lazer"
+          value={name}
+        />
 
+        {/* Seletor de Tipo */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Tipo</Text>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>Tipo de Categoria</Text>
           <View style={styles.typeSelector}>
-            {(['BOTH', 'EXPENSE', 'INCOME'] as const).map((t) => (
-              <Pressable
-                key={t}
-                onPress={() => setType(t)}
-                style={[styles.typeOption, type === t && styles.typeOptionSelected]}
-              >
-                <Text style={[styles.typeOptionText, type === t && styles.typeOptionTextSelected]}>
-                  {t === 'BOTH' ? 'Ambos' : t === 'EXPENSE' ? 'Despesa' : 'Receita'}
-                </Text>
-              </Pressable>
-            ))}
+            {(['BOTH', 'EXPENSE', 'INCOME'] as const).map((t) => {
+              const isSelected = type === t;
+              return (
+                <Pressable
+                  key={t}
+                  onPress={() => setType(t)}
+                  style={[
+                    styles.typeOption,
+                    {
+                      backgroundColor: isSelected ? theme.income : theme.bgElevated,
+                      borderColor: isSelected ? theme.income : theme.borderElevated
+                    }
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.typeOptionText,
+                      { color: isSelected ? '#FFFFFF' : theme.textSecondary }
+                    ]}
+                  >
+                    {t === 'BOTH' ? 'Ambos' : t === 'EXPENSE' ? 'Despesa' : 'Receita'}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
+        {/* Seletor Visual de 9 Cores */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Cor</Text>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>Cor de Destaque</Text>
           <View style={styles.colorSelector}>
-            {COLOR_OPTIONS.map((c) => (
-              <Pressable
-                key={c}
-                onPress={() => setSelectedColor(c)}
-                style={[
-                  styles.colorOption,
-                  { backgroundColor: c },
-                  selectedColor === c && styles.colorOptionSelected
-                ]}
-              />
-            ))}
+            {CATEGORY_COLORS.map((c) => {
+              const isSelected = selectedColor.toLowerCase() === c.toLowerCase();
+              return (
+                <Pressable
+                  accessibilityLabel={`Selecionar cor ${c}`}
+                  key={c}
+                  onPress={() => setSelectedColor(c)}
+                  style={[
+                    styles.colorOption,
+                    { backgroundColor: c },
+                    isSelected && [
+                      styles.colorOptionSelected,
+                      { borderColor: theme.textPrimary }
+                    ]
+                  ]}
+                >
+                  {isSelected && <Check color="#FFFFFF" size={14} />}
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
-        <View style={styles.formActions}>
-          <Pressable
-            accessibilityRole="button"
-            disabled={isSaving}
-            onPress={handleSave}
-            style={[styles.saveButton, editingId && styles.saveButtonEdit]}
+        {/* Seletor de Ícone */}
+        <View style={styles.formGroup}>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>Ícone Representativo</Text>
+          <ScrollView
+            contentContainerStyle={styles.iconSelector}
+            horizontal
+            showsHorizontalScrollIndicator={false}
           >
-            {isSaving ? (
-              <ActivityIndicator color="#ffffff" size="small" />
-            ) : (
-              <>
-                {editingId ? <Check color="#ffffff" size={18} /> : <Plus color="#ffffff" size={18} />}
-                <Text style={styles.saveButtonText}>
-                  {editingId ? 'Salvar Alterações' : 'Adicionar Categoria'}
-                </Text>
-              </>
-            )}
-          </Pressable>
-
-          {editingId ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={cancelEdit}
-              style={styles.cancelButton}
-            >
-              <Text style={styles.cancelButtonText}>Cancelar</Text>
-            </Pressable>
-          ) : null}
+            {CATEGORY_ICONS.map((item) => {
+              const IconComp = item.icon;
+              const isSelected = selectedIcon === item.name;
+              return (
+                <Pressable
+                  accessibilityLabel={`Selecionar ícone ${item.label}`}
+                  key={item.name}
+                  onPress={() => setSelectedIcon(item.name)}
+                  style={[
+                    styles.iconOption,
+                    {
+                      backgroundColor: isSelected
+                        ? 'rgba(16, 185, 129, 0.2)'
+                        : theme.bgElevated,
+                      borderColor: isSelected ? theme.income : theme.borderElevated
+                    }
+                  ]}
+                >
+                  <IconComp
+                    color={isSelected ? theme.income : theme.textSecondary}
+                    size={18}
+                  />
+                  <Text
+                    style={[
+                      styles.iconOptionLabel,
+                      { color: isSelected ? theme.income : theme.textMuted }
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </View>
+
+        {/* Form Actions */}
+        <View style={styles.formActions}>
+          <Button
+            icon={editingId ? Check : Plus}
+            loading={isSaving}
+            onPress={handleSave}
+            title={editingId ? 'Salvar Alterações' : 'Adicionar Categoria'}
+            variant="primary"
+          />
+
+          {editingId && (
+            <Button
+              onPress={cancelEdit}
+              title="Cancelar"
+              variant="secondary"
+            />
+          )}
+        </View>
+      </Card>
+
+      {/* Filtros da Lista */}
+      <View style={styles.filterRow}>
+        {(['ALL', 'EXPENSE', 'INCOME'] as const).map((t) => {
+          const isActive = activeType === t;
+          return (
+            <Pressable
+              key={t}
+              onPress={() => setActiveType(t)}
+              style={[
+                styles.filterTab,
+                {
+                  backgroundColor: isActive ? theme.income : theme.bgElevated,
+                  borderColor: isActive ? theme.income : theme.borderElevated
+                }
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterTabText,
+                  { color: isActive ? '#FFFFFF' : theme.textSecondary }
+                ]}
+              >
+                {t === 'ALL' ? 'Todas' : t === 'EXPENSE' ? 'Despesas' : 'Receitas'}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       {/* Lista de Categorias */}
-      <View style={styles.filterRow}>
-        {(['ALL', 'EXPENSE', 'INCOME'] as const).map((t) => (
-          <Pressable
-            key={t}
-            onPress={() => setActiveType(t)}
-            style={[styles.filterTab, activeType === t && styles.filterTabActive]}
-          >
-            <Text style={[styles.filterTabText, activeType === t && styles.filterTabTextActive]}>
-              {t === 'ALL' ? 'Todas' : t === 'EXPENSE' ? 'Despesas' : 'Receitas'}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
       {loading ? (
-        <ActivityIndicator color="#0f766e" size="large" style={{ marginTop: 24 }} />
+        <ActivityIndicator color={theme.income} size="large" style={{ marginTop: 24 }} />
       ) : (
-        <View style={styles.categoryList}>
+        <View style={styles.categoryGrid}>
           {data?.myCategories.length === 0 ? (
-            <Text style={styles.emptyText}>Nenhuma categoria cadastrada ainda.</Text>
+            <Card style={styles.emptyCard}>
+              <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+                Nenhuma categoria cadastrada ainda.
+              </Text>
+            </Card>
           ) : (
-            data?.myCategories.map((cat) => (
-              <View
-                key={cat.id}
-                style={[styles.categoryCard, editingId === cat.id && styles.categoryCardEditing]}
-              >
-                <View style={styles.categoryBadge}>
-                  <View style={[styles.colorDot, { backgroundColor: cat.color }]} />
-                  <Tag color={cat.color} size={18} />
-                  <Text style={styles.categoryName}>{cat.name}</Text>
-                </View>
-                <View style={styles.categoryRight}>
-                  <Text style={styles.categoryTypeTag}>
-                    {cat.type === 'BOTH' ? 'Ambos' : cat.type === 'EXPENSE' ? 'Despesa' : 'Receita'}
+            data?.myCategories.map((cat) => {
+              const IconComp = getCategoryIcon(cat.icon);
+              const isSelectedForEdit = editingId === cat.id;
+
+              return (
+                <Card
+                  key={cat.id}
+                  style={[
+                    styles.categoryCard,
+                    isSelectedForEdit && { borderColor: theme.income }
+                  ]}
+                >
+                  <View style={styles.categoryHeader}>
+                    <View
+                      style={[
+                        styles.categoryIconWrap,
+                        { backgroundColor: cat.color ? `${cat.color}20` : 'rgba(16, 185, 129, 0.15)' }
+                      ]}
+                    >
+                      <IconComp color={cat.color || theme.income} size={20} />
+                    </View>
+
+                    <Badge
+                      label={
+                        cat.type === 'BOTH'
+                          ? 'Ambos'
+                          : cat.type === 'EXPENSE'
+                            ? 'Despesa'
+                            : 'Receita'
+                      }
+                      tone={
+                        cat.type === 'INCOME'
+                          ? 'income'
+                          : cat.type === 'EXPENSE'
+                            ? 'expense'
+                            : 'neutral'
+                      }
+                    />
+                  </View>
+
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.categoryName, { color: theme.textPrimary }]}
+                  >
+                    {cat.name}
                   </Text>
 
-                  <Pressable
-                    accessibilityLabel={`Editar categoria ${cat.name}`}
-                    onPress={() => startEdit(cat)}
-                    style={styles.editButton}
-                  >
-                    <Pencil color="#0f766e" size={16} />
-                  </Pressable>
+                  <View style={[styles.categoryActions, { borderTopColor: theme.border }]}>
+                    <Pressable
+                      accessibilityLabel={`Editar categoria ${cat.name}`}
+                      accessibilityRole="button"
+                      onPress={() => startEdit(cat)}
+                      style={({ pressed }) => [
+                        styles.actionButton,
+                        { backgroundColor: theme.bgElevated, opacity: pressed ? 0.7 : 1 }
+                      ]}
+                    >
+                      <Pencil color={theme.income} size={15} />
+                      <Text style={[styles.actionButtonText, { color: theme.income }]}>
+                        Editar
+                      </Text>
+                    </Pressable>
 
-                  <Pressable
-                    accessibilityLabel={`Excluir categoria ${cat.name}`}
-                    onPress={() => handleDelete(cat.id)}
-                    style={styles.deleteButton}
-                  >
-                    <Trash2 color="#ef4444" size={16} />
-                  </Pressable>
-                </View>
-              </View>
-            ))
+                    <Pressable
+                      accessibilityLabel={`Excluir categoria ${cat.name}`}
+                      accessibilityRole="button"
+                      onPress={() => handleDelete(cat.id)}
+                      style={({ pressed }) => [
+                        styles.actionButton,
+                        { backgroundColor: theme.bgElevated, opacity: pressed ? 0.7 : 1 }
+                      ]}
+                    >
+                      <Trash2 color={theme.expense} size={15} />
+                      <Text style={[styles.actionButtonText, { color: theme.expense }]}>
+                        Excluir
+                      </Text>
+                    </Pressable>
+                  </View>
+                </Card>
+              );
+            })
           )}
         </View>
       )}
@@ -324,49 +515,188 @@ export function FinancialCategories() {
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 20 },
-  header: { gap: 8 },
-  eyebrow: { color: '#0f766e', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
-  title: { color: '#0f172a', fontSize: 26, fontWeight: '700' },
-  subtitle: { color: '#64748b', fontSize: 15, lineHeight: 22 },
-  card: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, gap: 14, padding: 20 },
-  cardEditing: { borderColor: '#0f766e', backgroundColor: '#f0fdfa' },
-  cardHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  cardTitle: { color: '#0f172a', fontSize: 18, fontWeight: '700' },
-  cancelLink: { alignItems: 'center', flexDirection: 'row', gap: 4 },
-  cancelLinkText: { color: '#64748b', fontSize: 13 },
-  errorText: { color: '#dc2626', fontSize: 13, backgroundColor: '#fef2f2', padding: 8, borderRadius: 4 },
-  formGroup: { gap: 6 },
-  label: { color: '#334155', fontSize: 14, fontWeight: '600' },
-  input: { borderColor: '#cbd5e1', borderRadius: 6, borderWidth: 1, fontSize: 14, minHeight: 42, paddingHorizontal: 12, color: '#0f172a', backgroundColor: '#ffffff' },
-  typeSelector: { flexDirection: 'row', gap: 8 },
-  typeOption: { borderRadius: 6, borderWidth: 1, borderColor: '#cbd5e1', paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#ffffff' },
-  typeOptionSelected: { backgroundColor: '#0f766e', borderColor: '#0f766e' },
-  typeOptionText: { color: '#475569', fontSize: 13, fontWeight: '600' },
-  typeOptionTextSelected: { color: '#ffffff' },
-  colorSelector: { flexDirection: 'row', gap: 10 },
-  colorOption: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: 'transparent' },
-  colorOptionSelected: { borderColor: '#0f172a' },
-  formActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  saveButton: { flex: 1, alignItems: 'center', backgroundColor: '#0f766e', borderRadius: 6, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 42, paddingHorizontal: 16 },
-  saveButtonEdit: { backgroundColor: '#0d9488' },
-  saveButtonText: { color: '#ffffff', fontSize: 14, fontWeight: '700' },
-  cancelButton: { alignItems: 'center', backgroundColor: '#f1f5f9', borderRadius: 6, justifyContent: 'center', minHeight: 42, paddingHorizontal: 16 },
-  cancelButtonText: { color: '#475569', fontSize: 14, fontWeight: '600' },
-  filterRow: { flexDirection: 'row', gap: 8 },
-  filterTab: { borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#e2e8f0' },
-  filterTabActive: { backgroundColor: '#0f766e' },
-  filterTabText: { color: '#475569', fontSize: 13, fontWeight: '600' },
-  filterTabTextActive: { color: '#ffffff' },
-  categoryList: { gap: 10 },
-  emptyText: { color: '#64748b', fontSize: 14, fontStyle: 'italic', marginTop: 12 },
-  categoryCard: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 6, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', padding: 14 },
-  categoryCardEditing: { borderColor: '#0f766e', backgroundColor: '#f0fdfa' },
-  categoryBadge: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-  colorDot: { width: 10, height: 10, borderRadius: 5 },
-  categoryName: { color: '#0f172a', fontSize: 15, fontWeight: '600' },
-  categoryRight: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-  categoryTypeTag: { backgroundColor: '#f1f5f9', color: '#475569', fontSize: 12, fontWeight: '600', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
-  editButton: { padding: 6 },
-  deleteButton: { padding: 6 }
+  actionButton: {
+    alignItems: 'center',
+    borderRadius: 6,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    height: 34,
+    justifyContent: 'center'
+  },
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  cancelLink: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4
+  },
+  cancelLinkText: {
+    fontSize: 13
+  },
+  cardHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4
+  },
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '700'
+  },
+  categoryActions: {
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 'auto',
+    paddingTop: 12
+  },
+  categoryCard: {
+    flexBasis: 220,
+    flexGrow: 1,
+    gap: 12,
+    minHeight: 140
+  },
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
+  },
+  categoryHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between'
+  },
+  categoryIconWrap: {
+    alignItems: 'center',
+    borderRadius: 10,
+    height: 38,
+    justifyContent: 'center',
+    width: 38
+  },
+  categoryName: {
+    fontSize: 16,
+    fontWeight: '700'
+  },
+  colorOption: {
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    height: 32,
+    justifyContent: 'center',
+    width: 32
+  },
+  colorOptionSelected: {
+    elevation: 3,
+    transform: [{ scale: 1.1 }]
+  },
+  colorSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  container: {
+    gap: 20,
+    width: '100%'
+  },
+  emptyCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    width: '100%'
+  },
+  emptyText: {
+    fontSize: 14,
+    fontStyle: 'italic'
+  },
+  errorBox: {
+    borderRadius: 6,
+    padding: 10
+  },
+  errorText: {
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8
+  },
+  filterTab: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 8
+  },
+  filterTabText: {
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  formActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 6
+  },
+  formCard: {
+    gap: 14,
+    padding: 20
+  },
+  formGroup: {
+    gap: 8
+  },
+  header: {
+    gap: 6
+  },
+  iconOption: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 4,
+    minWidth: 70,
+    paddingHorizontal: 10,
+    paddingVertical: 8
+  },
+  iconOptionLabel: {
+    fontSize: 11,
+    fontWeight: '600'
+  },
+  iconSelector: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 4
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  subtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    maxWidth: 720
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '700'
+  },
+  typeOption: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 8
+  },
+  typeOptionText: {
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  typeSelector: {
+    flexDirection: 'row',
+    gap: 8
+  }
 });
