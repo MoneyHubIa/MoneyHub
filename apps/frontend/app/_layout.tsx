@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '@/providers/AuthProvider';
 import { createMoneyHubApolloClient } from '@/services/apollo';
 import { firebaseAuthService } from '@/services/firebaseAuthService';
+import { ThemeProvider, useTheme } from '@/theme/ThemeContext';
 
 const apolloClient = createMoneyHubApolloClient(() =>
   firebaseAuthService.getIdToken()
@@ -26,16 +27,27 @@ async function validateBackendSession() {
   if (!data?.me) throw new Error('Backend did not return an authenticated user.');
 }
 
-export default function RootLayout() {
+function RootContent() {
+  const { isDark } = useTheme();
   return (
-    <ApolloProvider client={apolloClient}>
-      <StatusBar style="dark" />
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <AuthProvider
         service={firebaseAuthService}
         validateSession={validateBackendSession}
       >
         <Stack screenOptions={{ headerShown: false }} />
       </AuthProvider>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ApolloProvider client={apolloClient}>
+      <ThemeProvider>
+        <RootContent />
+      </ThemeProvider>
     </ApolloProvider>
   );
 }
