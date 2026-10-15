@@ -40,17 +40,10 @@ export const primaryModules: NavigationItem[] = [
   { id: 'transacoes', label: 'Transações', icon: WalletCards, isPrimary: true },
   {
     id: 'a_pagar',
-    label: 'A Pagar',
+    label: 'Contas',
     icon: CalendarClock,
     isPrimary: true,
     badgeCountKey: 'payables'
-  },
-  {
-    id: 'a_receber',
-    label: 'A Receber',
-    icon: HandCoins,
-    isPrimary: true,
-    badgeCountKey: 'receivables'
   },
   { id: 'financeiro', label: 'Categorias', icon: Tag, isPrimary: true },
   { id: 'metas', label: 'Metas', icon: Target, isPrimary: true },

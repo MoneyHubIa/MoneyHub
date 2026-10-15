@@ -1,7 +1,7 @@
 import { gql } from '@apollo/client';
 import { useMutation, useQuery } from '@apollo/client/react';
 import { Building2, Plus, Trash2 } from 'lucide-react-native';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -10,6 +10,8 @@ import {
   TextInput,
   View
 } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
+import type { ColorTokens } from '../theme/tokens';
 
 const MY_COST_CENTERS_QUERY = gql`
   query MyCostCenters {
@@ -46,6 +48,8 @@ type CostCenter = {
 };
 
 export function CostCenters() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getThemedStyles(theme), [theme]);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -110,7 +114,7 @@ export function CostCenters() {
             accessibilityLabel="Nome do centro de custo"
             onChangeText={setName}
             placeholder="Ex: Pessoal, Trabalho, Projeto X"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={theme.textMuted}
             style={styles.input}
             value={name}
           />
@@ -122,7 +126,7 @@ export function CostCenters() {
             accessibilityLabel="Descrição do centro de custo"
             onChangeText={setDescription}
             placeholder="Breve detalhamento"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={theme.textMuted}
             style={styles.input}
             value={description}
           />
@@ -147,7 +151,7 @@ export function CostCenters() {
 
       {/* Lista */}
       {loading ? (
-        <ActivityIndicator color="#0f766e" size="large" style={{ marginTop: 24 }} />
+        <ActivityIndicator color={theme.income} size="large" style={{ marginTop: 24 }} />
       ) : (
         <View style={styles.list}>
           {data?.myCostCenters.length === 0 ? (
@@ -156,7 +160,7 @@ export function CostCenters() {
             data?.myCostCenters.map((item) => (
               <View key={item.id} style={styles.itemCard}>
                 <View style={styles.itemBadge}>
-                  <Building2 color="#0f766e" size={20} />
+                  <Building2 color={theme.income} size={20} />
                   <View>
                     <Text style={styles.itemName}>{item.name}</Text>
                     {item.description ? (
@@ -169,7 +173,7 @@ export function CostCenters() {
                   onPress={() => handleDelete(item.id)}
                   style={styles.deleteButton}
                 >
-                  <Trash2 color="#ef4444" size={16} />
+                  <Trash2 color={theme.expense} size={16} />
                 </Pressable>
               </View>
             ))
@@ -180,25 +184,66 @@ export function CostCenters() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { gap: 20 },
-  header: { gap: 8 },
-  eyebrow: { color: '#0f766e', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
-  title: { color: '#0f172a', fontSize: 26, fontWeight: '700' },
-  subtitle: { color: '#64748b', fontSize: 15, lineHeight: 22 },
-  card: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, gap: 14, padding: 20 },
-  cardTitle: { color: '#0f172a', fontSize: 18, fontWeight: '700' },
-  errorText: { color: '#dc2626', fontSize: 13, backgroundColor: '#fef2f2', padding: 8, borderRadius: 4 },
-  formGroup: { gap: 6 },
-  label: { color: '#334155', fontSize: 14, fontWeight: '600' },
-  input: { borderColor: '#cbd5e1', borderRadius: 6, borderWidth: 1, fontSize: 14, minHeight: 42, paddingHorizontal: 12, color: '#0f172a' },
-  createButton: { alignItems: 'center', backgroundColor: '#0f766e', borderRadius: 6, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 42, paddingHorizontal: 16 },
-  createButtonText: { color: '#ffffff', fontSize: 14, fontWeight: '700' },
-  list: { gap: 10 },
-  emptyText: { color: '#64748b', fontSize: 14, fontStyle: 'italic', marginTop: 12 },
-  itemCard: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 6, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', padding: 14 },
-  itemBadge: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-  itemName: { color: '#0f172a', fontSize: 15, fontWeight: '600' },
-  itemDesc: { color: '#64748b', fontSize: 13 },
-  deleteButton: { padding: 6 }
-});
+const getThemedStyles = (theme: ColorTokens) =>
+  StyleSheet.create({
+    container: { gap: 20 },
+    header: { gap: 8 },
+    eyebrow: { color: theme.income, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
+    title: { color: theme.textPrimary, fontSize: 26, fontWeight: '700' },
+    subtitle: { color: theme.textSecondary, fontSize: 15, lineHeight: 22 },
+    card: {
+      backgroundColor: theme.bgSurface,
+      borderColor: theme.border,
+      borderRadius: 8,
+      borderWidth: 1,
+      gap: 14,
+      padding: 20
+    },
+    cardTitle: { color: theme.textPrimary, fontSize: 18, fontWeight: '700' },
+    errorText: {
+      color: theme.expense,
+      fontSize: 13,
+      backgroundColor: theme.expenseBadge,
+      padding: 8,
+      borderRadius: 4
+    },
+    formGroup: { gap: 6 },
+    label: { color: theme.textSecondary, fontSize: 14, fontWeight: '600' },
+    input: {
+      backgroundColor: theme.bgElevated,
+      borderColor: theme.borderElevated,
+      borderRadius: 6,
+      borderWidth: 1,
+      fontSize: 14,
+      minHeight: 42,
+      paddingHorizontal: 12,
+      color: theme.textPrimary
+    },
+    createButton: {
+      alignItems: 'center',
+      backgroundColor: theme.income,
+      borderRadius: 6,
+      flexDirection: 'row',
+      gap: 8,
+      justifyContent: 'center',
+      minHeight: 42,
+      paddingHorizontal: 16
+    },
+    createButtonText: { color: '#ffffff', fontSize: 14, fontWeight: '700' },
+    list: { gap: 10 },
+    emptyText: { color: theme.textMuted, fontSize: 14, fontStyle: 'italic', marginTop: 12 },
+    itemCard: {
+      alignItems: 'center',
+      backgroundColor: theme.bgSurface,
+      borderColor: theme.border,
+      borderRadius: 6,
+      borderWidth: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      padding: 14
+    },
+    itemBadge: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+    itemName: { color: theme.textPrimary, fontSize: 15, fontWeight: '600' },
+    itemDesc: { color: theme.textSecondary, fontSize: 13 },
+    deleteButton: { padding: 6 }
+  });

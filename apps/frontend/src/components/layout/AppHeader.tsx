@@ -17,6 +17,7 @@ export interface AppHeaderProps {
   currentCurrency?: string | undefined;
   onSelectCurrency?: ((currency: string) => void) | undefined;
   rightContent?: React.ReactNode | undefined;
+  leading?: React.ReactNode | undefined;
   compact?: boolean | undefined;
   style?: StyleProp<ViewStyle> | undefined;
 }
@@ -28,6 +29,7 @@ export function AppHeader({
   currentCurrency = 'BRL',
   onSelectCurrency,
   rightContent,
+  leading,
   compact = false,
   style
 }: AppHeaderProps): React.JSX.Element {
@@ -49,6 +51,7 @@ export function AppHeader({
         style
       ]}
     >
+      {leading}
       <View style={styles.titleArea}>
         <Text
           accessibilityRole="header"

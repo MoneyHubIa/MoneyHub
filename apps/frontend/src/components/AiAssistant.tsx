@@ -28,6 +28,7 @@ import {
   View
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useResponsive } from '../theme/useResponsive';
 
 export const ASK_AI_ASSISTANT_MUTATION = gql`
   mutation AskAiAssistant($input: AskAiAssistantInput!) {
@@ -276,6 +277,7 @@ export type AiAssistantProps = Readonly<{
   initialYear?: number | undefined;
   isOpen?: boolean | undefined;
   viewMode?: 'fullscreen' | 'floating' | undefined;
+  hideFloatingTrigger?: boolean | undefined;
   onClose?: (() => void) | undefined;
   onToggle?: (() => void) | undefined;
 }>;
@@ -285,10 +287,12 @@ export function AiAssistant({
   initialYear,
   isOpen: controlledIsOpen,
   viewMode = 'floating',
+  hideFloatingTrigger = false,
   onClose,
   onToggle
 }: AiAssistantProps): React.JSX.Element {
   const { theme } = useTheme();
+  const { isDesktop } = useResponsive();
   const currentDate = new Date();
   const [internalIsOpen, setInternalIsOpen] = useState<boolean>(true);
   const isWidgetOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
@@ -423,24 +427,27 @@ export function AiAssistant({
 
   const monthLabel = MONTH_NAMES[selectedMonth - 1] ?? `Mês ${selectedMonth}`;
 
-  // When widget is closed and in floating mode: render FAB
+  // When widget is closed and in floating mode: render minimal circular FAB
   if (viewMode === 'floating' && !isWidgetOpen) {
+    if (hideFloatingTrigger) {
+      return <></>;
+    }
     return (
-      <View style={styles.fabWrapper}>
+      <View style={[styles.fabWrapper, !isDesktop && styles.fabWrapperMobile]}>
         <Pressable
           accessibilityLabel="Abrir Assistente Financeiro IA"
           accessibilityRole="button"
           onPress={handleToggle}
-          style={[styles.fabButton, { backgroundColor: theme.brandAI }]}
+          style={({ pressed }) => [
+            styles.fabButton,
+            { backgroundColor: theme.brandAI, opacity: pressed ? 0.85 : 1 }
+          ]}
         >
           <View style={styles.fabIconContainer}>
             <Bot color="#ffffff" size={24} />
             <View style={[styles.fabOnlineDot, { backgroundColor: theme.income }]} />
           </View>
-          <View style={styles.fabLabelContainer}>
-            <Text style={styles.fabLabel}>IA Financeira</Text>
-            <Sparkles color="#A7F3D0" size={13} />
-          </View>
+          <Text style={styles.srOnly}>IA Financeira</Text>
         </Pressable>
       </View>
     );
@@ -453,7 +460,7 @@ export function AiAssistant({
       style={
         isFullscreen
           ? [styles.fullscreenContainer, { backgroundColor: theme.bgSurface, borderColor: theme.border }]
-          : styles.widgetWrapper
+          : [styles.widgetWrapper, !isDesktop && styles.widgetWrapperMobile]
       }
     >
       <KeyboardAvoidingView
@@ -464,6 +471,7 @@ export function AiAssistant({
             backgroundColor: theme.bgSurface,
             borderColor: theme.border
           },
+          !isDesktop && styles.chatWindowMobile,
           isFullscreen && styles.chatWindowFullscreen
         ]}
       >
@@ -844,18 +852,19 @@ const styles = StyleSheet.create({
   },
   fabButton: {
     alignItems: 'center',
-    borderRadius: 28,
+    borderRadius: 24,
     elevation: 6,
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    height: 48,
+    justifyContent: 'center',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 8
+    shadowRadius: 8,
+    width: 48
   },
   fabIconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
     position: 'relative'
   },
   fabLabel: {
@@ -883,6 +892,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 24,
     zIndex: 999
+  },
+  fabWrapperMobile: {
+    bottom: 80,
+    right: 16
+  },
+  srOnly: {
+    height: 1,
+    opacity: 0,
+    overflow: 'hidden',
+    position: 'absolute',
+    width: 1
   },
   formattedContainer: {
     gap: 2
@@ -1140,6 +1160,15 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 24,
     zIndex: 999
+  },
+  widgetWrapperMobile: {
+    bottom: 74,
+    left: 12,
+    right: 12
+  },
+  chatWindowMobile: {
+    maxHeight: 480,
+    width: '100%'
   },
   windowHeader: {
     alignItems: 'center',

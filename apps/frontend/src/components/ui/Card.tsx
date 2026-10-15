@@ -42,7 +42,10 @@ export function Card({
         ? theme.borderElevated
         : variant === 'gradient'
           ? '#0D9488'
-          : theme.border
+          : theme.border,
+    ...(variant === 'gradient'
+      ? { experimental_backgroundImage: 'linear-gradient(135deg, #059669 0%, #0F766E 100%)' }
+      : {})
   };
 
   if (onPress) {

@@ -30,15 +30,13 @@ describe('Layout Components', () => {
       expect(screen.getByText('MoneyHub')).toBeOnTheScreen();
       expect(screen.getByRole('button', { name: 'Dashboard' })).toBeOnTheScreen();
       expect(screen.getByRole('button', { name: 'Transações' })).toBeOnTheScreen();
-      expect(screen.getByRole('button', { name: 'A Pagar' })).toBeOnTheScreen();
-      expect(screen.getByRole('button', { name: 'A Receber' })).toBeOnTheScreen();
+      expect(screen.getByRole('button', { name: 'Contas' })).toBeOnTheScreen();
       expect(screen.getByRole('button', { name: 'Categorias' })).toBeOnTheScreen();
       expect(screen.getByRole('button', { name: 'Metas' })).toBeOnTheScreen();
       expect(screen.getByRole('button', { name: 'MoneyHub IA' })).toBeOnTheScreen();
 
-      // Check badges
+      // Check badge
       expect(screen.getByText('3')).toBeOnTheScreen();
-      expect(screen.getByText('1')).toBeOnTheScreen();
 
       await fireEvent.press(screen.getByRole('button', { name: 'Categorias' }));
       expect(onSelectMock).toHaveBeenCalledWith('financeiro');
@@ -56,9 +54,9 @@ describe('Layout Components', () => {
         { wrapper }
       );
 
-      const aPagarPill = screen.getByRole('button', { name: 'Pílula A Pagar' });
-      expect(aPagarPill).toBeOnTheScreen();
-      await fireEvent.press(aPagarPill);
+      const contasPill = screen.getByRole('button', { name: 'Pílula Contas' });
+      expect(contasPill).toBeOnTheScreen();
+      await fireEvent.press(contasPill);
       expect(onSelectMock).toHaveBeenCalledWith('a_pagar');
     });
   });

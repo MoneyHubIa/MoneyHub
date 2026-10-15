@@ -10,6 +10,8 @@ import {
   TextInput,
   View
 } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
+import type { ColorTokens } from '../theme/tokens';
 import { DatePickerInput } from './DatePickerInput';
 import { formatISOToRegionalDate, parseRegionalDateToISO } from '../utils/formatters';
 
@@ -132,6 +134,8 @@ function messageForError(error: unknown): string {
 }
 
 export function Agenda() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getThemedStyles(theme), [theme]);
   const today = useMemo(() => new Date(), []);
   const [activeMonth, setActiveMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState(() => toIsoDate(today));
@@ -316,11 +320,11 @@ export function Agenda() {
       <View style={styles.calendarCard}>
         <View style={styles.calendarHeader}>
           <Pressable accessibilityLabel="Mês anterior" accessibilityRole="button" onPress={() => handleChangeMonth(-1)} style={styles.iconButton}>
-            <ChevronLeft color="#334155" size={20} />
+            <ChevronLeft color={theme.textPrimary} size={20} />
           </Pressable>
           <Text accessibilityRole="header" style={styles.monthTitle}>{monthTitle(activeMonth)}</Text>
           <Pressable accessibilityLabel="Próximo mês" accessibilityRole="button" onPress={() => handleChangeMonth(1)} style={styles.iconButton}>
-            <ChevronRight color="#334155" size={20} />
+            <ChevronRight color={theme.textPrimary} size={20} />
           </Pressable>
         </View>
         <View style={styles.weekRow}>
@@ -347,7 +351,7 @@ export function Agenda() {
         {agendaError ? <View style={styles.errorState}>
           <Text accessibilityRole="alert" style={styles.errorText}>Não foi possível carregar a agenda.</Text>
           <Pressable accessibilityRole="button" onPress={() => void refetch()} style={styles.retryButton}><Text style={styles.retryButtonText}>Tentar novamente</Text></Pressable>
-        </View> : loading ? <ActivityIndicator color="#0f766e" size="small" /> : selectedItems.length === 0 ? (
+        </View> : loading ? <ActivityIndicator color={theme.income} size="small" /> : selectedItems.length === 0 ? (
           <Text style={styles.emptyText}>Nenhum compromisso neste dia.</Text>
         ) : (
           <View style={styles.itemsList}>
@@ -358,8 +362,8 @@ export function Agenda() {
                   <Text style={[styles.sourceBadge, item.source === 'EVENT' ? styles.eventBadge : item.source === 'PAYABLE' ? styles.payableBadge : styles.receivableBadge]}>{sourceLabel(item.source)}</Text>
                 </View>
                 {item.source === 'EVENT' ? <View style={styles.itemActions}>
-                  <Pressable accessibilityLabel={`Editar ${item.title}`} accessibilityRole="button" onPress={() => handleEdit(item)} style={styles.smallButton}><Pencil color="#0f766e" size={16} /></Pressable>
-                  <Pressable accessibilityLabel={`Excluir ${item.title}`} accessibilityRole="button" disabled={deleting} onPress={() => handleDelete(item.id)} style={styles.smallButton}><Trash2 color="#dc2626" size={16} /></Pressable>
+                  <Pressable accessibilityLabel={`Editar ${item.title}`} accessibilityRole="button" onPress={() => handleEdit(item)} style={styles.smallButton}><Pencil color={theme.income} size={16} /></Pressable>
+                  <Pressable accessibilityLabel={`Excluir ${item.title}`} accessibilityRole="button" disabled={deleting} onPress={() => handleDelete(item.id)} style={styles.smallButton}><Trash2 color={theme.expense} size={16} /></Pressable>
                 </View> : null}
               </View>
             ))}
@@ -375,13 +379,13 @@ export function Agenda() {
         </View> : null}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Título</Text>
-          <TextInput accessibilityLabel="Título do evento" onChangeText={setTitle} placeholder="Ex: Renovar seguro" placeholderTextColor="#94a3b8" style={styles.input} value={title} />
+          <TextInput accessibilityLabel="Título do evento" onChangeText={setTitle} placeholder="Ex: Renovar seguro" placeholderTextColor={theme.textMuted} style={styles.input} value={title} />
         </View>
         <DatePickerInput accessibilityLabel="Data do evento" label="Data" onChangeText={setEventDate} value={eventDate} />
         {editingOccurrence && recurrenceRule ? <Text style={styles.recurrenceHint}>Alterar data move a âncora de toda a série.</Text> : null}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Notas</Text>
-          <TextInput accessibilityLabel="Notas do evento" multiline onChangeText={setNotes} placeholder="Ex: Apólice, instruções ou contexto" placeholderTextColor="#94a3b8" style={[styles.input, styles.notesInput]} value={notes} />
+          <TextInput accessibilityLabel="Notas do evento" multiline onChangeText={setNotes} placeholder="Ex: Apólice, instruções ou contexto" placeholderTextColor={theme.textMuted} style={[styles.input, styles.notesInput]} value={notes} />
         </View>
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Recorrência</Text>
@@ -400,10 +404,142 @@ export function Agenda() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { gap: 20 }, header: { gap: 8 }, eyebrow: { color: '#0f766e', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' }, title: { color: '#0f172a', fontSize: 30, fontWeight: '700' }, subtitle: { color: '#64748b', fontSize: 16, lineHeight: 24 },
-  calendarCard: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, gap: 12, padding: 16 }, calendarHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }, iconButton: { borderRadius: 6, padding: 8 }, monthTitle: { color: '#0f172a', fontSize: 18, fontWeight: '700' }, weekRow: { flexDirection: 'row' }, weekDay: { color: '#64748b', flex: 1, fontSize: 12, fontWeight: '700', textAlign: 'center' },
-  daysGrid: { flexDirection: 'row', flexWrap: 'wrap' }, dayCell: { alignItems: 'center', flexBasis: '14.2857%', minHeight: 54, paddingTop: 8 }, dayCellSelected: { backgroundColor: '#ccfbf1', borderRadius: 6 }, dayNumber: { color: '#0f172a', fontSize: 14, fontWeight: '600' }, dayNumberSelected: { color: '#0f766e', fontWeight: '800' }, dayMarker: { backgroundColor: '#0f766e', borderRadius: 3, height: 6, marginTop: 5, width: 6 },
-  dayListCard: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, gap: 12, padding: 16 }, sectionTitle: { color: '#0f172a', fontSize: 18, fontWeight: '700' }, emptyText: { color: '#64748b', fontSize: 14 }, itemsList: { gap: 8 }, agendaItem: { alignItems: 'center', backgroundColor: '#f8fafc', borderRadius: 6, flexDirection: 'row', justifyContent: 'space-between', padding: 12 }, itemCopy: { gap: 5, flex: 1 }, itemTitle: { color: '#0f172a', fontSize: 15, fontWeight: '600' }, sourceBadge: { alignSelf: 'flex-start', borderRadius: 4, fontSize: 11, fontWeight: '700', overflow: 'hidden', paddingHorizontal: 6, paddingVertical: 2 }, eventBadge: { backgroundColor: '#ccfbf1', color: '#0f766e' }, payableBadge: { backgroundColor: '#fee2e2', color: '#b91c1c' }, receivableBadge: { backgroundColor: '#dcfce7', color: '#15803d' }, itemActions: { flexDirection: 'row', gap: 4 }, smallButton: { padding: 6 },
-  formCard: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, gap: 14, padding: 16 }, errorState: { gap: 8 }, errorText: { backgroundColor: '#fef2f2', borderColor: '#fecaca', borderRadius: 6, borderWidth: 1, color: '#b91c1c', padding: 10 }, retryButton: { alignSelf: 'flex-start', backgroundColor: '#0f766e', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 8 }, retryButtonText: { color: '#ffffff', fontSize: 13, fontWeight: '700' }, recurrenceHint: { color: '#475569', fontSize: 13, lineHeight: 18 }, inputGroup: { gap: 6 }, label: { color: '#334155', fontSize: 13, fontWeight: '600' }, input: { backgroundColor: '#f8fafc', borderColor: '#cbd5e1', borderRadius: 6, borderWidth: 1, color: '#0f172a', fontSize: 14, minHeight: 42, paddingHorizontal: 12 }, notesInput: { minHeight: 82, paddingTop: 10, textAlignVertical: 'top' }, optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, optionButton: { borderColor: '#cbd5e1', borderRadius: 6, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 7 }, optionButtonSelected: { backgroundColor: '#0f766e', borderColor: '#0f766e' }, optionText: { color: '#475569', fontSize: 12, fontWeight: '600' }, optionTextSelected: { color: '#ffffff' }, submitButton: { alignItems: 'center', backgroundColor: '#0f766e', borderRadius: 6, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 44, paddingHorizontal: 16 }, submitButtonDisabled: { opacity: 0.65 }, submitButtonText: { color: '#ffffff', fontSize: 14, fontWeight: '700' }
-});
+const getThemedStyles = (theme: ColorTokens) =>
+  StyleSheet.create({
+    container: { gap: 20 },
+    header: { gap: 8 },
+    eyebrow: { color: theme.income, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
+    title: { color: theme.textPrimary, fontSize: 30, fontWeight: '700' },
+    subtitle: { color: theme.textSecondary, fontSize: 16, lineHeight: 24 },
+    calendarCard: {
+      backgroundColor: theme.bgSurface,
+      borderColor: theme.border,
+      borderRadius: 8,
+      borderWidth: 1,
+      gap: 12,
+      padding: 16
+    },
+    calendarHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+    iconButton: { borderRadius: 6, padding: 8 },
+    monthTitle: { color: theme.textPrimary, fontSize: 18, fontWeight: '700' },
+    weekRow: { flexDirection: 'row' },
+    weekDay: { color: theme.textSecondary, flex: 1, fontSize: 12, fontWeight: '700', textAlign: 'center' },
+    daysGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+    dayCell: { alignItems: 'center', flexBasis: '14.2857%', minHeight: 54, paddingTop: 8 },
+    dayCellSelected: {
+      backgroundColor: theme.incomeBadge,
+      borderRadius: 6
+    },
+    dayNumber: { color: theme.textPrimary, fontSize: 14, fontWeight: '600' },
+    dayNumberSelected: { color: theme.income, fontWeight: '800' },
+    dayMarker: { backgroundColor: theme.income, borderRadius: 3, height: 6, marginTop: 5, width: 6 },
+    dayListCard: {
+      backgroundColor: theme.bgSurface,
+      borderColor: theme.border,
+      borderRadius: 8,
+      borderWidth: 1,
+      gap: 12,
+      padding: 16
+    },
+    sectionTitle: { color: theme.textPrimary, fontSize: 18, fontWeight: '700' },
+    emptyText: { color: theme.textMuted, fontSize: 14 },
+    itemsList: { gap: 8 },
+    agendaItem: {
+      alignItems: 'center',
+      backgroundColor: theme.bgElevated,
+      borderColor: theme.borderElevated,
+      borderRadius: 6,
+      borderWidth: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      padding: 12
+    },
+    itemCopy: { gap: 5, flex: 1 },
+    itemTitle: { color: theme.textPrimary, fontSize: 15, fontWeight: '600' },
+    sourceBadge: {
+      alignSelf: 'flex-start',
+      borderRadius: 4,
+      fontSize: 11,
+      fontWeight: '700',
+      overflow: 'hidden',
+      paddingHorizontal: 6,
+      paddingVertical: 2
+    },
+    eventBadge: {
+      backgroundColor: theme.incomeBadge,
+      color: theme.income
+    },
+    payableBadge: {
+      backgroundColor: theme.expenseBadge,
+      color: theme.expense
+    },
+    receivableBadge: {
+      backgroundColor: theme.incomeBadge,
+      color: theme.income
+    },
+    itemActions: { flexDirection: 'row', gap: 4 },
+    smallButton: { padding: 6 },
+    formCard: {
+      backgroundColor: theme.bgSurface,
+      borderColor: theme.border,
+      borderRadius: 8,
+      borderWidth: 1,
+      gap: 14,
+      padding: 16
+    },
+    errorState: { gap: 8 },
+    errorText: {
+      backgroundColor: theme.expenseBadge,
+      borderColor: theme.expense,
+      borderRadius: 6,
+      borderWidth: 1,
+      color: theme.expense,
+      padding: 10
+    },
+    retryButton: {
+      alignSelf: 'flex-start',
+      backgroundColor: theme.income,
+      borderRadius: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8
+    },
+    retryButtonText: { color: '#ffffff', fontSize: 13, fontWeight: '700' },
+    recurrenceHint: { color: theme.textMuted, fontSize: 13, lineHeight: 18 },
+    inputGroup: { gap: 6 },
+    label: { color: theme.textSecondary, fontSize: 13, fontWeight: '600' },
+    input: {
+      backgroundColor: theme.bgElevated,
+      borderColor: theme.borderElevated,
+      borderRadius: 6,
+      borderWidth: 1,
+      color: theme.textPrimary,
+      fontSize: 14,
+      minHeight: 42,
+      paddingHorizontal: 12
+    },
+    notesInput: { minHeight: 82, paddingTop: 10, textAlignVertical: 'top' },
+    optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    optionButton: {
+      backgroundColor: theme.bgElevated,
+      borderColor: theme.borderElevated,
+      borderRadius: 6,
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      paddingVertical: 7
+    },
+    optionButtonSelected: { backgroundColor: theme.income, borderColor: theme.income },
+    optionText: { color: theme.textSecondary, fontSize: 12, fontWeight: '600' },
+    optionTextSelected: { color: '#ffffff' },
+    submitButton: {
+      alignItems: 'center',
+      backgroundColor: theme.income,
+      borderRadius: 6,
+      flexDirection: 'row',
+      gap: 8,
+      justifyContent: 'center',
+      minHeight: 44,
+      paddingHorizontal: 16
+    },
+    submitButtonDisabled: { opacity: 0.65 },
+    submitButtonText: { color: '#ffffff', fontSize: 14, fontWeight: '700' }
+  });

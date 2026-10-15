@@ -103,7 +103,7 @@ describe('MoneyHub dashboard shell', () => {
 
   test('changes the active section from the navigation', async () => {
     await render(<DashboardShell />, { wrapper: Wrapper });
-    await fireEvent.press(screen.getByRole('button', { name: 'Agenda' }));
+    await fireEvent.press(screen.getByRole('button', { name: /Agenda/i }));
 
     expect(screen.getByRole('header', { name: 'Agenda financeira' })).toBeOnTheScreen();
     expect(mockSyncAgendaNotifications).toHaveBeenCalledWith({

@@ -13,6 +13,7 @@ export const THEME_STORAGE_KEY = '@moneyhub:theme_mode';
 
 export interface ThemeContextValue {
   theme: ColorTokens;
+  tokens: ColorTokens;
   isDark: boolean;
   mode: ThemeMode;
   toggleTheme: () => void;
@@ -69,6 +70,7 @@ export function ThemeProvider({
   const value = useMemo<ThemeContextValue>(() => {
     return {
       theme: tokens[mode],
+      tokens: tokens[mode],
       isDark: mode === 'dark',
       mode,
       toggleTheme,
@@ -84,6 +86,7 @@ export function useTheme(): ThemeContextValue {
   if (!context) {
     return {
       theme: tokens.dark,
+      tokens: tokens.dark,
       isDark: true,
       mode: 'dark',
       toggleTheme: () => undefined,

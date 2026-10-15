@@ -1,15 +1,6 @@
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View
-} from 'react-native';
-import { useState } from 'react';
-import {
   ArrowDownRight,
   ArrowUpRight,
   BarChart3,
@@ -17,6 +8,16 @@ import {
   Layers,
   Scale
 } from 'lucide-react-native';
+import React, { useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View
+} from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
 import { formatCurrency } from '../utils/formatters';
 
 export const CASH_FLOW_QUERY = gql`
@@ -67,7 +68,8 @@ type CashFlowChartProps = Readonly<{
   preferredCurrency?: string;
 }>;
 
-export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps) {
+export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps): React.JSX.Element {
+  const { theme, isDark } = useTheme();
   const [granularity, setGranularity] = useState<'DAILY' | 'MONTHLY'>('DAILY');
   const [selectedPoint, setSelectedPoint] = useState<CashFlowDataPoint | null>(null);
 
@@ -94,23 +96,31 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
   const activePoint = selectedPoint ?? (dataPoints.length > 0 ? dataPoints[dataPoints.length - 1] : null);
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.bgSurface,
+          borderColor: theme.border
+        }
+      ]}
+    >
       <View style={styles.header}>
         <View style={styles.headerTitleGroup}>
-          <View style={styles.iconBadge}>
-            <BarChart3 color="#0f766e" size={20} />
+          <View style={[styles.iconBadge, { backgroundColor: theme.incomeBadge }]}>
+            <BarChart3 color={theme.income} size={20} />
           </View>
           <View>
-            <Text accessibilityRole="header" style={styles.title}>
+            <Text accessibilityRole="header" style={[styles.title, { color: theme.textPrimary }]}>
               Fluxo de Caixa
             </Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
               Entradas, saídas e saldo acumulado no período
             </Text>
           </View>
         </View>
 
-        <View style={styles.toggleGroup}>
+        <View style={[styles.toggleGroup, { backgroundColor: theme.bgElevated }]}>
           <Pressable
             accessibilityLabel="Visualização Diária"
             accessibilityRole="button"
@@ -120,16 +130,17 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
             }}
             style={[
               styles.toggleButton,
-              granularity === 'DAILY' && styles.toggleButtonActive
+              granularity === 'DAILY' && [styles.toggleButtonActive, { backgroundColor: theme.income }]
             ]}
           >
             <Calendar
-              color={granularity === 'DAILY' ? '#ffffff' : '#64748b'}
+              color={granularity === 'DAILY' ? '#ffffff' : theme.textSecondary}
               size={14}
             />
             <Text
               style={[
                 styles.toggleText,
+                { color: granularity === 'DAILY' ? '#ffffff' : theme.textSecondary },
                 granularity === 'DAILY' && styles.toggleTextActive
               ]}
             >
@@ -146,16 +157,17 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
             }}
             style={[
               styles.toggleButton,
-              granularity === 'MONTHLY' && styles.toggleButtonActive
+              granularity === 'MONTHLY' && [styles.toggleButtonActive, { backgroundColor: theme.income }]
             ]}
           >
             <Layers
-              color={granularity === 'MONTHLY' ? '#ffffff' : '#64748b'}
+              color={granularity === 'MONTHLY' ? '#ffffff' : theme.textSecondary}
               size={14}
             />
             <Text
               style={[
                 styles.toggleText,
+                { color: granularity === 'MONTHLY' ? '#ffffff' : theme.textSecondary },
                 granularity === 'MONTHLY' && styles.toggleTextActive
               ]}
             >
@@ -166,42 +178,48 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
       </View>
 
       {/* Totals Summary Ribbon */}
-      <View style={styles.ribbon}>
+      <View
+        style={[
+          styles.ribbon,
+          {
+            backgroundColor: theme.bgElevated,
+            borderColor: theme.borderElevated
+          }
+        ]}
+      >
         <View style={styles.ribbonItem}>
           <View style={styles.ribbonLabelGroup}>
-            <ArrowUpRight color="#059669" size={16} />
-            <Text style={styles.ribbonLabel}>Total Entradas</Text>
+            <ArrowUpRight color={theme.income} size={16} />
+            <Text style={[styles.ribbonLabel, { color: theme.textSecondary }]}>Total Entradas</Text>
           </View>
-          <Text style={[styles.ribbonValue, styles.incomeText]}>
+          <Text style={[styles.ribbonValue, { color: theme.income }]}>
             {formatCurrency(totals?.totalIncome ?? '0.00', preferredCurrency)}
           </Text>
         </View>
 
-        <View style={styles.ribbonDivider} />
+        <View style={[styles.ribbonDivider, { backgroundColor: theme.borderElevated }]} />
 
         <View style={styles.ribbonItem}>
           <View style={styles.ribbonLabelGroup}>
-            <ArrowDownRight color="#dc2626" size={16} />
-            <Text style={styles.ribbonLabel}>Total Saídas</Text>
+            <ArrowDownRight color={theme.expense} size={16} />
+            <Text style={[styles.ribbonLabel, { color: theme.textSecondary }]}>Total Saídas</Text>
           </View>
-          <Text style={[styles.ribbonValue, styles.expenseText]}>
+          <Text style={[styles.ribbonValue, { color: theme.expense }]}>
             {formatCurrency(totals?.totalExpense ?? '0.00', preferredCurrency)}
           </Text>
         </View>
 
-        <View style={styles.ribbonDivider} />
+        <View style={[styles.ribbonDivider, { backgroundColor: theme.borderElevated }]} />
 
         <View style={styles.ribbonItem}>
           <View style={styles.ribbonLabelGroup}>
-            <Scale color="#0f766e" size={16} />
-            <Text style={styles.ribbonLabel}>Saldo do Período</Text>
+            <Scale color={theme.income} size={16} />
+            <Text style={[styles.ribbonLabel, { color: theme.textSecondary }]}>Saldo do Período</Text>
           </View>
           <Text
             style={[
               styles.ribbonValue,
-              Number(totals?.netBalance ?? 0) >= 0
-                ? styles.positiveText
-                : styles.negativeText
+              { color: Number(totals?.netBalance ?? 0) >= 0 ? theme.income : theme.expense }
             ]}
           >
             {formatCurrency(totals?.netBalance ?? '0.00', preferredCurrency)}
@@ -211,33 +229,49 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
 
       {/* Active Point Detail Preview */}
       {activePoint ? (
-        <View style={styles.detailBox}>
-          <Text style={styles.detailLabel}>
+        <View
+          style={[
+            styles.detailBox,
+            {
+              backgroundColor: theme.bgElevated,
+              borderColor: theme.borderElevated
+            }
+          ]}
+        >
+          <Text style={[styles.detailLabel, { color: theme.textPrimary }]}>
             Detalhes de {activePoint.label} ({activePoint.date}):
           </Text>
           <View style={styles.detailPills}>
-            <View style={[styles.pill, styles.pillIncome]}>
-              <Text style={styles.pillText}>
+            <View style={[styles.pill, { backgroundColor: theme.incomeBadge }]}>
+              <Text style={[styles.pillText, { color: theme.income }]}>
                 Entradas: {formatCurrency(activePoint.income, preferredCurrency)}
               </Text>
             </View>
-            <View style={[styles.pill, styles.pillExpense]}>
-              <Text style={styles.pillText}>
+            <View style={[styles.pill, { backgroundColor: theme.expenseBadge }]}>
+              <Text style={[styles.pillText, { color: theme.expense }]}>
                 Saídas: {formatCurrency(activePoint.expense, preferredCurrency)}
               </Text>
             </View>
             <View
               style={[
                 styles.pill,
-                Number(activePoint.net) >= 0 ? styles.pillPositive : styles.pillNegative
+                {
+                  backgroundColor:
+                    Number(activePoint.net) >= 0 ? theme.incomeBadge : theme.expenseBadge
+                }
               ]}
             >
-              <Text style={styles.pillText}>
+              <Text
+                style={[
+                  styles.pillText,
+                  { color: Number(activePoint.net) >= 0 ? theme.income : theme.expense }
+                ]}
+              >
                 Líquido: {formatCurrency(activePoint.net, preferredCurrency)}
               </Text>
             </View>
-            <View style={[styles.pill, styles.pillAccumulated]}>
-              <Text style={styles.pillText}>
+            <View style={[styles.pill, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]}>
+              <Text style={[styles.pillText, { color: theme.textPrimary }]}>
                 Acumulado: {formatCurrency(activePoint.accumulatedBalance, preferredCurrency)}
               </Text>
             </View>
@@ -248,21 +282,29 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
       {/* Chart Canvas Area */}
       {loading && dataPoints.length === 0 ? (
         <View style={styles.centerBox}>
-          <ActivityIndicator color="#0f766e" size="large" />
-          <Text style={styles.loadingText}>Carregando fluxo de caixa...</Text>
+          <ActivityIndicator color={theme.income} size="large" />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+            Carregando fluxo de caixa...
+          </Text>
         </View>
       ) : error ? (
         <View style={styles.centerBox}>
-          <Text style={styles.errorText}>Erro ao carregar dados do gráfico.</Text>
-          <Pressable onPress={() => refetch()} style={styles.retryButton}>
+          <Text style={[styles.errorText, { color: theme.expense }]}>
+            Erro ao carregar dados do gráfico.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void refetch()}
+            style={[styles.retryButton, { backgroundColor: theme.income }]}
+          >
             <Text style={styles.retryButtonText}>Tentar novamente</Text>
           </Pressable>
         </View>
       ) : (
         <ScrollView
+          contentContainerStyle={styles.chartScrollContent}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chartScrollContent}
         >
           <View style={styles.chartTrack}>
             {dataPoints.map((point) => {
@@ -274,13 +316,16 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
 
               return (
                 <Pressable
-                  key={point.date}
                   accessibilityLabel={`Ponto ${point.label}`}
                   accessibilityRole="button"
+                  key={point.date}
                   onPress={() => setSelectedPoint(point)}
                   style={[
                     styles.barColumn,
-                    isSelected && styles.barColumnSelected
+                    isSelected && [
+                      styles.barColumnSelected,
+                      { backgroundColor: theme.bgElevated, borderColor: theme.borderElevated }
+                    ]
                   ]}
                 >
                   <View style={styles.barsContainer}>
@@ -289,9 +334,8 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
                       <View
                         style={[
                           styles.bar,
-                          styles.incomeBar,
-                          { height: incomeHeight },
-                          !hasIncome && styles.emptyBar
+                          { backgroundColor: theme.income, height: incomeHeight },
+                          !hasIncome && [styles.emptyBar, { backgroundColor: theme.borderElevated }]
                         ]}
                       />
                     </View>
@@ -301,9 +345,8 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
                       <View
                         style={[
                           styles.bar,
-                          styles.expenseBar,
-                          { height: expenseHeight },
-                          !hasExpense && styles.emptyBar
+                          { backgroundColor: theme.expense, height: expenseHeight },
+                          !hasExpense && [styles.emptyBar, { backgroundColor: theme.borderElevated }]
                         ]}
                       />
                     </View>
@@ -312,7 +355,8 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
                   <Text
                     style={[
                       styles.barLabel,
-                      isSelected && styles.barLabelSelected
+                      { color: theme.textSecondary },
+                      isSelected && [styles.barLabelSelected, { color: theme.income }]
                     ]}
                   >
                     {point.label}
@@ -327,12 +371,16 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
       {/* Legend */}
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
-          <Text style={styles.legendText}>Receitas Realizadas</Text>
+          <View style={[styles.legendDot, { backgroundColor: theme.income }]} />
+          <Text style={[styles.legendText, { color: theme.textSecondary }]}>
+            Receitas Realizadas
+          </Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
-          <Text style={styles.legendText}>Despesas Realizadas</Text>
+          <View style={[styles.legendDot, { backgroundColor: theme.expense }]} />
+          <Text style={[styles.legendText, { color: theme.textSecondary }]}>
+            Despesas Realizadas
+          </Text>
         </View>
       </View>
     </View>
@@ -340,16 +388,78 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
 }
 
 const styles = StyleSheet.create({
+  bar: {
+    borderRadius: 3,
+    width: 10
+  },
+  barColumn: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    gap: 6,
+    minWidth: 32,
+    padding: 4
+  },
+  barColumnSelected: {
+    borderWidth: 1
+  },
+  barLabel: {
+    fontSize: 10,
+    fontWeight: '500'
+  },
+  barLabelSelected: {
+    fontWeight: '700'
+  },
+  barsContainer: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    gap: 3,
+    height: 120
+  },
+  centerBox: {
+    alignItems: 'center',
+    gap: 8,
+    height: 180,
+    justifyContent: 'center'
+  },
+  chartScrollContent: {
+    paddingVertical: 10
+  },
+  chartTrack: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    gap: 8,
+    height: 160,
+    paddingHorizontal: 8
+  },
   container: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     gap: 16,
     padding: 20,
-    width: '100%',
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.04)',
-    elevation: 2
+    width: '100%'
+  },
+  detailBox: {
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 8,
+    padding: 12
+  },
+  detailLabel: {
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  detailPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  emptyBar: {
+    height: 3
+  },
+  errorText: {
+    fontSize: 13
   },
   header: {
     alignItems: 'center',
@@ -365,26 +475,95 @@ const styles = StyleSheet.create({
   },
   iconBadge: {
     alignItems: 'center',
-    backgroundColor: '#ccfbf1',
     borderRadius: 8,
     height: 38,
     justifyContent: 'center',
     width: 38
   },
-  title: {
-    color: '#0f172a',
-    fontSize: 18,
-    fontWeight: '700'
+  legend: {
+    flexDirection: 'row',
+    gap: 16,
+    justifyContent: 'center',
+    paddingTop: 4
   },
-  subtitle: {
-    color: '#64748b',
+  legendDot: {
+    borderRadius: 9999,
+    height: 8,
+    width: 8
+  },
+  legendItem: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6
+  },
+  legendText: {
+    fontSize: 12
+  },
+  loadingText: {
     fontSize: 13
   },
-  toggleGroup: {
-    backgroundColor: '#f1f5f9',
-    borderRadius: 8,
+  pill: {
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4
+  },
+  pillText: {
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  retryButton: {
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6
+  },
+  retryButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  ribbon: {
+    borderRadius: 10,
+    borderWidth: 1,
     flexDirection: 'row',
-    padding: 3
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+    paddingVertical: 12
+  },
+  ribbonDivider: {
+    height: '100%',
+    width: 1
+  },
+  ribbonItem: {
+    alignItems: 'center',
+    gap: 4,
+    minWidth: 110,
+    paddingHorizontal: 8
+  },
+  ribbonLabel: {
+    fontSize: 11,
+    fontWeight: '500'
+  },
+  ribbonLabelGroup: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4
+  },
+  ribbonValue: {
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  singleBarWrapper: {
+    alignItems: 'center',
+    height: 120,
+    justifyContent: 'flex-end',
+    width: 10
+  },
+  subtitle: {
+    fontSize: 13
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700'
   },
   toggleButton: {
     alignItems: 'center',
@@ -395,196 +574,18 @@ const styles = StyleSheet.create({
     paddingVertical: 6
   },
   toggleButtonActive: {
-    backgroundColor: '#0f766e'
+    elevation: 1
+  },
+  toggleGroup: {
+    borderRadius: 8,
+    flexDirection: 'row',
+    padding: 3
   },
   toggleText: {
-    color: '#64748b',
     fontSize: 12,
     fontWeight: '600'
   },
   toggleTextActive: {
-    color: '#ffffff'
-  },
-  ribbon: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-around',
-    paddingVertical: 12
-  },
-  ribbonItem: {
-    alignItems: 'center',
-    gap: 4,
-    minWidth: 110,
-    paddingHorizontal: 8
-  },
-  ribbonLabelGroup: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 4
-  },
-  ribbonLabel: {
-    color: '#64748b',
-    fontSize: 11,
-    fontWeight: '500'
-  },
-  ribbonValue: {
-    fontSize: 14,
     fontWeight: '700'
-  },
-  ribbonDivider: {
-    backgroundColor: '#e2e8f0',
-    height: '100%',
-    width: 1
-  },
-  incomeText: { color: '#059669' },
-  expenseText: { color: '#dc2626' },
-  positiveText: { color: '#0f766e' },
-  negativeText: { color: '#b91c1c' },
-  detailBox: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 8,
-    padding: 12
-  },
-  detailLabel: {
-    color: '#334155',
-    fontSize: 12,
-    fontWeight: '600'
-  },
-  detailPills: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8
-  },
-  pill: {
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4
-  },
-  pillIncome: {
-    backgroundColor: '#ecfdf5'
-  },
-  pillExpense: {
-    backgroundColor: '#fef2f2'
-  },
-  pillPositive: {
-    backgroundColor: '#f0fdfa'
-  },
-  pillNegative: {
-    backgroundColor: '#fff1f2'
-  },
-  pillAccumulated: {
-    backgroundColor: '#f1f5f9'
-  },
-  pillText: {
-    color: '#1e293b',
-    fontSize: 12,
-    fontWeight: '600'
-  },
-  centerBox: {
-    alignItems: 'center',
-    gap: 8,
-    height: 180,
-    justifyContent: 'center'
-  },
-  loadingText: {
-    color: '#64748b',
-    fontSize: 13
-  },
-  errorText: {
-    color: '#dc2626',
-    fontSize: 13
-  },
-  retryButton: {
-    backgroundColor: '#0f766e',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6
-  },
-  retryButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600'
-  },
-  chartScrollContent: {
-    paddingVertical: 10
-  },
-  chartTrack: {
-    alignItems: 'flex-end',
-    flexDirection: 'row',
-    gap: 8,
-    height: 160,
-    paddingHorizontal: 8
-  },
-  barColumn: {
-    alignItems: 'center',
-    borderRadius: 6,
-    gap: 6,
-    minWidth: 28,
-    padding: 4
-  },
-  barColumnSelected: {
-    backgroundColor: '#f1f5f9'
-  },
-  barsContainer: {
-    alignItems: 'flex-end',
-    flexDirection: 'row',
-    gap: 3,
-    height: 120
-  },
-  singleBarWrapper: {
-    alignItems: 'center',
-    height: 120,
-    justifyContent: 'flex-end',
-    width: 10
-  },
-  bar: {
-    borderRadius: 3,
-    width: 10
-  },
-  incomeBar: {
-    backgroundColor: '#10b981'
-  },
-  expenseBar: {
-    backgroundColor: '#ef4444'
-  },
-  emptyBar: {
-    backgroundColor: '#e2e8f0',
-    height: 3
-  },
-  barLabel: {
-    color: '#64748b',
-    fontSize: 10,
-    fontWeight: '500'
-  },
-  barLabelSelected: {
-    color: '#0f766e',
-    fontWeight: '700'
-  },
-  legend: {
-    flexDirection: 'row',
-    gap: 16,
-    justifyContent: 'center',
-    paddingTop: 4
-  },
-  legendItem: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 6
-  },
-  legendDot: {
-    borderRadius: 9999,
-    height: 8,
-    width: 8
-  },
-  legendText: {
-    color: '#64748b',
-    fontSize: 12
   }
 });
