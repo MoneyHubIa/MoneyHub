@@ -9,6 +9,14 @@ npm-debug.log*
 firebase-debug.log*
 .vite/
 .expo/
+*.apk
+*.aab
+*.so
+*.a
+*.o
+.gradle/
+.cxx/
+/apps/frontend/android/**/build/
 cypress/videos/
 cypress/screenshots/
 .worktrees/

@@ -21,8 +21,14 @@ const mockService: AuthService = {
   }
 };
 
+import { ThemeProvider } from '../src/theme/ThemeContext';
+
 function Wrapper({ children }: PropsWithChildren) {
-  return <AuthProvider service={mockService}>{children}</AuthProvider>;
+  return (
+    <ThemeProvider>
+      <AuthProvider service={mockService}>{children}</AuthProvider>
+    </ThemeProvider>
+  );
 }
 
 const mockCreatePayable = jest.fn();
@@ -116,6 +122,7 @@ describe('AccountsPayable component', () => {
   test('shows validation error when submitting empty form', async () => {
     await render(<AccountsPayable />, { wrapper: Wrapper });
 
+    await fireEvent.press(screen.getByRole('button', { name: 'Nova Conta a Pagar' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Agendar Conta a Pagar' }));
 
     expect(screen.getByText('Informe uma descrição.')).toBeOnTheScreen();
@@ -124,6 +131,7 @@ describe('AccountsPayable component', () => {
   test.each(reminderOptions)('sends $value as selected reminder offset when creating an account payable', async ({ label, value }) => {
     await render(<AccountsPayable />, { wrapper: Wrapper });
 
+    await fireEvent.press(screen.getByRole('button', { name: 'Nova Conta a Pagar' }));
     await fireEvent.changeText(
       screen.getByLabelText('Descrição da conta a pagar'),
       'Conta de Energia'

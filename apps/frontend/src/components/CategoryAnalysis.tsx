@@ -1,6 +1,12 @@
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
-import { useState } from 'react';
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  PieChart,
+  Wallet
+} from 'lucide-react-native';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -8,12 +14,7 @@ import {
   Text,
   View
 } from 'react-native';
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  PieChart,
-  Wallet
-} from 'lucide-react-native';
+import { useTheme } from '../theme/ThemeContext';
 import { formatCurrency } from '../utils/formatters';
 
 export const CATEGORY_ANALYSIS_QUERY = gql`
@@ -66,7 +67,8 @@ export function CategoryAnalysis({
   preferredCurrency = 'BRL',
   month,
   year
-}: CategoryAnalysisProps) {
+}: CategoryAnalysisProps): React.JSX.Element {
+  const { theme } = useTheme();
   const [analysisType, setAnalysisType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
 
   const { data, loading, error, refetch } = useQuery<CategoryAnalysisData>(
@@ -89,39 +91,51 @@ export function CategoryAnalysis({
   const hasItems = items.length > 0;
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.bgSurface,
+          borderColor: theme.border
+        }
+      ]}
+    >
       <View style={styles.header}>
         <View style={styles.titleGroup}>
-          <View style={styles.iconBadge}>
-            <PieChart color="#0f766e" size={20} />
+          <View style={[styles.iconBadge, { backgroundColor: theme.incomeBadge }]}>
+            <PieChart color={theme.income} size={20} />
           </View>
           <View>
-            <Text accessibilityRole="header" style={styles.title}>
+            <Text accessibilityRole="header" style={[styles.title, { color: theme.textPrimary }]}>
               Análise por Categoria
             </Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
               Distribuição e ranking de {analysisType === 'EXPENSE' ? 'despesas' : 'receitas'} no mês
             </Text>
           </View>
         </View>
 
-        <View style={styles.toggleGroup}>
+        <View style={[styles.toggleGroup, { backgroundColor: theme.bgElevated }]}>
           <Pressable
             accessibilityLabel="Analisar Despesas"
             accessibilityRole="button"
             onPress={() => setAnalysisType('EXPENSE')}
             style={[
               styles.toggleButton,
-              analysisType === 'EXPENSE' && styles.toggleButtonActiveExpense
+              analysisType === 'EXPENSE' && [
+                styles.toggleButtonActiveExpense,
+                { backgroundColor: theme.expense }
+              ]
             ]}
           >
             <ArrowDownLeft
-              color={analysisType === 'EXPENSE' ? '#ffffff' : '#64748b'}
+              color={analysisType === 'EXPENSE' ? '#ffffff' : theme.textSecondary}
               size={14}
             />
             <Text
               style={[
                 styles.toggleText,
+                { color: analysisType === 'EXPENSE' ? '#ffffff' : theme.textSecondary },
                 analysisType === 'EXPENSE' && styles.toggleTextActive
               ]}
             >
@@ -135,16 +149,20 @@ export function CategoryAnalysis({
             onPress={() => setAnalysisType('INCOME')}
             style={[
               styles.toggleButton,
-              analysisType === 'INCOME' && styles.toggleButtonActiveIncome
+              analysisType === 'INCOME' && [
+                styles.toggleButtonActiveIncome,
+                { backgroundColor: theme.income }
+              ]
             ]}
           >
             <ArrowUpRight
-              color={analysisType === 'INCOME' ? '#ffffff' : '#64748b'}
+              color={analysisType === 'INCOME' ? '#ffffff' : theme.textSecondary}
               size={14}
             />
             <Text
               style={[
                 styles.toggleText,
+                { color: analysisType === 'INCOME' ? '#ffffff' : theme.textSecondary },
                 analysisType === 'INCOME' && styles.toggleTextActive
               ]}
             >
@@ -155,14 +173,22 @@ export function CategoryAnalysis({
       </View>
 
       {/* Summary Total */}
-      <View style={styles.summaryBar}>
-        <Text style={styles.summaryLabel}>
+      <View
+        style={[
+          styles.summaryBar,
+          {
+            backgroundColor: theme.bgElevated,
+            borderColor: theme.borderElevated
+          }
+        ]}
+      >
+        <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>
           Total de {analysisType === 'EXPENSE' ? 'Despesas' : 'Receitas'}:
         </Text>
         <Text
           style={[
             styles.summaryValue,
-            analysisType === 'EXPENSE' ? styles.expenseValue : styles.incomeValue
+            { color: analysisType === 'EXPENSE' ? theme.expense : theme.income }
           ]}
         >
           {formatCurrency(totalAmount, preferredCurrency)}
@@ -172,14 +198,14 @@ export function CategoryAnalysis({
       {/* Proportional Stacked Distribution Bar */}
       {hasItems ? (
         <View style={styles.distributionContainer}>
-          <View style={styles.stackedBar}>
+          <View style={[styles.stackedBar, { backgroundColor: theme.bgElevated }]}>
             {items.map((item) => (
               <View
                 key={item.categoryId}
                 style={[
                   styles.stackedSegment,
                   {
-                    backgroundColor: item.categoryColor || '#0f766e',
+                    backgroundColor: item.categoryColor || theme.income,
                     width: `${Math.max(item.percentage, 2)}%`
                   }
                 ]}
@@ -192,39 +218,60 @@ export function CategoryAnalysis({
       {/* Content State */}
       {loading && items.length === 0 ? (
         <View style={styles.centerBox}>
-          <ActivityIndicator color="#0f766e" size="large" />
-          <Text style={styles.loadingText}>Carregando categorias...</Text>
+          <ActivityIndicator color={theme.income} size="large" />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+            Carregando categorias...
+          </Text>
         </View>
       ) : error ? (
         <View style={styles.centerBox}>
-          <Text style={styles.errorText}>Erro ao carregar análise por categoria.</Text>
-          <Pressable onPress={() => refetch()} style={styles.retryButton}>
+          <Text style={[styles.errorText, { color: theme.expense }]}>
+            Erro ao carregar análise por categoria.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void refetch()}
+            style={[styles.retryButton, { backgroundColor: theme.income }]}
+          >
             <Text style={styles.retryButtonText}>Tentar novamente</Text>
           </Pressable>
         </View>
       ) : !hasItems ? (
         <View style={styles.emptyBox}>
-          <Wallet color="#94a3b8" size={36} />
-          <Text style={styles.emptyTitle}>Nenhum lançamento no período</Text>
-          <Text style={styles.emptySubtitle}>
+          <Wallet color={theme.textMuted} size={36} />
+          <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
+            Nenhum lançamento no período
+          </Text>
+          <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
             Cadastre transações com categorias para visualizar a distribuição dos seus recursos.
           </Text>
         </View>
       ) : (
         <View style={styles.rankingList}>
           {items.map((item, index) => (
-            <View key={item.categoryId} style={styles.card}>
+            <View
+              key={item.categoryId}
+              style={[
+                styles.card,
+                {
+                  backgroundColor: theme.bgElevated,
+                  borderColor: theme.borderElevated
+                }
+              ]}
+            >
               <View style={styles.cardLeft}>
-                <Text style={styles.rankIndex}>#{index + 1}</Text>
+                <Text style={[styles.rankIndex, { color: theme.textMuted }]}>#{index + 1}</Text>
                 <View
                   style={[
                     styles.colorBadge,
-                    { backgroundColor: item.categoryColor || '#0f766e' }
+                    { backgroundColor: item.categoryColor || theme.income }
                   ]}
                 />
                 <View style={styles.cardInfo}>
-                  <Text style={styles.categoryName}>{item.categoryName}</Text>
-                  <Text style={styles.transactionCount}>
+                  <Text style={[styles.categoryName, { color: theme.textPrimary }]}>
+                    {item.categoryName}
+                  </Text>
+                  <Text style={[styles.transactionCount, { color: theme.textSecondary }]}>
                     {item.transactionCount}{' '}
                     {item.transactionCount === 1 ? 'lançamento' : 'lançamentos'}
                   </Text>
@@ -232,23 +279,22 @@ export function CategoryAnalysis({
               </View>
 
               <View style={styles.cardRight}>
-                <Text style={styles.categoryAmount}>
+                <Text style={[styles.categoryAmount, { color: theme.textPrimary }]}>
                   {formatCurrency(item.totalAmount, preferredCurrency)}
                 </Text>
                 <View
                   style={[
                     styles.percentageBadge,
-                    analysisType === 'EXPENSE'
-                      ? styles.percentageBadgeExpense
-                      : styles.percentageBadgeIncome
+                    {
+                      backgroundColor:
+                        analysisType === 'EXPENSE' ? theme.expenseBadge : theme.incomeBadge
+                    }
                   ]}
                 >
                   <Text
                     style={[
                       styles.percentageText,
-                      analysisType === 'EXPENSE'
-                        ? styles.percentageTextExpense
-                        : styles.percentageTextIncome
+                      { color: analysisType === 'EXPENSE' ? theme.expense : theme.income }
                     ]}
                   >
                     {item.percentage.toFixed(1)}%
@@ -264,16 +310,73 @@ export function CategoryAnalysis({
 }
 
 const styles = StyleSheet.create({
+  card: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12
+  },
+  cardInfo: {
+    flex: 1,
+    gap: 2
+  },
+  cardLeft: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: 10
+  },
+  cardRight: {
+    alignItems: 'flex-end',
+    gap: 4
+  },
+  categoryAmount: {
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  categoryName: {
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  centerBox: {
+    alignItems: 'center',
+    gap: 8,
+    height: 140,
+    justifyContent: 'center'
+  },
+  colorBadge: {
+    borderRadius: 4,
+    height: 14,
+    width: 14
+  },
   container: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     gap: 16,
     padding: 20,
-    width: '100%',
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.04)',
-    elevation: 2
+    width: '100%'
+  },
+  distributionContainer: {
+    gap: 6
+  },
+  emptyBox: {
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 24
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    textAlign: 'center'
+  },
+  emptyTitle: {
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  errorText: {
+    fontSize: 13
   },
   header: {
     alignItems: 'center',
@@ -282,33 +385,81 @@ const styles = StyleSheet.create({
     gap: 12,
     justifyContent: 'space-between'
   },
-  titleGroup: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 12
-  },
   iconBadge: {
     alignItems: 'center',
-    backgroundColor: '#ccfbf1',
     borderRadius: 8,
     height: 38,
     justifyContent: 'center',
     width: 38
   },
+  loadingText: {
+    fontSize: 13
+  },
+  percentageBadge: {
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2
+  },
+  percentageText: {
+    fontSize: 11,
+    fontWeight: '700'
+  },
+  rankIndex: {
+    fontSize: 13,
+    fontWeight: '700',
+    width: 24
+  },
+  rankingList: {
+    gap: 10
+  },
+  retryButton: {
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6
+  },
+  retryButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  stackedBar: {
+    borderRadius: 6,
+    flexDirection: 'row',
+    height: 12,
+    overflow: 'hidden',
+    width: '100%'
+  },
+  stackedSegment: {
+    height: '100%'
+  },
+  subtitle: {
+    fontSize: 13
+  },
+  summaryBar: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10
+  },
+  summaryLabel: {
+    fontSize: 13,
+    fontWeight: '500'
+  },
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: '700'
+  },
   title: {
-    color: '#0f172a',
     fontSize: 18,
     fontWeight: '700'
   },
-  subtitle: {
-    color: '#64748b',
-    fontSize: 13
-  },
-  toggleGroup: {
-    backgroundColor: '#f1f5f9',
-    borderRadius: 8,
+  titleGroup: {
+    alignItems: 'center',
     flexDirection: 'row',
-    padding: 3
+    gap: 12
   },
   toggleButton: {
     alignItems: 'center',
@@ -319,167 +470,24 @@ const styles = StyleSheet.create({
     paddingVertical: 6
   },
   toggleButtonActiveExpense: {
-    backgroundColor: '#dc2626'
+    elevation: 1
   },
   toggleButtonActiveIncome: {
-    backgroundColor: '#059669'
+    elevation: 1
+  },
+  toggleGroup: {
+    borderRadius: 8,
+    flexDirection: 'row',
+    padding: 3
   },
   toggleText: {
-    color: '#64748b',
     fontSize: 12,
     fontWeight: '600'
   },
   toggleTextActive: {
-    color: '#ffffff'
-  },
-  summaryBar: {
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10
-  },
-  summaryLabel: {
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: '500'
-  },
-  summaryValue: {
-    fontSize: 16,
     fontWeight: '700'
-  },
-  expenseValue: { color: '#dc2626' },
-  incomeValue: { color: '#059669' },
-  distributionContainer: {
-    gap: 6
-  },
-  stackedBar: {
-    backgroundColor: '#e2e8f0',
-    borderRadius: 6,
-    flexDirection: 'row',
-    height: 12,
-    overflow: 'hidden',
-    width: '100%'
-  },
-  stackedSegment: {
-    height: '100%'
-  },
-  rankingList: {
-    gap: 10
-  },
-  card: {
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderColor: '#f1f5f9',
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 12
-  },
-  cardLeft: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    flex: 1,
-    gap: 10
-  },
-  rankIndex: {
-    color: '#94a3b8',
-    fontSize: 13,
-    fontWeight: '700',
-    width: 24
-  },
-  colorBadge: {
-    borderRadius: 4,
-    height: 14,
-    width: 14
-  },
-  cardInfo: {
-    flex: 1,
-    gap: 2
-  },
-  categoryName: {
-    color: '#0f172a',
-    fontSize: 14,
-    fontWeight: '600'
   },
   transactionCount: {
-    color: '#64748b',
     fontSize: 11
-  },
-  cardRight: {
-    alignItems: 'flex-end',
-    gap: 4
-  },
-  categoryAmount: {
-    color: '#0f172a',
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  percentageBadge: {
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2
-  },
-  percentageBadgeExpense: {
-    backgroundColor: '#fef2f2'
-  },
-  percentageBadgeIncome: {
-    backgroundColor: '#ecfdf5'
-  },
-  percentageText: {
-    fontSize: 11,
-    fontWeight: '700'
-  },
-  percentageTextExpense: {
-    color: '#dc2626'
-  },
-  percentageTextIncome: {
-    color: '#059669'
-  },
-  centerBox: {
-    alignItems: 'center',
-    gap: 8,
-    height: 140,
-    justifyContent: 'center'
-  },
-  loadingText: {
-    color: '#64748b',
-    fontSize: 13
-  },
-  errorText: {
-    color: '#dc2626',
-    fontSize: 13
-  },
-  retryButton: {
-    backgroundColor: '#0f766e',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6
-  },
-  retryButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600'
-  },
-  emptyBox: {
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 24
-  },
-  emptyTitle: {
-    color: '#334155',
-    fontSize: 14,
-    fontWeight: '600'
-  },
-  emptySubtitle: {
-    color: '#64748b',
-    fontSize: 12,
-    textAlign: 'center'
   }
 });

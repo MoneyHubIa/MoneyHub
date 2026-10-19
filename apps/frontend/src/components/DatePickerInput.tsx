@@ -8,6 +8,7 @@ import {
   TextInput,
   View
 } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
 import {
   formatISOToRegionalDate,
   getDatePlaceholder,
@@ -31,6 +32,7 @@ export function DatePickerInput({
   currency = 'BRL',
   accessibilityLabel
 }: DatePickerInputProps) {
+  const { tokens } = useTheme();
   const [calendarOpen, setCalendarOpen] = useState(false);
   const placeholder = getDatePlaceholder(currency);
   const locale = getLocaleForCurrency(currency);
@@ -145,17 +147,25 @@ export function DatePickerInput({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>
+      <Text style={[styles.label, { color: tokens.textSecondary }]}>
         {label} ({placeholder})
       </Text>
 
-      <View style={styles.inputWrapper}>
+      <View
+        style={[
+          styles.inputWrapper,
+          {
+            backgroundColor: tokens.bgElevated,
+            borderColor: tokens.border
+          }
+        ]}
+      >
         <TextInput
           accessibilityLabel={accessibilityLabel || label}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor="#94a3b8"
-          style={styles.input}
+          placeholderTextColor={tokens.textMuted}
+          style={[styles.input, { color: tokens.textPrimary }]}
           value={value}
         />
         <Pressable
@@ -171,7 +181,7 @@ export function DatePickerInput({
           }}
           style={styles.calendarButton}
         >
-          <CalendarIcon color="#0f766e" size={18} />
+          <CalendarIcon color={tokens.income} size={18} />
         </Pressable>
       </View>
 
@@ -182,9 +192,20 @@ export function DatePickerInput({
         visible={calendarOpen}
       >
         <Pressable onPress={() => setCalendarOpen(false)} style={styles.modalOverlay}>
-          <Pressable onPress={(e) => e.stopPropagation()} style={styles.modalContent}>
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor: tokens.bgSurface,
+                borderColor: tokens.borderElevated
+              }
+            ]}
+          >
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{monthYearTitle}</Text>
+              <Text style={[styles.modalTitle, { color: tokens.textPrimary }]}>
+                {monthYearTitle}
+              </Text>
               <View style={styles.navButtons}>
                 <Pressable
                   accessibilityLabel="Mês anterior"
@@ -192,7 +213,7 @@ export function DatePickerInput({
                   onPress={handlePrevMonth}
                   style={styles.iconButton}
                 >
-                  <ChevronLeft color="#334155" size={18} />
+                  <ChevronLeft color={tokens.textPrimary} size={18} />
                 </Pressable>
                 <Pressable
                   accessibilityLabel="Próximo mês"
@@ -200,7 +221,7 @@ export function DatePickerInput({
                   onPress={handleNextMonth}
                   style={styles.iconButton}
                 >
-                  <ChevronRight color="#334155" size={18} />
+                  <ChevronRight color={tokens.textPrimary} size={18} />
                 </Pressable>
                 <Pressable
                   accessibilityLabel="Fechar calendário"
@@ -208,14 +229,17 @@ export function DatePickerInput({
                   onPress={() => setCalendarOpen(false)}
                   style={styles.iconButton}
                 >
-                  <X color="#64748b" size={18} />
+                  <X color={tokens.textMuted} size={18} />
                 </Pressable>
               </View>
             </View>
 
             <View style={styles.weekRow}>
               {weekDayNames.map((d, index) => (
-                <Text key={index} style={styles.weekDayText}>
+                <Text
+                  key={index}
+                  style={[styles.weekDayText, { color: tokens.textMuted }]}
+                >
                   {d}
                 </Text>
               ))}
@@ -233,14 +257,15 @@ export function DatePickerInput({
                     onPress={() => handleSelectDate(item.iso)}
                     style={[
                       styles.dayCell,
-                      isSelected && styles.dayCellSelected,
+                      isSelected && { backgroundColor: tokens.income },
                       !isCurrentMonth && styles.dayCellInactive
                     ]}
                   >
                     <Text
                       style={[
                         styles.dayText,
-                        !isCurrentMonth && styles.dayTextInactive,
+                        { color: tokens.textPrimary },
+                        !isCurrentMonth && { color: tokens.textMuted },
                         isSelected && styles.dayTextSelected
                       ]}
                     >
@@ -251,18 +276,33 @@ export function DatePickerInput({
               })}
             </View>
 
-            <View style={styles.modalFooter}>
+            <View
+              style={[
+                styles.modalFooter,
+                { borderTopColor: tokens.border }
+              ]}
+            >
               <Pressable
                 accessibilityRole="button"
                 onPress={handleSelectToday}
                 style={styles.todayButton}
               >
-                <Text style={styles.todayButtonText}>Hoje</Text>
+                <Text
+                  style={[
+                    styles.todayButtonText,
+                    { color: tokens.income }
+                  ]}
+                >
+                  Hoje
+                </Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
                 onPress={() => setCalendarOpen(false)}
-                style={styles.closeButton}
+                style={[
+                  styles.closeButton,
+                  { backgroundColor: tokens.income }
+                ]}
               >
                 <Text style={styles.closeButtonText}>Concluir</Text>
               </Pressable>

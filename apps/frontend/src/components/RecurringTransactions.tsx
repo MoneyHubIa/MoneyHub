@@ -9,7 +9,7 @@ import {
   TrendingDown,
   TrendingUp
 } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -19,6 +19,8 @@ import {
   TextInput,
   View
 } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
+import type { ColorTokens } from '../theme/tokens';
 import { formatCurrency, formatDate, parseRegionalDateToISO } from '../utils/formatters';
 import { DatePickerInput } from './DatePickerInput';
 
@@ -122,6 +124,8 @@ type ProcessRecurringTransactionsData = {
 };
 
 export function RecurringTransactions() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getThemedStyles(theme), [theme]);
   const [type, setType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -285,10 +289,10 @@ export function RecurringTransactions() {
           style={styles.syncButton}
         >
           {processing ? (
-            <ActivityIndicator color="#0f766e" size="small" />
+            <ActivityIndicator color={theme.income} size="small" />
           ) : (
             <>
-              <RefreshCw color="#0f766e" size={16} />
+              <RefreshCw color={theme.income} size={16} />
               <Text style={styles.syncButtonText}>Processar Ciclos</Text>
             </>
           )}
@@ -298,28 +302,28 @@ export function RecurringTransactions() {
       {/* KPI Cards */}
       <View style={styles.kpiRow}>
         <View style={styles.kpiCard}>
-          <View style={[styles.kpiIconWrapper, { backgroundColor: '#fef2f2' }]}>
-            <TrendingDown color="#dc2626" size={20} />
+          <View style={[styles.kpiIconWrapper, { backgroundColor: theme.expenseBadge }]}>
+            <TrendingDown color={theme.expense} size={20} />
           </View>
           <Text style={styles.kpiLabel}>Despesas Fixas / Mês</Text>
-          <Text style={[styles.kpiValue, { color: '#dc2626' }]}>
+          <Text style={[styles.kpiValue, { color: theme.expense }]}>
             {formatCurrency(totalExpenseMonthly, currency)}
           </Text>
         </View>
 
         <View style={styles.kpiCard}>
-          <View style={[styles.kpiIconWrapper, { backgroundColor: '#f0fdf4' }]}>
-            <TrendingUp color="#16a34a" size={20} />
+          <View style={[styles.kpiIconWrapper, { backgroundColor: theme.incomeBadge }]}>
+            <TrendingUp color={theme.income} size={20} />
           </View>
           <Text style={styles.kpiLabel}>Receitas Fixas / Mês</Text>
-          <Text style={[styles.kpiValue, { color: '#16a34a' }]}>
+          <Text style={[styles.kpiValue, { color: theme.income }]}>
             {formatCurrency(totalIncomeMonthly, currency)}
           </Text>
         </View>
 
         <View style={styles.kpiCard}>
-          <View style={[styles.kpiIconWrapper, { backgroundColor: '#f8fafc' }]}>
-            <Repeat color="#0f766e" size={20} />
+          <View style={[styles.kpiIconWrapper, { backgroundColor: theme.bgElevated }]}>
+            <Repeat color={theme.income} size={20} />
           </View>
           <Text style={styles.kpiLabel}>Regras Ativas</Text>
           <Text style={styles.kpiValue}>{items.length}</Text>
@@ -328,7 +332,7 @@ export function RecurringTransactions() {
 
       {errorMessage && (
         <View style={styles.errorBox}>
-          <AlertCircle color="#dc2626" size={18} />
+          <AlertCircle color={theme.expense} size={18} />
           <Text style={styles.errorText}>{errorMessage}</Text>
         </View>
       )}
@@ -353,7 +357,7 @@ export function RecurringTransactions() {
             }}
             style={[styles.typeOption, type === 'EXPENSE' && styles.typeOptionActiveExpense]}
           >
-            <TrendingDown color={type === 'EXPENSE' ? '#ffffff' : '#64748b'} size={16} />
+            <TrendingDown color={type === 'EXPENSE' ? '#ffffff' : theme.textSecondary} size={16} />
             <Text style={[styles.typeOptionText, type === 'EXPENSE' && styles.typeOptionTextActive]}>
               Despesa (Gera Conta a Pagar)
             </Text>
@@ -368,7 +372,7 @@ export function RecurringTransactions() {
             }}
             style={[styles.typeOption, type === 'INCOME' && styles.typeOptionActiveIncome]}
           >
-            <TrendingUp color={type === 'INCOME' ? '#ffffff' : '#64748b'} size={16} />
+            <TrendingUp color={type === 'INCOME' ? '#ffffff' : theme.textSecondary} size={16} />
             <Text style={[styles.typeOptionText, type === 'INCOME' && styles.typeOptionTextActive]}>
               Receita (Gera Conta a Receber)
             </Text>
@@ -382,7 +386,7 @@ export function RecurringTransactions() {
               accessibilityLabel="Descrição da recorrência"
               onChangeText={setDescription}
               placeholder={type === 'EXPENSE' ? 'Ex: Assinatura de Software' : 'Ex: Contrato de Prestação'}
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={theme.textMuted}
               style={styles.input}
               value={description}
             />
@@ -395,7 +399,7 @@ export function RecurringTransactions() {
               keyboardType="decimal-pad"
               onChangeText={setAmount}
               placeholder="0,00"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={theme.textMuted}
               style={styles.input}
               value={amount}
             />
@@ -522,7 +526,7 @@ export function RecurringTransactions() {
         <Text style={styles.listTitle}>Regras de Recorrência Ativas</Text>
 
         {loading ? (
-          <ActivityIndicator color="#0f766e" style={{ padding: 24 }} />
+          <ActivityIndicator color={theme.income} style={{ padding: 24 }} />
         ) : items.length === 0 ? (
           <Text style={styles.emptyListText}>
             Nenhuma transação recorrente configurada. Cadastre sua primeira regra acima!
@@ -545,13 +549,15 @@ export function RecurringTransactions() {
                     <View
                       style={[
                         styles.itemTypeBadge,
-                        { backgroundColor: isExpense ? '#fef2f2' : '#f0fdf4' }
+                        {
+                          backgroundColor: isExpense ? theme.expenseBadge : theme.incomeBadge
+                        }
                       ]}
                     >
                       {isExpense ? (
-                        <TrendingDown color="#dc2626" size={16} />
+                        <TrendingDown color={theme.expense} size={16} />
                       ) : (
-                        <TrendingUp color="#16a34a" size={16} />
+                        <TrendingUp color={theme.income} size={16} />
                       )}
                     </View>
                     <View>
@@ -560,7 +566,7 @@ export function RecurringTransactions() {
                         <View
                           style={[
                             styles.categoryDot,
-                            { backgroundColor: category?.color ?? '#94a3b8' }
+                            { backgroundColor: category?.color ?? theme.textMuted }
                           ]}
                         />
                         <Text style={styles.itemCategory}>{category?.name ?? 'Sem categoria'}</Text>
@@ -576,7 +582,7 @@ export function RecurringTransactions() {
                     <Text
                       style={[
                         styles.itemAmount,
-                        { color: isExpense ? '#dc2626' : '#16a34a' }
+                        { color: isExpense ? theme.expense : theme.income }
                       ]}
                     >
                       {isExpense ? '- ' : '+ '}
@@ -589,7 +595,7 @@ export function RecurringTransactions() {
                       onPress={() => deleteRecurring({ variables: { id: item.id } })}
                       style={styles.deleteButton}
                     >
-                      <Trash2 color="#ef4444" size={16} />
+                      <Trash2 color={theme.expense} size={16} />
                     </Pressable>
                   </View>
                 </View>
@@ -602,329 +608,330 @@ export function RecurringTransactions() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    gap: 20,
-    padding: 24
-  },
-  header: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between'
-  },
-  preTitle: {
-    color: '#0f766e',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase'
-  },
-  title: {
-    color: '#0f172a',
-    fontSize: 24,
-    fontWeight: '800'
-  },
-  subtitle: {
-    color: '#64748b',
-    fontSize: 14,
-    marginTop: 2
-  },
-  syncButton: {
-    alignItems: 'center',
-    backgroundColor: '#f0fdfa',
-    borderColor: '#ccfbf1',
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10
-  },
-  syncButtonText: {
-    color: '#0f766e',
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  kpiRow: {
-    flexDirection: 'row',
-    gap: 16
-  },
-  kpiCard: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    borderWidth: 1,
-    flex: 1,
-    gap: 6,
-    padding: 16
-  },
-  kpiIconWrapper: {
-    alignItems: 'center',
-    borderRadius: 8,
-    height: 36,
-    justifyContent: 'center',
-    width: 36
-  },
-  kpiLabel: {
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  kpiValue: {
-    color: '#0f172a',
-    fontSize: 20,
-    fontWeight: '800'
-  },
-  errorBox: {
-    alignItems: 'center',
-    backgroundColor: '#fef2f2',
-    borderColor: '#fecaca',
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
-    padding: 12
-  },
-  errorText: {
-    color: '#dc2626',
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '500'
-  },
-  successBox: {
-    backgroundColor: '#f0fdf4',
-    borderColor: '#bbf7d0',
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 12
-  },
-  successText: {
-    color: '#16a34a',
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  formCard: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 16,
-    padding: 20
-  },
-  formTitle: {
-    color: '#0f172a',
-    fontSize: 16,
-    fontWeight: '700'
-  },
-  typeSelector: {
-    flexDirection: 'row',
-    gap: 12
-  },
-  typeOption: {
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    borderWidth: 1,
-    flex: 1,
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    paddingVertical: 10
-  },
-  typeOptionActiveExpense: {
-    backgroundColor: '#dc2626',
-    borderColor: '#dc2626'
-  },
-  typeOptionActiveIncome: {
-    backgroundColor: '#16a34a',
-    borderColor: '#16a34a'
-  },
-  typeOptionText: {
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  typeOptionTextActive: {
-    color: '#ffffff'
-  },
-  inputRow: {
-    flexDirection: 'row',
-    gap: 16
-  },
-  inputGroup: {
-    gap: 6
-  },
-  label: {
-    color: '#334155',
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  input: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#cbd5e1',
-    borderRadius: 6,
-    borderWidth: 1,
-    color: '#0f172a',
-    fontSize: 14,
-    minHeight: 42,
-    paddingHorizontal: 12
-  },
-  frequencyRow: {
-    flexDirection: 'row',
-    gap: 6
-  },
-  frequencyButton: {
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderColor: '#cbd5e1',
-    borderRadius: 6,
-    borderWidth: 1,
-    flex: 1,
-    justifyContent: 'center',
-    paddingVertical: 10
-  },
-  frequencyButtonActive: {
-    backgroundColor: '#0f766e',
-    borderColor: '#0f766e'
-  },
-  frequencyButtonText: {
-    color: '#475569',
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  frequencyButtonTextActive: {
-    color: '#ffffff'
-  },
-  tagSelector: {
-    flexDirection: 'row',
-    paddingVertical: 2
-  },
-  tagOption: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#e2e8f0',
-    borderRadius: 20,
-    borderWidth: 1,
-    marginRight: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6
-  },
-  tagOptionSelectedGeneric: {
-    backgroundColor: '#0f766e',
-    borderColor: '#0f766e'
-  },
-  tagOptionText: {
-    color: '#475569',
-    fontSize: 12,
-    fontWeight: '500'
-  },
-  emptyCategoriesText: {
-    color: '#94a3b8',
-    fontSize: 13
-  },
-  submitButton: {
-    alignItems: 'center',
-    backgroundColor: '#0f766e',
-    borderRadius: 8,
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    marginTop: 4,
-    paddingVertical: 12
-  },
-  submitButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  listCard: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 16,
-    padding: 20
-  },
-  listTitle: {
-    color: '#0f172a',
-    fontSize: 16,
-    fontWeight: '700'
-  },
-  emptyListText: {
-    color: '#94a3b8',
-    fontSize: 14,
-    paddingVertical: 12,
-    textAlign: 'center'
-  },
-  itemList: {
-    gap: 10
-  },
-  itemRow: {
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderColor: '#f1f5f9',
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 12
-  },
-  itemLeft: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 12
-  },
-  itemTypeBadge: {
-    alignItems: 'center',
-    borderRadius: 8,
-    height: 32,
-    justifyContent: 'center',
-    width: 32
-  },
-  itemDescription: {
-    color: '#0f172a',
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  itemMetaRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 6,
-    marginTop: 2
-  },
-  categoryDot: {
-    borderRadius: 4,
-    height: 8,
-    width: 8
-  },
-  itemCategory: {
-    color: '#475569',
-    fontSize: 12,
-    fontWeight: '500'
-  },
-  itemMetaDot: {
-    color: '#cbd5e1',
-    fontSize: 12
-  },
-  itemFrequency: {
-    color: '#0f766e',
-    fontSize: 12,
-    fontWeight: '600'
-  },
-  itemDate: {
-    color: '#64748b',
-    fontSize: 12
-  },
-  itemRight: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 12
-  },
-  itemAmount: {
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  deleteButton: {
-    padding: 6
-  }
-});
+const getThemedStyles = (theme: ColorTokens) =>
+  StyleSheet.create({
+    container: {
+      gap: 20,
+      padding: 24
+    },
+    header: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between'
+    },
+    preTitle: {
+      color: theme.income,
+      fontSize: 13,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+      textTransform: 'uppercase'
+    },
+    title: {
+      color: theme.textPrimary,
+      fontSize: 24,
+      fontWeight: '800'
+    },
+    subtitle: {
+      color: theme.textSecondary,
+      fontSize: 14,
+      marginTop: 2
+    },
+    syncButton: {
+      alignItems: 'center',
+      backgroundColor: theme.incomeBadge,
+      borderColor: theme.borderElevated,
+      borderRadius: 8,
+      borderWidth: 1,
+      flexDirection: 'row',
+      gap: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 10
+    },
+    syncButtonText: {
+      color: theme.income,
+      fontSize: 13,
+      fontWeight: '600'
+    },
+    kpiRow: {
+      flexDirection: 'row',
+      gap: 16
+    },
+    kpiCard: {
+      backgroundColor: theme.bgSurface,
+      borderColor: theme.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      flex: 1,
+      gap: 6,
+      padding: 16
+    },
+    kpiIconWrapper: {
+      alignItems: 'center',
+      borderRadius: 8,
+      height: 36,
+      justifyContent: 'center',
+      width: 36
+    },
+    kpiLabel: {
+      color: theme.textSecondary,
+      fontSize: 13,
+      fontWeight: '600'
+    },
+    kpiValue: {
+      color: theme.textPrimary,
+      fontSize: 20,
+      fontWeight: '800'
+    },
+    errorBox: {
+      alignItems: 'center',
+      backgroundColor: theme.expenseBadge,
+      borderColor: theme.expense,
+      borderRadius: 8,
+      borderWidth: 1,
+      flexDirection: 'row',
+      gap: 8,
+      padding: 12
+    },
+    errorText: {
+      color: theme.expense,
+      flex: 1,
+      fontSize: 13,
+      fontWeight: '500'
+    },
+    successBox: {
+      backgroundColor: theme.incomeBadge,
+      borderColor: theme.income,
+      borderRadius: 8,
+      borderWidth: 1,
+      padding: 12
+    },
+    successText: {
+      color: theme.income,
+      fontSize: 13,
+      fontWeight: '600'
+    },
+    formCard: {
+      backgroundColor: theme.bgSurface,
+      borderColor: theme.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      gap: 16,
+      padding: 20
+    },
+    formTitle: {
+      color: theme.textPrimary,
+      fontSize: 16,
+      fontWeight: '700'
+    },
+    typeSelector: {
+      flexDirection: 'row',
+      gap: 12
+    },
+    typeOption: {
+      alignItems: 'center',
+      backgroundColor: theme.bgElevated,
+      borderColor: theme.borderElevated,
+      borderRadius: 8,
+      borderWidth: 1,
+      flex: 1,
+      flexDirection: 'row',
+      gap: 8,
+      justifyContent: 'center',
+      paddingVertical: 10
+    },
+    typeOptionActiveExpense: {
+      backgroundColor: theme.expense,
+      borderColor: theme.expense
+    },
+    typeOptionActiveIncome: {
+      backgroundColor: theme.income,
+      borderColor: theme.income
+    },
+    typeOptionText: {
+      color: theme.textSecondary,
+      fontSize: 13,
+      fontWeight: '600'
+    },
+    typeOptionTextActive: {
+      color: '#ffffff'
+    },
+    inputRow: {
+      flexDirection: 'row',
+      gap: 16
+    },
+    inputGroup: {
+      gap: 6
+    },
+    label: {
+      color: theme.textSecondary,
+      fontSize: 13,
+      fontWeight: '600'
+    },
+    input: {
+      backgroundColor: theme.bgElevated,
+      borderColor: theme.borderElevated,
+      borderRadius: 6,
+      borderWidth: 1,
+      color: theme.textPrimary,
+      fontSize: 14,
+      minHeight: 42,
+      paddingHorizontal: 12
+    },
+    frequencyRow: {
+      flexDirection: 'row',
+      gap: 6
+    },
+    frequencyButton: {
+      alignItems: 'center',
+      backgroundColor: theme.bgElevated,
+      borderColor: theme.borderElevated,
+      borderRadius: 6,
+      borderWidth: 1,
+      flex: 1,
+      justifyContent: 'center',
+      paddingVertical: 10
+    },
+    frequencyButtonActive: {
+      backgroundColor: theme.income,
+      borderColor: theme.income
+    },
+    frequencyButtonText: {
+      color: theme.textSecondary,
+      fontSize: 13,
+      fontWeight: '600'
+    },
+    frequencyButtonTextActive: {
+      color: '#ffffff'
+    },
+    tagSelector: {
+      flexDirection: 'row',
+      paddingVertical: 2
+    },
+    tagOption: {
+      backgroundColor: theme.bgElevated,
+      borderColor: theme.borderElevated,
+      borderRadius: 20,
+      borderWidth: 1,
+      marginRight: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 6
+    },
+    tagOptionSelectedGeneric: {
+      backgroundColor: theme.income,
+      borderColor: theme.income
+    },
+    tagOptionText: {
+      color: theme.textSecondary,
+      fontSize: 12,
+      fontWeight: '500'
+    },
+    emptyCategoriesText: {
+      color: theme.textMuted,
+      fontSize: 13
+    },
+    submitButton: {
+      alignItems: 'center',
+      backgroundColor: theme.income,
+      borderRadius: 8,
+      flexDirection: 'row',
+      gap: 8,
+      justifyContent: 'center',
+      marginTop: 4,
+      paddingVertical: 12
+    },
+    submitButtonText: {
+      color: '#ffffff',
+      fontSize: 14,
+      fontWeight: '700'
+    },
+    listCard: {
+      backgroundColor: theme.bgSurface,
+      borderColor: theme.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      gap: 16,
+      padding: 20
+    },
+    listTitle: {
+      color: theme.textPrimary,
+      fontSize: 16,
+      fontWeight: '700'
+    },
+    emptyListText: {
+      color: theme.textMuted,
+      fontSize: 14,
+      paddingVertical: 12,
+      textAlign: 'center'
+    },
+    itemList: {
+      gap: 10
+    },
+    itemRow: {
+      alignItems: 'center',
+      backgroundColor: theme.bgElevated,
+      borderColor: theme.borderElevated,
+      borderRadius: 8,
+      borderWidth: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      padding: 12
+    },
+    itemLeft: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 12
+    },
+    itemTypeBadge: {
+      alignItems: 'center',
+      borderRadius: 8,
+      height: 32,
+      justifyContent: 'center',
+      width: 32
+    },
+    itemDescription: {
+      color: theme.textPrimary,
+      fontSize: 14,
+      fontWeight: '700'
+    },
+    itemMetaRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 6,
+      marginTop: 2
+    },
+    categoryDot: {
+      borderRadius: 4,
+      height: 8,
+      width: 8
+    },
+    itemCategory: {
+      color: theme.textSecondary,
+      fontSize: 12,
+      fontWeight: '500'
+    },
+    itemMetaDot: {
+      color: theme.textMuted,
+      fontSize: 12
+    },
+    itemFrequency: {
+      color: theme.income,
+      fontSize: 12,
+      fontWeight: '600'
+    },
+    itemDate: {
+      color: theme.textSecondary,
+      fontSize: 12
+    },
+    itemRight: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 12
+    },
+    itemAmount: {
+      fontSize: 14,
+      fontWeight: '700'
+    },
+    deleteButton: {
+      padding: 6
+    }
+  });

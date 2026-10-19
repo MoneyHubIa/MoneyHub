@@ -1,5 +1,11 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import React, { PropsWithChildren } from 'react';
 import { AiAssistant } from '../src/components/AiAssistant';
+import { ThemeProvider } from '../src/theme/ThemeContext';
+
+function Wrapper({ children }: PropsWithChildren) {
+  return <ThemeProvider>{children}</ThemeProvider>;
+}
 
 const mockAiResponse = {
   data: {
@@ -43,7 +49,9 @@ describe('AiAssistant component', () => {
 
   test('renders floating trigger button (FAB) when closed', async () => {
     const handleToggle = jest.fn();
-    await render(<AiAssistant isOpen={false} onToggle={handleToggle} />);
+    await render(<AiAssistant isOpen={false} onToggle={handleToggle} />, {
+      wrapper: Wrapper
+    });
 
     expect(screen.getByText('IA Financeira')).toBeOnTheScreen();
     const fab = screen.getByRole('button', { name: 'Abrir Assistente Financeiro IA' });
@@ -55,7 +63,9 @@ describe('AiAssistant component', () => {
   });
 
   test('renders header, initial welcome message and quick action suggestions when open', async () => {
-    await render(<AiAssistant initialMonth={9} initialYear={2026} isOpen={true} />);
+    await render(<AiAssistant initialMonth={9} initialYear={2026} isOpen={true} />, {
+      wrapper: Wrapper
+    });
 
     expect(
       screen.getByRole('header', { name: 'Assistente Financeiro IA' })
@@ -69,7 +79,9 @@ describe('AiAssistant component', () => {
   });
 
   test('changes period with previous and next buttons', async () => {
-    await render(<AiAssistant initialMonth={9} initialYear={2026} isOpen={true} />);
+    await render(<AiAssistant initialMonth={9} initialYear={2026} isOpen={true} />, {
+      wrapper: Wrapper
+    });
 
     expect(screen.getByText('Setembro de 2026')).toBeOnTheScreen();
 
@@ -85,7 +97,9 @@ describe('AiAssistant component', () => {
   });
 
   test('sends a user message and renders AI response', async () => {
-    await render(<AiAssistant initialMonth={9} initialYear={2026} isOpen={true} />);
+    await render(<AiAssistant initialMonth={9} initialYear={2026} isOpen={true} />, {
+      wrapper: Wrapper
+    });
 
     const input = screen.getByLabelText('Mensagem para a IA');
     await act(async () => {
@@ -121,7 +135,9 @@ describe('AiAssistant component', () => {
   });
 
   test('triggers quick prompt when clicked', async () => {
-    await render(<AiAssistant initialMonth={9} initialYear={2026} isOpen={true} />);
+    await render(<AiAssistant initialMonth={9} initialYear={2026} isOpen={true} />, {
+      wrapper: Wrapper
+    });
 
     const quickBtn = screen.getByRole('button', { name: 'Resumo do Mês' });
     await act(async () => {
@@ -147,7 +163,9 @@ describe('AiAssistant component', () => {
   });
 
   test('clears conversation when clicking Limpar conversa', async () => {
-    await render(<AiAssistant initialMonth={9} initialYear={2026} isOpen={true} />);
+    await render(<AiAssistant initialMonth={9} initialYear={2026} isOpen={true} />, {
+      wrapper: Wrapper
+    });
 
     const clearButton = screen.getByRole('button', { name: 'Limpar conversa' });
     await act(async () => {
@@ -159,7 +177,9 @@ describe('AiAssistant component', () => {
 
   test('closes or minimizes when clicking close button', async () => {
     const handleClose = jest.fn();
-    await render(<AiAssistant isOpen={true} onClose={handleClose} />);
+    await render(<AiAssistant isOpen={true} onClose={handleClose} />, {
+      wrapper: Wrapper
+    });
 
     const closeBtn = screen.getByRole('button', { name: 'Fechar assistente' });
     await act(async () => {
@@ -171,7 +191,9 @@ describe('AiAssistant component', () => {
 
   test('renders loading state when mutation is executing', async () => {
     mockLoading = true;
-    await render(<AiAssistant initialMonth={9} initialYear={2026} isOpen={true} />);
+    await render(<AiAssistant initialMonth={9} initialYear={2026} isOpen={true} />, {
+      wrapper: Wrapper
+    });
 
     expect(
       screen.getByText('Consultando IA e analisando suas finanças...')
@@ -180,12 +202,25 @@ describe('AiAssistant component', () => {
 
   test('renders error message when mutation fails', async () => {
     mockError = new Error('Falha na conexão com Ollama');
-    await render(<AiAssistant initialMonth={9} initialYear={2026} isOpen={true} />);
+    await render(<AiAssistant initialMonth={9} initialYear={2026} isOpen={true} />, {
+      wrapper: Wrapper
+    });
 
     expect(
       screen.getByText(
         'Não foi possível obter resposta da IA: Falha na conexão com Ollama'
       )
     ).toBeOnTheScreen();
+  });
+
+  test('renders fullscreen mode correctly', async () => {
+    await render(<AiAssistant viewMode="fullscreen" />, {
+      wrapper: Wrapper
+    });
+
+    expect(
+      screen.getByRole('header', { name: 'Assistente Financeiro IA' })
+    ).toBeOnTheScreen();
+    expect(screen.getByText('Resumo do Mês')).toBeOnTheScreen();
   });
 });

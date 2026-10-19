@@ -27,8 +27,14 @@ const mockService: AuthService = {
   }
 };
 
+import { ThemeProvider } from '../src/theme/ThemeContext';
+
 function Wrapper({ children }: PropsWithChildren) {
-  return <AuthProvider service={mockService}>{children}</AuthProvider>;
+  return (
+    <ThemeProvider>
+      <AuthProvider service={mockService}>{children}</AuthProvider>
+    </ThemeProvider>
+  );
 }
 
 jest.mock('@apollo/client/react', () => ({

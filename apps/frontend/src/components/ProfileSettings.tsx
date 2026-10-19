@@ -1,6 +1,6 @@
 import { gql } from '@apollo/client';
 import { useMutation, useQuery } from '@apollo/client/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { useAuth } from '../providers/AuthProvider';
 import { hasGraphQLErrorCode } from '../services/graphqlErrors';
+import { useTheme } from '../theme/ThemeContext';
+import type { ColorTokens } from '../theme/tokens';
 
 const MY_PROFILE_QUERY = gql`
   query MyProfile {
@@ -59,6 +61,8 @@ const themes: Array<{ value: ProfileTheme; label: string }> = [
 ];
 
 export function ProfileSettings() {
+  const { theme: appTheme, setThemeMode } = useTheme();
+  const styles = useMemo(() => getThemedStyles(appTheme), [appTheme]);
   const { resendEmailVerification, refreshEmailVerification } = useAuth();
   const { data, error, loading } = useQuery<MyProfileData>(MY_PROFILE_QUERY);
   const [saveProfile, { loading: saving }] = useMutation<UpdateProfileData>(
@@ -85,11 +89,25 @@ export function ProfileSettings() {
     setTheme(data.myProfile.theme);
   }, [data]);
 
+  const handleThemeChange = (newTheme: ProfileTheme) => {
+    setTheme(newTheme);
+    if (newTheme === 'LIGHT') {
+      setThemeMode('light');
+    } else if (newTheme === 'DARK') {
+      setThemeMode('dark');
+    }
+  };
+
   const persistProfile = async (input: UpdateProfileInput) => {
     setVerificationMessage(null);
     await saveProfile({
       variables: { input }
     });
+    if (input.theme === 'LIGHT') {
+      setThemeMode('light');
+    } else if (input.theme === 'DARK') {
+      setThemeMode('dark');
+    }
     rejectedProfileInput.current = null;
     setFullName(input.fullName);
     setVerificationRequired(false);
@@ -178,7 +196,7 @@ export function ProfileSettings() {
   const actionsDisabled = saving || resendingVerification || refreshingVerification;
 
   if (loading) {
-    return <ActivityIndicator accessibilityLabel="Carregando perfil" color="#0f766e" />;
+    return <ActivityIndicator accessibilityLabel="Carregando perfil" color={appTheme.income} />;
   }
 
   if (error || !data) {
@@ -206,6 +224,7 @@ export function ProfileSettings() {
           autoCapitalize="words"
           onChangeText={setFullName}
           placeholder="Seu nome"
+          placeholderTextColor={appTheme.textMuted}
           style={styles.input}
           value={fullName}
         />
@@ -239,8 +258,11 @@ export function ProfileSettings() {
               accessibilityRole="button"
               accessibilityState={{ selected: theme === option.value }}
               key={option.value}
-              onPress={() => setTheme(option.value)}
-              style={[styles.choice, theme === option.value && styles.choiceSelected]}
+              onPress={() => handleThemeChange(option.value)}
+              style={[
+                styles.choice,
+                theme === option.value && styles.choiceSelected
+              ]}
             >
               <Text style={theme === option.value ? styles.choiceTextSelected : styles.choiceText}>
                 {option.label}
@@ -310,33 +332,92 @@ export function ProfileSettings() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { gap: 20 },
-  header: { gap: 8 },
-  eyebrow: { color: '#0f766e', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
-  title: { color: '#0f172a', fontSize: 30, fontWeight: '700' },
-  subtitle: { color: '#64748b', fontSize: 16, lineHeight: 24, maxWidth: 620 },
-  card: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: 8, borderWidth: 1, gap: 10, maxWidth: 640, padding: 20 },
-  label: { color: '#334155', fontSize: 14, fontWeight: '700', marginTop: 8 },
-  input: { borderColor: '#94a3b8', borderRadius: 6, borderWidth: 1, color: '#0f172a', fontSize: 16, minHeight: 44, paddingHorizontal: 12 },
-  choiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  choice: { borderColor: '#cbd5e1', borderRadius: 6, borderWidth: 1, minHeight: 40, paddingHorizontal: 14, paddingVertical: 10 },
-  choiceSelected: { backgroundColor: '#0f766e', borderColor: '#0f766e' },
-  choiceText: { color: '#334155', fontSize: 14, fontWeight: '600' },
-  choiceTextSelected: { color: '#ffffff', fontSize: 14, fontWeight: '700' },
-  saveButton: { alignItems: 'center', backgroundColor: '#0f766e', borderRadius: 6, justifyContent: 'center', marginTop: 12, minHeight: 44, paddingHorizontal: 16 },
-  saveButtonDisabled: { opacity: 0.6 },
-  saveText: { color: '#ffffff', fontSize: 14, fontWeight: '700' },
-  errorText: { color: '#b91c1c', fontSize: 14, marginTop: 6 },
-  successText: { color: '#047857', fontSize: 14, marginTop: 6 },
-  messagePanel: { backgroundColor: '#fef2f2', borderColor: '#fecaca', borderRadius: 8, borderWidth: 1, padding: 16 },
-  verificationPanel: { backgroundColor: '#f0fdfa', borderColor: '#99f6e4', borderRadius: 8, borderWidth: 1, gap: 8, marginTop: 6, padding: 16 },
-  verificationTitle: { color: '#115e59', fontSize: 16, fontWeight: '700' },
-  verificationDescription: { color: '#475569', fontSize: 14, lineHeight: 20 },
-  verificationMessage: { color: '#334155', fontSize: 14, lineHeight: 20 },
-  verificationActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-  verificationButton: { alignItems: 'center', borderColor: '#0f766e', borderRadius: 6, borderWidth: 1, justifyContent: 'center', minHeight: 40, paddingHorizontal: 14 },
-  verificationButtonPrimary: { backgroundColor: '#0f766e' },
-  verificationButtonText: { color: '#0f766e', fontSize: 14, fontWeight: '700' },
-  verificationButtonPrimaryText: { color: '#ffffff', fontSize: 14, fontWeight: '700' }
-});
+const getThemedStyles = (theme: ColorTokens) =>
+  StyleSheet.create({
+    container: { gap: 20 },
+    header: { gap: 8 },
+    eyebrow: { color: theme.income, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
+    title: { color: theme.textPrimary, fontSize: 30, fontWeight: '700' },
+    subtitle: { color: theme.textSecondary, fontSize: 16, lineHeight: 24, maxWidth: 620 },
+    card: {
+      backgroundColor: theme.bgSurface,
+      borderColor: theme.border,
+      borderRadius: 8,
+      borderWidth: 1,
+      gap: 10,
+      maxWidth: 640,
+      padding: 20
+    },
+    label: { color: theme.textSecondary, fontSize: 14, fontWeight: '700', marginTop: 8 },
+    input: {
+      backgroundColor: theme.bgElevated,
+      borderColor: theme.borderElevated,
+      borderRadius: 6,
+      borderWidth: 1,
+      color: theme.textPrimary,
+      fontSize: 16,
+      minHeight: 44,
+      paddingHorizontal: 12
+    },
+    choiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    choice: {
+      backgroundColor: theme.bgElevated,
+      borderColor: theme.borderElevated,
+      borderRadius: 6,
+      borderWidth: 1,
+      minHeight: 40,
+      paddingHorizontal: 14,
+      paddingVertical: 10
+    },
+    choiceSelected: {
+      backgroundColor: theme.income,
+      borderColor: theme.income
+    },
+    choiceText: { color: theme.textSecondary, fontSize: 14, fontWeight: '600' },
+    choiceTextSelected: { color: '#ffffff', fontSize: 14, fontWeight: '700' },
+    saveButton: {
+      alignItems: 'center',
+      backgroundColor: theme.income,
+      borderRadius: 6,
+      justifyContent: 'center',
+      marginTop: 12,
+      minHeight: 44,
+      paddingHorizontal: 16
+    },
+    saveButtonDisabled: { opacity: 0.6 },
+    saveText: { color: '#ffffff', fontSize: 14, fontWeight: '700' },
+    errorText: { color: theme.expense, fontSize: 14, marginTop: 6 },
+    successText: { color: theme.income, fontSize: 14, marginTop: 6 },
+    messagePanel: {
+      backgroundColor: theme.expenseBadge,
+      borderColor: theme.expense,
+      borderRadius: 8,
+      borderWidth: 1,
+      padding: 16
+    },
+    verificationPanel: {
+      backgroundColor: theme.incomeBadge,
+      borderColor: theme.income,
+      borderRadius: 8,
+      borderWidth: 1,
+      gap: 8,
+      marginTop: 6,
+      padding: 16
+    },
+    verificationTitle: { color: theme.income, fontSize: 16, fontWeight: '700' },
+    verificationDescription: { color: theme.textSecondary, fontSize: 14, lineHeight: 20 },
+    verificationMessage: { color: theme.textPrimary, fontSize: 14, lineHeight: 20 },
+    verificationActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+    verificationButton: {
+      alignItems: 'center',
+      borderColor: theme.income,
+      borderRadius: 6,
+      borderWidth: 1,
+      justifyContent: 'center',
+      minHeight: 40,
+      paddingHorizontal: 14
+    },
+    verificationButtonPrimary: { backgroundColor: theme.income },
+    verificationButtonText: { color: theme.income, fontSize: 14, fontWeight: '700' },
+    verificationButtonPrimaryText: { color: '#ffffff', fontSize: 14, fontWeight: '700' }
+  });
