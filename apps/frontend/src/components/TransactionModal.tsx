@@ -90,10 +90,11 @@ export function TransactionModal({
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { data: contextData } = useQuery<TransactionModalContextData>(
+  const { data: contextData, loading: loadingContext, error: contextError, refetch: refetchContext } = useQuery<TransactionModalContextData>(
     TRANSACTION_MODAL_CONTEXT_QUERY,
     {
-      skip: !visible && Boolean(propCategories && propCurrency)
+      skip: !visible || Boolean(propCategories && propCurrency),
+      fetchPolicy: 'network-only'
     }
   );
 
@@ -151,9 +152,12 @@ export function TransactionModal({
     }
 
     const isoDate = parseRegionalDateToISO(occurredAtDate, currency);
-    const finalIso = isoDate
-      ? new Date(`${isoDate}T12:00:00Z`).toISOString()
-      : new Date().toISOString();
+    const parsedDate = isoDate ? new Date(`${isoDate}T12:00:00Z`) : null;
+    if (!parsedDate || !Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== isoDate) {
+      setErrorMessage('Informe uma data válida.');
+      return;
+    }
+    const finalIso = parsedDate.toISOString();
 
     const variables = {
       input: {
@@ -184,9 +188,25 @@ export function TransactionModal({
       visible={visible}
     >
       <View style={styles.form}>
+        {loadingContext && <ActivityIndicator accessibilityLabel="Atualizando categorias" color={theme.textSecondary} />}
+        {contextError && (
+          <View style={[styles.errorBox, { backgroundColor: theme.expenseBadge }]}>
+            <Text accessibilityRole="alert" accessibilityLiveRegion="assertive" style={[styles.errorText, { color: theme.expense }]}>
+              Não foi possível atualizar as categorias. Tente novamente.
+            </Text>
+            <Pressable
+              accessibilityLabel="Tentar atualizar categorias novamente"
+              accessibilityRole="button"
+              onPress={() => { void refetchContext().catch(() => undefined); }}
+              style={styles.cancelButton}
+            >
+              <Text style={[styles.cancelButtonText, { color: theme.textPrimary }]}>Tentar novamente</Text>
+            </Pressable>
+          </View>
+        )}
         {errorMessage && (
           <View style={[styles.errorBox, { backgroundColor: theme.expenseBadge }]}>
-            <Text style={[styles.errorText, { color: theme.expense }]}>
+            <Text accessibilityRole="alert" accessibilityLiveRegion="assertive" style={[styles.errorText, { color: theme.expense }]}>
               {errorMessage}
             </Text>
           </View>
@@ -306,7 +326,10 @@ export function TransactionModal({
         <DatePickerInput
           currency={currency}
           label="Data da Ocorrência"
-          onChangeText={setOccurredAtDate}
+          onChangeText={(value) => {
+            setOccurredAtDate(value);
+            setErrorMessage(null);
+          }}
           value={occurredAtDate}
         />
 

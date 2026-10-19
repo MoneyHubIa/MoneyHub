@@ -245,4 +245,30 @@ describe('Transactions Component', () => {
     expect(screen.getByText('Freela')).toBeOnTheScreen();
     expect(screen.getByText('Venda Item')).toBeOnTheScreen();
   });
+
+  test.each(['delete', 'resize'])('normalizes pagination after %s reduces page count', async (change) => {
+    const incomes = Array.from({ length: 9 }, (_, i) => ({
+      id: `inc-${i}`, categoryId: 'cat-1', description: `Venda ${i}`, amount: '100',
+      occurredAt: `2026-01-${String(i + 1).padStart(2, '0')}`, __typename: 'Income'
+    }));
+    mockTransactionsQueryOverride = {
+      data: { myIncomes: incomes, myExpenses: [], myCategories: [] },
+      loading: false, refetch: mockRefetch
+    };
+    const view = await render(<Transactions pageSize={4} />, { wrapper: Wrapper });
+    await fireEvent.press(screen.getByRole('button', { name: 'Próxima página' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Próxima página' }));
+    expect(screen.getByText('Página 3 de 3')).toBeOnTheScreen();
+
+    if (change === 'delete') {
+      await fireEvent.press(screen.getByRole('button', { name: 'Excluir transação Venda 0' }));
+      expect(mockDeleteIncome).toHaveBeenCalledWith({ variables: { id: 'inc-0' } });
+      mockTransactionsQueryOverride.data = { myIncomes: incomes.slice(1), myExpenses: [], myCategories: [] };
+    }
+    await view.rerender(<Transactions pageSize={change === 'resize' ? 6 : 4} />);
+    expect(screen.getByText('Página 2 de 2')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Página anterior' }));
+    expect(screen.getByText('Página 1 de 2')).toBeOnTheScreen();
+    expect(screen.getByText('Venda 8')).toBeOnTheScreen();
+  });
 });

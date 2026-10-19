@@ -4,7 +4,6 @@ import {
   AlertCircle,
   ArrowDownRight,
   ArrowUpRight,
-  Calendar,
   Check,
   CheckCircle2,
   Clock,
@@ -15,11 +14,10 @@ import {
   Trash2,
   WalletCards
 } from 'lucide-react-native';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -265,6 +263,9 @@ export function AccountsManager({
   const [costCenterId, setCostCenterId] = useState('');
   const [reminderOffsetDays, setReminderOffsetDays] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [settling, setSettling] = useState(false);
+  const settlingRef = useRef(false);
 
   // Queries
   const { data: payablesData, loading: loadingPayables, refetch: refetchPayables } = useQuery<{
@@ -304,16 +305,16 @@ export function AccountsManager({
     onError: (err) => setErrorMessage(err.message)
   });
 
-  const [markPayablePaid] = useMutation(MARK_ACCOUNT_PAYABLE_PAID, {
+  const [markPayablePaid, { loading: markingPayablePaid }] = useMutation(MARK_ACCOUNT_PAYABLE_PAID, {
     refetchQueries: ['MyAccountsPayable', 'DashboardSummary'],
     onCompleted: () => void refetchPayables(),
-    onError: (err) => setErrorMessage(err.message)
+    onError: (err) => setActionError(err.message)
   });
 
   const [deletePayable] = useMutation(DELETE_ACCOUNT_PAYABLE, {
     refetchQueries: ['MyAccountsPayable', 'DashboardSummary'],
     onCompleted: () => void refetchPayables(),
-    onError: (err) => setErrorMessage(err.message)
+    onError: (err) => setActionError(err.message)
   });
 
   // Mutations - Receivables
@@ -335,16 +336,16 @@ export function AccountsManager({
     onError: (err) => setErrorMessage(err.message)
   });
 
-  const [markReceivableReceived] = useMutation(MARK_ACCOUNT_RECEIVABLE_RECEIVED, {
+  const [markReceivableReceived, { loading: markingReceivableReceived }] = useMutation(MARK_ACCOUNT_RECEIVABLE_RECEIVED, {
     refetchQueries: ['MyAccountsReceivable', 'DashboardSummary'],
     onCompleted: () => void refetchReceivables(),
-    onError: (err) => setErrorMessage(err.message)
+    onError: (err) => setActionError(err.message)
   });
 
   const [deleteReceivable] = useMutation(DELETE_ACCOUNT_RECEIVABLE, {
     refetchQueries: ['MyAccountsReceivable', 'DashboardSummary'],
     onCompleted: () => void refetchReceivables(),
-    onError: (err) => setErrorMessage(err.message)
+    onError: (err) => setActionError(err.message)
   });
 
   const isPayable = activeTab === 'PAYABLE';
@@ -539,26 +540,48 @@ export function AccountsManager({
   };
 
   const handleMarkSettled = async (id: string) => {
+    if (settlingRef.current || markingPayablePaid || markingReceivableReceived) return;
+    settlingRef.current = true;
+    setSettling(true);
+    setActionError(null);
     const nowISO = new Date().toISOString();
-    if (isPayable) {
-      await markPayablePaid({ variables: { id, paidAt: nowISO } });
-    } else {
-      await markReceivableReceived({ variables: { id, receivedAt: nowISO } });
+    try {
+      if (isPayable) {
+        await markPayablePaid({ variables: { id, paidAt: nowISO } });
+      } else {
+        await markReceivableReceived({ variables: { id, receivedAt: nowISO } });
+      }
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Não foi possível dar baixa na conta. Tente novamente.');
+    } finally {
+      settlingRef.current = false;
+      setSettling(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (isPayable) {
-      await deletePayable({ variables: { id } });
-    } else {
-      await deleteReceivable({ variables: { id } });
+    setActionError(null);
+    try {
+      if (isPayable) {
+        await deletePayable({ variables: { id } });
+      } else {
+        await deleteReceivable({ variables: { id } });
+      }
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Não foi possível excluir a conta. Tente novamente.');
     }
   };
 
+  const markingSettled = settling || markingPayablePaid || markingReceivableReceived;
   const isSubmitting = isPayable ? creatingPayable || updatingPayable : creatingReceivable || updatingReceivable;
 
   return (
     <View style={styles.container}>
+      {actionError && (
+        <View style={[styles.errorBox, { backgroundColor: theme.expenseBadge }]}>
+          <Text accessibilityRole="alert" accessibilityLiveRegion="assertive" style={[styles.errorText, { color: theme.expense }]}>{actionError}</Text>
+        </View>
+      )}
       {/* Top Header */}
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
@@ -867,13 +890,15 @@ export function AccountsManager({
                                 : `Marcar ${item.description} como recebida`
                             }
                             accessibilityRole="button"
+                            accessibilityState={{ busy: markingSettled, disabled: markingSettled }}
+                            disabled={markingSettled}
                             onPress={() => void handleMarkSettled(item.id)}
                             style={({ pressed }) => [
                               styles.settleButton,
                               {
                                 backgroundColor: theme.incomeBadge,
                                 borderColor: theme.income,
-                                opacity: pressed ? 0.7 : 1
+                                opacity: markingSettled ? 0.5 : pressed ? 0.7 : 1
                               }
                             ]}
                           >
@@ -1002,6 +1027,8 @@ export function AccountsManager({
                               : `Marcar ${item.description} como recebida`
                           }
                           accessibilityRole="button"
+                          accessibilityState={{ busy: markingSettled, disabled: markingSettled }}
+                          disabled={markingSettled}
                           onPress={() => void handleMarkSettled(item.id)}
                           style={({ pressed }) => [
                             styles.settleButton,
@@ -1009,7 +1036,7 @@ export function AccountsManager({
                             {
                               backgroundColor: theme.incomeBadge,
                               borderColor: theme.income,
-                              opacity: pressed ? 0.7 : 1
+                              opacity: markingSettled ? 0.5 : pressed ? 0.7 : 1
                             }
                           ]}
                         >

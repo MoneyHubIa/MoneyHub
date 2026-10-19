@@ -163,4 +163,29 @@ describe('TransactionModal Component', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Cancelar' }));
     expect(onCloseMock).toHaveBeenCalledTimes(1);
   });
+
+  it.each(['EXPENSE', 'INCOME'] as const)('rejects invalid dates and preserves valid date for %s', async (initialType) => {
+    await render(
+      <TransactionModal categories={mockCategories} preferredCurrency="BRL" initialType={initialType} onClose={jest.fn()} visible />,
+      { wrapper }
+    );
+    await fireEvent.changeText(screen.getByLabelText('Descrição da transação'), 'Teste de data');
+    await fireEvent.changeText(screen.getByLabelText('Valor da transação'), '100');
+    await fireEvent.press(screen.getByRole('button', { name: initialType === 'INCOME' ? 'Salário' : 'Supermercado' }));
+
+    for (const invalidDate of ['', 'abc', '31/02/2026', '2026-02-30']) {
+      await fireEvent.changeText(screen.getByLabelText('Data da Ocorrência'), invalidDate);
+      await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
+      expect(screen.getByText('Informe uma data válida.')).toBeOnTheScreen();
+      expect(mockCreateExpense).not.toHaveBeenCalled();
+      expect(mockCreateIncome).not.toHaveBeenCalled();
+    }
+
+    await fireEvent.changeText(screen.getByLabelText('Data da Ocorrência'), '28/02/2026');
+    expect(screen.queryByText('Informe uma data válida.')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
+    expect(initialType === 'INCOME' ? mockCreateIncome : mockCreateExpense).toHaveBeenCalledWith({
+      variables: { input: expect.objectContaining({ occurredAt: '2026-02-28T12:00:00.000Z' }) }
+    });
+  });
 });

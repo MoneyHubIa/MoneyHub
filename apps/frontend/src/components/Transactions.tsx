@@ -10,7 +10,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Filter,
   Plus,
   Search,
   Tag,
@@ -18,7 +17,7 @@ import {
   WalletCards,
   X
 } from 'lucide-react-native';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -214,6 +213,9 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
   // Pagination calculation
   const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
+  useEffect(() => {
+    setPage((previousPage) => Math.min(previousPage, totalPages));
+  }, [totalPages]);
   const startIndex = (currentPage - 1) * PAGE_SIZE;
   const endIndex = Math.min(startIndex + PAGE_SIZE, filteredTransactions.length);
 
@@ -759,7 +761,7 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
                       accessibilityLabel="Página anterior"
                       accessibilityRole="button"
                       disabled={currentPage <= 1}
-                      onPress={() => setPage((p) => Math.max(1, p - 1))}
+                      onPress={() => setPage(Math.max(1, currentPage - 1))}
                       style={({ pressed }) => [
                         styles.pageButton,
                         !isDesktop && styles.pageButtonMobile,
@@ -793,7 +795,7 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
                       accessibilityLabel="Próxima página"
                       accessibilityRole="button"
                       disabled={currentPage >= totalPages}
-                      onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      onPress={() => setPage(Math.min(totalPages, currentPage + 1))}
                       style={({ pressed }) => [
                         styles.pageButton,
                         !isDesktop && styles.pageButtonMobile,

@@ -79,6 +79,20 @@ const DASHBOARD_SUMMARY_QUERY = gql`
       dueDate
       status
     }
+    overdueAccountsPayable: myAccountsPayable(status: OVERDUE) {
+      id
+      description
+      amount
+      dueDate
+      status
+    }
+    overdueAccountsReceivable: myAccountsReceivable(status: OVERDUE) {
+      id
+      description
+      amount
+      dueDate
+      status
+    }
     myProfile {
       id
       preferredCurrency
@@ -141,6 +155,8 @@ type DashboardSummaryData = {
   };
   myAccountsPayable?: AccountItem[];
   myAccountsReceivable?: AccountItem[];
+  overdueAccountsPayable?: AccountItem[];
+  overdueAccountsReceivable?: AccountItem[];
   myProfile?: {
     id: string;
     preferredCurrency: string;
@@ -250,8 +266,14 @@ export function DashboardShell(): React.JSX.Element {
 
   const currency = toSupportedCurrency(summaryData?.myProfile?.preferredCurrency);
   const preferredCurrency = summaryData?.myProfile?.preferredCurrency ?? 'BRL';
-  const payables = useMemo(() => summaryData?.myAccountsPayable ?? [], [summaryData]);
-  const receivables = useMemo(() => summaryData?.myAccountsReceivable ?? [], [summaryData]);
+  const payables = useMemo(() => [
+    ...(summaryData?.myAccountsPayable ?? []),
+    ...(summaryData?.overdueAccountsPayable ?? [])
+  ], [summaryData]);
+  const receivables = useMemo(() => [
+    ...(summaryData?.myAccountsReceivable ?? []),
+    ...(summaryData?.overdueAccountsReceivable ?? [])
+  ], [summaryData]);
   const todayIso = localIsoDate(new Date());
 
   const totalPayablePending = payables.reduce((acc, curr) => acc + Number(curr.amount), 0);
