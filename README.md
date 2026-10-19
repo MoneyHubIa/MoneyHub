@@ -7,6 +7,9 @@ MoneyHub is a universal financial management SaaS for personal and business user
 The foundation migration is complete. Firebase registration, login, session
 handling, profile bootstrap, logout, profile management, email verification,
 and password recovery are implemented. `TASK-019` and `EPIC-02` are complete.
+The frontend and backend are deployed on Vercel; production migrations,
+`/health`, authenticated GraphQL, password recovery, logs, and alerts have
+been verified.
 
 ## Monorepo
 
@@ -74,7 +77,8 @@ npm run start -w apps/backend
 - API: Node.js + Express + Apollo Server GraphQL.
 - Identity: Firebase Auth, verified in the backend with Firebase Admin.
 - Analytics: Firebase Analytics.
-- Infrastructure: Google Cloud Platform with Cloud Run, Supabase PostgreSQL, Secret Manager, and Cloud Logging.
+- Infrastructure: Vercel for the frontend and backend, Supabase PostgreSQL,
+  Firebase Authentication, and Vercel logs and alerts.
 - Identity email: Firebase Authentication templates for verification and password recovery.
 
 ## Development Rule

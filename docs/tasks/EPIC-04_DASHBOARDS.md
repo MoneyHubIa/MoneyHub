@@ -49,3 +49,7 @@ Done
 
 ## Completion Review
 The backend provides GraphQL query `dashboardSummary(month, year)` aggregating user incomes, expenses, and net balance. The frontend `DashboardShell` connects dynamic KPI cards formatted with user preferred currency and color-coded status.
+
+### TASK-052 — Metas financeiras
+
+Implementação local: [TASK-052](TASK-052_FINANCIAL_GOALS.md). Metas com cadastro, edição, aportes, retiradas, histórico imutável e exclusão lógica; saldo exato e operação idempotente em transação com bloqueio. Dashboard exibe resumo de metas de todos os períodos; contexto IA inclui até 10 metas reais priorizadas por atraso e prazo. Movimentos não alteram fluxo de caixa. Produção e redeploy são etapas separadas.

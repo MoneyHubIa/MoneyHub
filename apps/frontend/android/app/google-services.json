@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1024863399451",
+    "project_id": "moneyhub-338bc",
+    "storage_bucket": "moneyhub-338bc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1024863399451:android:b2cde9a53bfa4ea46092be",
+        "android_client_info": {
+          "package_name": "com.moneyhub.e2e"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1024863399451-r39t0nvua1kb9bme6vnpe0251h08duf1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCyoXnlNnnoy0CPyryNcN8j4LbZ0k1t0Lw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1024863399451-r39t0nvua1kb9bme6vnpe0251h08duf1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

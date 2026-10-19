@@ -2,15 +2,19 @@
 
 ## Status
 
-The file lists the active application configuration and the remaining target
-infrastructure keys. GraphQL, PostgreSQL, Firebase client, Firebase Admin, the
-Auth Emulator, and the Firebase REST password-recovery flow are implemented.
-Broad GCP and production provisioning remain pending in `EPIC-08`.
+The file lists the active application configuration. GraphQL, PostgreSQL,
+Firebase client, Firebase Admin, the Auth Emulator, and the Firebase REST
+password-recovery flow are implemented. Production provisioning on Vercel is
+complete for the frontend and backend; Supabase migrations, operational logs,
+and alerts are active.
 
 ## Shared Application Origin
 
-- `APP_URL` is defined once in the repository root `.env`.
-- The backend serves the Expo Web build and GraphQL from this origin.
+- For local development, `APP_URL` is defined once in the repository root `.env`.
+- Locally, the backend serves the Expo Web build and GraphQL from this origin.
+- On Vercel, set `APP_URL` in the backend project to the public frontend origin.
+  The backend entrypoint serves the API only; the frontend Vercel project
+  proxies `/graphql` and `/auth/password-recovery` to the backend.
 - Web uses the relative `/graphql` path. Native clients resolve `/graphql`
   against `APP_URL` from the Expo public configuration.
 - Password recovery uses relative `/auth/password-recovery` on production Web;
@@ -24,6 +28,7 @@ Broad GCP and production provisioning remain pending in `EPIC-08`.
 - `PORT`
 - `FIREBASE_PROJECT_ID`
 - `GOOGLE_APPLICATION_CREDENTIALS`
+- `FIREBASE_SERVICE_ACCOUNT_JSON` (Vercel secret containing the complete Firebase Admin service-account JSON; use instead of a local credential path)
 - `FIREBASE_AUTH_EMULATOR_HOST`
 - `DATABASE_URL`
 - `DIRECT_URL`
@@ -51,6 +56,7 @@ Broad GCP and production provisioning remain pending in `EPIC-08`.
 ## Rules
 
 - Do not commit `.env`.
+- Never commit Firebase Admin service-account JSON or paste it into a public log. On Vercel, configure `FIREBASE_SERVICE_ACCOUNT_JSON` as a secret; `GOOGLE_APPLICATION_CREDENTIALS` remains a local file path.
 - Do not log secrets.
 - Keep `.env.example` synchronized with required variables.
 - `APP_URL` and `EXPO_PUBLIC_*` values are public and may be exposed to the app

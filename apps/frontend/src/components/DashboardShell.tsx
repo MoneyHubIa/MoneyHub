@@ -1,3 +1,4 @@
+import { FinancialGoals } from './FinancialGoals';
 import { gql } from '@apollo/client';
 import { useApolloClient, useMutation, useQuery } from '@apollo/client/react';
 import { useRouter } from 'expo-router';
@@ -144,6 +145,7 @@ type AccountItem = {
 type UpcomingItem = AccountItem & { kind: 'payable' | 'receivable' };
 
 type DashboardSummaryData = {
+  financialGoalsSummary?: { count: number; totalAccumulated: string; totalTarget: string };
   dashboardSummary?: {
     totalIncome: string;
     totalExpense: string;

@@ -67,3 +67,7 @@ Done
 
 ## Completion Review
 The backend implements Prisma `CostCenter` storage, GraphQL schema types, queries (`myCostCenters`), and mutations (`createCostCenter`, `updateCostCenter`, `deleteCostCenter`). User ownership is scoped by `user_id`, email verification is enforced, and soft-delete is used for historic traceability. The Expo app provides a `CostCenters` management UI component.
+
+### TASK-052 — Metas financeiras
+
+Implementação local: [TASK-052](TASK-052_FINANCIAL_GOALS.md). Metas com cadastro, edição, aportes, retiradas, histórico imutável e exclusão lógica; saldo exato e operação idempotente em transação com bloqueio. Dashboard exibe resumo de metas de todos os períodos; contexto IA inclui até 10 metas reais priorizadas por atraso e prazo. Movimentos não alteram fluxo de caixa. Produção e redeploy são etapas separadas.

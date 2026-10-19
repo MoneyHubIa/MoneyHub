@@ -68,7 +68,7 @@ services -> hooks -> state
   `RECOVERY_UNAVAILABLE`.
 - A future shared rate-limit store must preserve those separate
   initiation/verify/confirm buckets, and reviewed trusted-proxy configuration
-  remains required before multi-instance Cloud Run deployment; this work stays
-  in EPIC-08.
+  remains required before intentionally scaling the Vercel backend across
+  multiple instances. This is a future scale-hardening item.
 - Security controls applied before feature development.
 - Tests required for critical paths.

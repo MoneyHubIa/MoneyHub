@@ -21,3 +21,9 @@ test('replaces external services with local test dependencies', () => {
   assert.equal(env.OPENAI_API_KEY, undefined);
   assert.equal(env.EXPO_NO_DOTENV, '1');
 });
+
+test('uses a bounded request budget for the shared local E2E client', () => {
+  const env = createE2eEnvironment({ RATE_LIMIT_MAX: '1', RATE_LIMIT_WINDOW_MS: '999999' });
+  assert.equal(env.RATE_LIMIT_MAX, '10000');
+  assert.equal(env.RATE_LIMIT_WINDOW_MS, '900000');
+});

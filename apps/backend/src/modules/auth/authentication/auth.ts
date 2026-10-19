@@ -1,4 +1,10 @@
-import { applicationDefault, getApps, initializeApp } from 'firebase-admin/app';
+import {
+  applicationDefault,
+  cert,
+  getApps,
+  initializeApp,
+  type ServiceAccount
+} from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getIdentityRepository } from '../../../core/database/database.js';
 
@@ -78,14 +84,82 @@ export function createFirebaseVerifier(
 
 import fs from 'node:fs';
 
+type FirebaseAdminCredential =
+  | { kind: 'json'; serviceAccount: ServiceAccount; checkRevoked: true }
+  | { kind: 'file'; checkRevoked: true }
+  | { kind: 'emulator' | 'default'; checkRevoked: false };
+
+export function resolveFirebaseAdminCredential(
+  environment: NodeJS.ProcessEnv = process.env,
+  fileExists: (path: string) => boolean = fs.existsSync
+): FirebaseAdminCredential {
+  if (environment.FIREBASE_SERVICE_ACCOUNT_JSON !== undefined) {
+    let value: unknown;
+    try {
+      value = JSON.parse(environment.FIREBASE_SERVICE_ACCOUNT_JSON);
+    } catch {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON must contain valid JSON.');
+    }
+
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON is invalid.');
+    }
+
+    const account = value as Record<string, unknown>;
+    if (typeof account.project_id !== 'string' || !account.project_id.trim()
+      || typeof account.client_email !== 'string' || !account.client_email.trim()
+      || typeof account.private_key !== 'string' || !account.private_key.trim()) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON is missing required fields.');
+    }
+
+    if (environment.FIREBASE_PROJECT_ID
+      && account.project_id !== environment.FIREBASE_PROJECT_ID) {
+      throw new Error('Firebase Admin project_id does not match FIREBASE_PROJECT_ID.');
+    }
+
+    return {
+      kind: 'json',
+      serviceAccount: {
+        projectId: account.project_id,
+        clientEmail: account.client_email,
+        privateKey: account.private_key
+      },
+      checkRevoked: true
+    };
+  }
+
+  if (environment.VERCEL === '1') {
+    throw new Error('Firebase Admin credentials are required on Vercel.');
+  }
+
+  const path = environment.GOOGLE_APPLICATION_CREDENTIALS;
+  if (path && fileExists(path)) {
+    return { kind: 'file', checkRevoked: true };
+  }
+  if (environment.FIREBASE_AUTH_EMULATOR_HOST) {
+    return { kind: 'emulator', checkRevoked: false };
+  }
+  return { kind: 'default', checkRevoked: false };
+}
+
 export function firebaseAuth() {
-  const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  const hasCredFile = credPath && fs.existsSync(credPath);
+  const credential = resolveFirebaseAdminCredential();
+
+  let firebaseCredential;
+  if (credential.kind === 'json') {
+    try {
+      firebaseCredential = cert(credential.serviceAccount);
+    } catch {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON contains invalid credentials.');
+    }
+  } else if (credential.kind === 'file') {
+    firebaseCredential = applicationDefault();
+  }
 
   const app =
     getApps()[0] ??
     initializeApp({
-      ...(hasCredFile ? { credential: applicationDefault() } : {}),
+      ...(firebaseCredential ? { credential: firebaseCredential } : {}),
       ...(process.env.FIREBASE_PROJECT_ID
         ? { projectId: process.env.FIREBASE_PROJECT_ID }
         : {})
@@ -94,11 +168,10 @@ export function firebaseAuth() {
 }
 
 export const verifyFirebaseIdToken: VerifyIdToken = (token) => {
-  const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  const hasCredFile = Boolean(credPath && fs.existsSync(credPath));
+  const { checkRevoked } = resolveFirebaseAdminCredential();
   const auth = firebaseAuth();
   return createFirebaseVerifier({
-    verifyToken: async (value) => auth.verifyIdToken(value, hasCredFile),
+    verifyToken: async (value) => auth.verifyIdToken(value, checkRevoked),
     getUser: async (uid) => auth.getUser(uid),
     identityRepository: getIdentityRepository()
   })(token);

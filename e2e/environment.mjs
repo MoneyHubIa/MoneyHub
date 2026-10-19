@@ -18,6 +18,8 @@ export function createE2eEnvironment(parent = process.env) {
     ...parent,
     APP_URL: 'http://127.0.0.1:3000',
     PORT: '3000',
+    RATE_LIMIT_MAX: '10000',
+    RATE_LIMIT_WINDOW_MS: '900000',
     DATABASE_URL: localDatabaseUrl,
     DIRECT_URL: localDatabaseUrl,
     FIREBASE_PROJECT_ID: 'demo-moneyhub',

@@ -1,12 +1,13 @@
 import crypto from 'node:crypto';
 import { existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@as-integrations/express4';
 import cors from 'cors';
-import express, { type Express, type Request } from 'express';
-import rateLimit from 'express-rate-limit';
-import helmet from 'helmet';
+import express, { type Express, type Request, type RequestHandler } from 'express';
+import { rateLimit } from 'express-rate-limit';
+import 'helmet';
 import { z } from 'zod';
 import {
   verifyFirebaseIdToken,
@@ -30,6 +31,8 @@ import {
   createHttpLoggingMiddleware,
   type HttpLogger
 } from '../http-logger/http-logger.js';
+
+const helmet = createRequire(import.meta.url)('helmet') as () => RequestHandler;
 
 type CreateAppOptions = {
   verifyIdToken?: VerifyIdToken;

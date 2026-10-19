@@ -87,6 +87,7 @@ describe('MoneyHub dashboard shell', () => {
     await render(<DashboardShell />, { wrapper: Wrapper });
 
     expect(screen.getByText('MoneyHub')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Metas no dashboard')).toHaveTextContent('R$ 250,00', { exact: false });
     expect(screen.getByText('Dashboard financeiro')).toBeOnTheScreen();
     expect(screen.getByText('Saldo previsto')).toBeOnTheScreen();
     expect(screen.getByText('R$ 3.200,00')).toBeOnTheScreen();

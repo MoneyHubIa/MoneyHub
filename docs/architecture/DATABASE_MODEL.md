@@ -98,16 +98,27 @@
 
 ### financial_goals
 
-- `id`
-- `user_id`
-- `name`
-- `target_amount`
-- `current_amount`
-- `start_date`
-- `target_date`
-- `status`
-- `created_at`
-- `updated_at`
+- `id`: UUID, chave primária
+- `user_id`: UUID, proprietário
+- `name`: VARCHAR(120)
+- `description`: VARCHAR(500), opcional
+- `target_amount`: Decimal(14,2), positivo
+- `accumulated_amount`: Decimal(14,2), não negativo, inicial zero
+- `start_date`, `deadline`: DATE, prazo >= início
+- `created_at`, `updated_at`, `deleted_at`: TIMESTAMPTZ(3), exclusão lógica opcional
+
+Índice `(user_id, deleted_at, deadline)`. Estado e progresso calculados em leitura; não existe coluna status. Aporte pode superar alvo, retirada pode reabrir meta. Movimentos atualizam saldo em transação curta com bloqueio por meta, sem alterar receitas/despesas.
+
+### financial_goal_movements
+
+- `id`, `goal_id`, `operation_id`: UUID
+- `type`: CONTRIBUTION ou WITHDRAWAL
+- `amount`: Decimal(14,2), positivo
+- `occurred_on`: DATE
+- `notes`: VARCHAR(500), opcional
+- `created_at`: TIMESTAMPTZ(3)
+
+Chave única `(goal_id, operation_id)` garante idempotência; índice `(goal_id, created_at, id)` atende paginação por cursor. Histórico sem edição/exclusão pela API, preservado na exclusão lógica da meta. FK de movimento para meta, meta para proprietário. [TASK-052](../tasks/TASK-052_FINANCIAL_GOALS.md).
 
 ### calendar_events
 
