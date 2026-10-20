@@ -1,4 +1,3 @@
-import { FinancialGoals } from './FinancialGoals';
 import { gql } from '@apollo/client';
 import { useApolloClient, useMutation, useQuery } from '@apollo/client/react';
 import { useRouter } from 'expo-router';
@@ -37,7 +36,7 @@ import { CashFlowChart } from './CashFlowChart';
 import { CategoryAnalysis } from './CategoryAnalysis';
 import { CostCenters } from './CostCenters';
 import { FinancialCategories } from './FinancialCategories';
-import { FinancialGoalsPreview } from './FinancialGoalsPreview';
+import { FinancialGoals } from './FinancialGoals';
 import { AppHeader } from './layout/AppHeader';
 import { BottomNavBar } from './layout/BottomNavBar';
 import { QuickActionModal } from './layout/QuickActionModal';
@@ -94,6 +93,16 @@ const DASHBOARD_SUMMARY_QUERY = gql`
       dueDate
       status
     }
+    financialGoalsSummary {
+      count
+      totalAccumulated
+      totalTarget
+    }
+    myFinancialGoals {
+      id
+      name
+      progress
+    }
     myProfile {
       id
       preferredCurrency
@@ -146,6 +155,7 @@ type UpcomingItem = AccountItem & { kind: 'payable' | 'receivable' };
 
 type DashboardSummaryData = {
   financialGoalsSummary?: { count: number; totalAccumulated: string; totalTarget: string };
+  myFinancialGoals?: Array<{ id: string; name: string; progress: number }>;
   dashboardSummary?: {
     totalIncome: string;
     totalExpense: string;
@@ -614,13 +624,12 @@ export function DashboardShell(): React.JSX.Element {
         </Card>
 
         {/* Metas */}
-        <Card style={styles.gridCard} variant="surface">
+        <Card accessibilityLabel="Metas no dashboard" style={styles.gridCard} variant="surface">
           <View style={styles.gridCardHeader}>
             <View style={styles.inlineRow}>
               <Text style={[styles.gridCardTitle, { color: theme.textPrimary }]}>
                 Progresso das Metas
               </Text>
-              <Badge label="Preview" tone="brandAI" textStyle={styles.smallBadgeText} />
             </View>
             <Pressable
               accessibilityRole="button"
@@ -632,21 +641,35 @@ export function DashboardShell(): React.JSX.Element {
           </View>
 
           <View style={styles.goalsList}>
-            {[
-              { name: 'Reserva de Emergência', progress: 0.61, color: theme.income },
-              { name: 'Viagem dos Sonhos', progress: 0.7, color: theme.info },
-              { name: 'Notebook Novo', progress: 0.35, color: theme.brandAI }
-            ].map((goal) => (
-              <View key={goal.name} style={styles.goalItem}>
+            {summaryData?.financialGoalsSummary && (
+              <View style={styles.goalItem}>
+                <Text style={[styles.quickListDesc, { color: theme.textPrimary }]}>
+                  {summaryData.financialGoalsSummary.count} metas
+                </Text>
+                <Text style={[styles.quickListAmount, { color: theme.income }]}>
+                  Acumulado: {showValue(summaryData.financialGoalsSummary.totalAccumulated)}
+                </Text>
+                <Text style={[styles.quickListDesc, { color: theme.textSecondary }]}>
+                  Alvo total: {showValue(summaryData.financialGoalsSummary.totalTarget)}
+                </Text>
+              </View>
+            )}
+            {!loadingSummary && !summaryData?.myFinancialGoals?.length && (
+              <Text style={[styles.quickListDesc, { color: theme.textSecondary }]}>
+                Crie sua primeira meta financeira.
+              </Text>
+            )}
+            {summaryData?.myFinancialGoals?.slice(0, 3).map((goal) => (
+              <View key={goal.id} style={styles.goalItem}>
                 <View style={styles.goalRow}>
                   <Text style={[styles.quickListDesc, { color: theme.textPrimary }]}>
                     {goal.name}
                   </Text>
-                  <Text style={[styles.quickListAmount, { color: goal.color }]}>
-                    {Math.round(goal.progress * 100)}%
+                  <Text style={[styles.quickListAmount, { color: theme.income }]}>
+                    {Math.round(goal.progress)}%
                   </Text>
                 </View>
-                <ProgressBar color={goal.color} progress={goal.progress} />
+                <ProgressBar color={theme.income} progress={goal.progress / 100} />
               </View>
             ))}
           </View>
@@ -681,7 +704,7 @@ export function DashboardShell(): React.JSX.Element {
       case 'agenda':
         return <Agenda />;
       case 'metas':
-        return <FinancialGoalsPreview />;
+        return <FinancialGoals preferredCurrency={preferredCurrency} />;
       case 'ai':
         return <AiAssistant viewMode="fullscreen" />;
     }

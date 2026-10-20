@@ -57,6 +57,12 @@ jest.mock('@apollo/client/react', () => ({
       data: mockSummaryUnavailable ? undefined : {
         myCategories: [],
         myCostCenters: [],
+        financialGoalsSummary: { count: 1, totalAccumulated: '250.00', totalTarget: '1000.00' },
+        myFinancialGoals: [{
+          id: 'goal-1', name: 'Reserva real', description: null,
+          targetAmount: '1000.00', accumulatedAmount: '250.00', remainingAmount: '750.00',
+          progress: 25, status: 'ACTIVE', startDate: '2026-01-01', deadline: '2027-01-01'
+        }],
         dashboardSummary: {
           totalIncome: '5000.00',
           totalExpense: '1800.00',
@@ -176,18 +182,24 @@ describe('MoneyHub dashboard shell', () => {
     expect(screen.getByRole('button', { name: 'Sair' })).toBeOnTheScreen();
   });
 
-  test('shows the goals preview and opens its demonstration screen', async () => {
+  test('shows persisted goals and opens the functional goals screen', async () => {
     await render(<DashboardShell />, { wrapper: Wrapper });
 
     expect(screen.getByText('Progresso das Metas')).toBeOnTheScreen();
-    expect(screen.getByText('Preview')).toBeOnTheScreen();
-    expect(screen.getByText('Reserva de Emergência')).toBeOnTheScreen();
-    expect(screen.getByText('61%')).toBeOnTheScreen();
+    expect(screen.getByText('Reserva real')).toBeOnTheScreen();
+    expect(screen.getByText('25%')).toBeOnTheScreen();
+    expect(screen.queryByText('Preview')).toBeNull();
+    const query = print(mockDashboardQuery.mock.calls[0]![0]);
+    expect(query).toContain('financialGoalsSummary');
+    expect(query).toContain('myFinancialGoals');
 
     await fireEvent.press(screen.getByRole('button', { name: 'Explorar' }));
 
-    expect(screen.getByRole('header', { name: 'Metas Financeiras' })).toBeOnTheScreen();
-    expect(screen.getByText('Em breve')).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Metas financeiras' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Nova meta' })).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Nova meta' }));
+    expect(screen.getByLabelText('Nome da meta')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Salvar meta' })).toBeOnTheScreen();
     expect(screen.queryByText('Dashboard financeiro')).toBeNull();
   });
 
@@ -203,11 +215,28 @@ describe('MoneyHub dashboard shell', () => {
 
     expect(screen.queryByText('R$ 3.200,00')).toBeNull();
     expect(screen.queryByText('R$ 700,00')).toBeNull();
+    expect(screen.getByLabelText('Metas no dashboard')).not.toHaveTextContent('R$ 250,00', { exact: false });
+    expect(screen.getByLabelText('Metas no dashboard')).toHaveTextContent('R$ ••••••', { exact: false });
     expect(screen.getByText('Saldo Projetado: R$ ••••••')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByRole('button', { name: 'Mostrar valores' }));
     expect(screen.getByText('R$ 3.200,00')).toBeOnTheScreen();
     expect(screen.getByText('R$ 700,00')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Metas no dashboard')).toHaveTextContent('R$ 250,00', { exact: false });
+  });
+
+  test('shows an empty goals state without demonstration data for a new account', async () => {
+    mockAccountsData = {
+      myFinancialGoals: [],
+      financialGoalsSummary: { count: 0, totalAccumulated: '0.00', totalTarget: '0.00' }
+    };
+    await render(<DashboardShell />, { wrapper: Wrapper });
+
+    expect(screen.getByText('Crie sua primeira meta financeira.')).toBeOnTheScreen();
+    expect(screen.queryByText('Reserva real')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Explorar' }));
+    expect(screen.getByText('Crie sua primeira meta financeira.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Nova meta' })).toBeOnTheScreen();
   });
 
   test.each([
@@ -344,7 +373,7 @@ describe('MoneyHub dashboard shell', () => {
     ['Criar A Pagar', 'Contas a Pagar'],
     ['Criar A Receber', 'Contas a Receber'],
     ['Criar Categoria', 'Categorias Financeiras'],
-    ['Criar Meta', 'Metas Financeiras']
+    ['Criar Meta', 'Metas financeiras']
   ])('opens the target screen from desktop quick action %s', async (action, title) => {
     await render(<DashboardShell />, { wrapper: Wrapper });
     await fireEvent.press(screen.getByRole('button', { name: action }));
