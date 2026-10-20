@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { PropsWithChildren } from 'react';
-import { StyleSheet } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 import { print } from 'graphql';
 import { DashboardShell } from '../src/components/DashboardShell';
 import { AuthProvider } from '../src/providers/AuthProvider';
@@ -8,7 +8,13 @@ import type { AuthService } from '../src/services/authService';
 
 const mockSyncAgendaNotifications = jest.fn().mockResolvedValue({ data: {} });
 const mockDashboardQuery = jest.fn();
+const mockClearStore = jest.fn();
+const mockReplace = jest.fn();
+const mockMarkPayablePaid = jest.fn();
+const mockMarkReceivableReceived = jest.fn();
 let mockAccountsData: Record<string, unknown> = {};
+let mockSummaryUnavailable = false;
+let mockSummaryLoading = false;
 
 const mockService: AuthService = {
   register: jest.fn(),
@@ -38,48 +44,67 @@ function Wrapper({ children }: PropsWithChildren) {
 }
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ replace: jest.fn() })
+  useRouter: () => ({ replace: mockReplace })
 }));
 
 jest.mock('@apollo/client/react', () => ({
   useApolloClient: () => ({
-    clearStore: jest.fn()
+    clearStore: mockClearStore
   }),
   useQuery: (document: unknown) => {
     mockDashboardQuery(document);
-    return ({
-    data: {
-      ...mockAccountsData,
-      dashboardSummary: {
-        totalIncome: '5000.00',
-        totalExpense: '1800.00',
-        netBalance: '3200.00',
-        incomeCount: 2,
-        expenseCount: 4,
-        month: 8,
-        year: 2026
+    return {
+      data: mockSummaryUnavailable ? undefined : {
+        myCategories: [],
+        myCostCenters: [],
+        dashboardSummary: {
+          totalIncome: '5000.00',
+          totalExpense: '1800.00',
+          netBalance: '3200.00',
+          incomeCount: 2,
+          expenseCount: 4,
+          month: 8,
+          year: 2026
+        },
+        myProfile: {
+          id: 'profile-1',
+          preferredCurrency: 'BRL'
+        },
+        ...mockAccountsData
       },
-      myProfile: {
-        id: 'profile-1',
-        preferredCurrency: 'BRL'
-      }
-    },
-    loading: false,
-    refetch: jest.fn()
-    });
+      loading: mockSummaryLoading,
+      refetch: jest.fn()
+    };
   },
-  useMutation: () => [mockSyncAgendaNotifications, { loading: false }]
+  useMutation: (document: Parameters<typeof print>[0]) => {
+    const { print: printDocument } = jest.requireActual<typeof import('graphql')>('graphql');
+    const mutation = printDocument(document);
+    const mutate = mutation.includes('MarkAccountPayablePaid')
+      ? mockMarkPayablePaid
+      : mutation.includes('MarkAccountReceivableReceived')
+        ? mockMarkReceivableReceived
+        : mockSyncAgendaNotifications;
+    return [mutate, { loading: false }];
+  }
 }));
 
 describe('MoneyHub dashboard shell', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockAccountsData = {};
+    mockSummaryUnavailable = false;
+    mockSummaryLoading = false;
+    mockClearStore.mockReset().mockResolvedValue(undefined);
+    mockMarkPayablePaid.mockReset().mockResolvedValue({ data: {} });
+    mockMarkReceivableReceived.mockReset().mockResolvedValue({ data: {} });
+    jest.mocked(mockService.logout).mockReset().mockResolvedValue(undefined);
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2026-08-18T12:00:00.000Z'));
+    jest.spyOn(Dimensions, 'get').mockReturnValue({ width: 1280, height: 800, scale: 1, fontScale: 1 });
   });
 
   afterEach(() => {
+    jest.restoreAllMocks();
     jest.useRealTimers();
   });
 
@@ -151,15 +176,200 @@ describe('MoneyHub dashboard shell', () => {
     expect(screen.getByRole('button', { name: 'Sair' })).toBeOnTheScreen();
   });
 
-  test('keeps the notification panel layer above side navigation and content', async () => {
+  test('shows the goals preview and opens its demonstration screen', async () => {
     await render(<DashboardShell />, { wrapper: Wrapper });
 
-    const brand = screen.getByText('MoneyHub');
+    expect(screen.getByText('Progresso das Metas')).toBeOnTheScreen();
+    expect(screen.getByText('Preview')).toBeOnTheScreen();
+    expect(screen.getByText('Reserva de Emergência')).toBeOnTheScreen();
+    expect(screen.getByText('61%')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Explorar' }));
+
+    expect(screen.getByRole('header', { name: 'Metas Financeiras' })).toBeOnTheScreen();
+    expect(screen.getByText('Em breve')).toBeOnTheScreen();
+    expect(screen.queryByText('Dashboard financeiro')).toBeNull();
+  });
+
+  test('hides and restores summary and upcoming account values', async () => {
+    mockAccountsData = {
+      myAccountsPayable: [{ id: 'rent', description: 'Aluguel', amount: '700', dueDate: '2026-08-18', status: 'PENDING' }]
+    };
+    await render(<DashboardShell />, { wrapper: Wrapper });
+    expect(screen.getByText('Hoje')).toBeOnTheScreen();
+    expect(screen.getByText('1 conta')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Ocultar valores' }));
+
+    expect(screen.queryByText('R$ 3.200,00')).toBeNull();
+    expect(screen.queryByText('R$ 700,00')).toBeNull();
+    expect(screen.getByText('Saldo Projetado: R$ ••••••')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Mostrar valores' }));
+    expect(screen.getByText('R$ 3.200,00')).toBeOnTheScreen();
+    expect(screen.getByText('R$ 700,00')).toBeOnTheScreen();
+  });
+
+  test.each([
+    ['USD', '$ 3,200.00'],
+    ['EUR', '€ 3.200,00'],
+    ['GBP', 'R$ 3.200,00']
+  ])('formats summary values for profile currency %s', async (currency, expected) => {
+    mockAccountsData = { myProfile: { id: 'profile-1', preferredCurrency: currency } };
+    await render(<DashboardShell />, { wrapper: Wrapper });
+
+    expect(screen.getByText(expected)).toBeOnTheScreen();
+  });
+
+  test('shows zero balances when summary and profile are unavailable', async () => {
+    mockSummaryUnavailable = true;
+    await render(<DashboardShell />, { wrapper: Wrapper });
+
+    expect(screen.getByText('Saldo Projetado: R$ 0,00')).toBeOnTheScreen();
+    expect(screen.getByText(/0 entradas/)).toBeOnTheScreen();
+    expect(screen.getByText(/0 saídas/)).toBeOnTheScreen();
+    expect(screen.getByText('Nenhuma conta pendente. Tudo em dia!')).toBeOnTheScreen();
+  });
+
+  test('keeps cached summary visible while refreshing', async () => {
+    mockSummaryLoading = true;
+    await render(<DashboardShell />, { wrapper: Wrapper });
+
+    expect(screen.getByText('R$ 3.200,00')).toBeOnTheScreen();
+    expect(screen.getByText('R$ 5.000,00')).toBeOnTheScreen();
+    expect(screen.getByText('R$ 1.800,00')).toBeOnTheScreen();
+  });
+
+  test('loads summary after initially missing data', async () => {
+    mockSummaryUnavailable = true;
+    mockSummaryLoading = true;
+    const { rerender } = await render(<DashboardShell />, { wrapper: Wrapper });
+    expect(screen.queryByText('R$ 3.200,00')).toBeNull();
+
+    mockSummaryUnavailable = false;
+    mockSummaryLoading = false;
+    await rerender(<DashboardShell />);
+
+    expect(screen.getByText('R$ 3.200,00')).toBeOnTheScreen();
+  });
+
+  test('clears cached data and signs out before returning to login', async () => {
+    await render(<DashboardShell />, { wrapper: Wrapper });
+    await fireEvent.press(screen.getByRole('button', { name: 'Sair' }));
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/(auth)/login'));
+    expect(mockClearStore).toHaveBeenCalledTimes(1);
+    expect(mockService.logout).toHaveBeenCalledTimes(1);
+    expect(mockClearStore.mock.invocationCallOrder[0]).toBeLessThan(jest.mocked(mockService.logout).mock.invocationCallOrder[0]!);
+    expect(jest.mocked(mockService.logout).mock.invocationCallOrder[0]).toBeLessThan(mockReplace.mock.invocationCallOrder[0]!);
+  });
+
+  test('allows retrying logout on mobile after a cache error', async () => {
+    jest.spyOn(Dimensions, 'get').mockReturnValue({ width: 390, height: 844, scale: 1, fontScale: 1 });
+    mockClearStore.mockRejectedValueOnce(new Error('Cache unavailable'));
+    await render(<DashboardShell />, { wrapper: Wrapper });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Sair' }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Sair' })).toBeEnabled());
+    expect(mockService.logout).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Sair' }));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/(auth)/login'));
+  });
+
+  test('settles payable and receivable accounts with the current timestamp', async () => {
+    mockAccountsData = {
+      myAccountsPayable: [{ id: 'rent', description: 'Aluguel', amount: '700', dueDate: '2026-08-18', status: 'PENDING' }],
+      myAccountsReceivable: [{ id: 'salary', description: 'Salário', amount: '2000', dueDate: '2026-08-28', status: 'PENDING' }]
+    };
+    let finishPayment!: (value: unknown) => void;
+    mockMarkPayablePaid.mockReturnValueOnce(new Promise((resolve) => { finishPayment = resolve; }));
+    await render(<DashboardShell />, { wrapper: Wrapper });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Pagar Aluguel' }));
+    expect(screen.getByRole('button', { name: 'Pagar Aluguel' })).toBeDisabled();
+    expect(mockMarkPayablePaid).toHaveBeenCalledWith({ variables: { id: 'rent', paidAt: '2026-08-18T12:00:00.000Z' } });
+
+    await act(async () => { finishPayment({ data: {} }); });
+    expect(screen.getByRole('button', { name: 'Pagar Aluguel' })).toBeEnabled();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Receber Salário' }));
+    expect(mockMarkReceivableReceived).toHaveBeenCalledWith({ variables: { id: 'salary', receivedAt: '2026-08-18T12:00:00.000Z' } });
+  });
+
+  test('allows retrying a failed account payment', async () => {
+    mockAccountsData = {
+      myAccountsPayable: [{ id: 'rent', description: 'Aluguel', amount: '700', dueDate: '2026-08-18', status: 'PENDING' }]
+    };
+    mockMarkPayablePaid.mockRejectedValueOnce(new Error('Payment unavailable'));
+    await render(<DashboardShell />, { wrapper: Wrapper });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Pagar Aluguel' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Pagar Aluguel' })).toBeEnabled());
+    await fireEvent.press(screen.getByRole('button', { name: 'Pagar Aluguel' }));
+    expect(mockMarkPayablePaid).toHaveBeenCalledTimes(2);
+  });
+
+  test('opens a transaction from mobile quick actions and closes its form', async () => {
+    jest.spyOn(Dimensions, 'get').mockReturnValue({ width: 390, height: 844, scale: 1, fontScale: 1 });
+    await render(<DashboardShell />, { wrapper: Wrapper });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Novo lançamento rápido' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Criar Nova Transação' }));
+
+    expect(screen.getByText('Nova Despesa')).toBeOnTheScreen();
+    expect(screen.queryByText('Novo Lançamento Rápido')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(screen.queryByText('Nova Despesa')).toBeNull();
+  });
+
+  test.each([
+    [1280, 'Dashboard'],
+    [390, 'MoneyHub']
+  ])('keeps the notification layer above content at width %s', async (width, headerTitle) => {
+    jest.mocked(Dimensions.get).mockReturnValue({ width, height: 844, scale: 1, fontScale: 1 });
+    await render(<DashboardShell />, { wrapper: Wrapper });
+
+    const brand = screen.getByRole('header', { name: headerTitle });
     const brandRowStyle = StyleSheet.flatten(brand.parent?.parent?.props.style);
     const navigationStyle = StyleSheet.flatten(brand.parent?.parent?.parent?.props.style);
 
     expect(navigationStyle.zIndex).toBeGreaterThan(0);
     expect(brandRowStyle.zIndex).toBeGreaterThan(navigationStyle.zIndex);
+  });
+
+  test.each([
+    ['Criar A Pagar', 'Contas a Pagar'],
+    ['Criar A Receber', 'Contas a Receber'],
+    ['Criar Categoria', 'Categorias Financeiras'],
+    ['Criar Meta', 'Metas Financeiras']
+  ])('opens the target screen from desktop quick action %s', async (action, title) => {
+    await render(<DashboardShell />, { wrapper: Wrapper });
+    await fireEvent.press(screen.getByRole('button', { name: action }));
+
+    expect(screen.getByRole('header', { name: title })).toBeOnTheScreen();
+    expect(screen.queryByText('Dashboard financeiro')).toBeNull();
+  });
+
+  test.each([
+    ['Transações', 'Transações'],
+    ['Recorrências', 'Transações Recorrentes'],
+    ['Centros de Custo', 'Centros de Custo'],
+    ['Ajustes', 'Ajustes de perfil'],
+    ['MoneyHub IA', 'Assistente Financeiro IA']
+  ])('navigates to %s and returns to the dashboard', async (section, title) => {
+    await render(<DashboardShell />, { wrapper: Wrapper });
+    await fireEvent.press(screen.getByRole('button', { name: section }));
+
+    screen.getAllByRole('header', { name: title }).forEach((header) => {
+      expect(header).toBeOnTheScreen();
+    });
+    expect(screen.queryByText('Dashboard financeiro')).toBeNull();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Dashboard' }));
+    expect(screen.getByText('Dashboard financeiro')).toBeOnTheScreen();
   });
   test('renders notification center in dashboard navigation', async () => {
     await render(<DashboardShell />, { wrapper: Wrapper });

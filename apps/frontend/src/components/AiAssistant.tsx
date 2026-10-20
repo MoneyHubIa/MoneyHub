@@ -11,7 +11,6 @@ import {
   RotateCcw,
   Send,
   Sparkles,
-  User,
   X,
   Zap
 } from 'lucide-react-native';
@@ -827,17 +826,14 @@ const styles = StyleSheet.create({
     elevation: 8,
     height: 520,
     overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
+    boxShadow: '0px 6px 16px rgba(0, 0, 0, 0.25)',
     width: 380
   },
   chatWindowFullscreen: {
     borderRadius: 12,
     elevation: 0,
     height: '100%',
-    shadowOpacity: 0,
+    boxShadow: 'none',
     width: '100%'
   },
   errorBox: {
@@ -856,10 +852,7 @@ const styles = StyleSheet.create({
     elevation: 6,
     height: 48,
     justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
     width: 48
   },
   fabIconContainer: {

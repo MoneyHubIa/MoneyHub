@@ -883,10 +883,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     position: 'absolute',
     right: 104,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12
+    boxShadow: '0px 6px 12px rgba(16, 185, 129, 0.35)'
   },
   desktopFabText: {
     color: '#FFFFFF',
@@ -953,10 +950,7 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     borderWidth: 0,
-    shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16
+    boxShadow: '0px 8px 16px rgba(5, 150, 105, 0.3)'
   },
   heroFooter: {
     backgroundColor: 'rgba(255, 255, 255, 0.14)',
