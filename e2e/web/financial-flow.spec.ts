@@ -23,7 +23,8 @@ async function createCategory(page: Page) {
 
 async function createTransaction(page: Page, type: 'Receita' | 'Despesa', description: string, amount: string) {
   await page.getByRole('button', { name: 'Transações' }).click();
-  await page.getByText(type, { exact: true }).click();
+  await page.getByRole('button', { name: 'Nova Transação', exact: true }).click();
+  await page.getByRole('button', { name: type, exact: true }).click();
   await page.getByLabel('Descrição da transação').fill(description);
   await page.getByLabel('Valor da transação').fill(amount);
   await page.getByRole('button', { name: 'Geral E2E' }).click();
@@ -49,7 +50,8 @@ test('@financial persists income, expense, balance, and payable', async ({ page 
       page.getByLabel('Resumo financeiro').getByText('R$ 750,00', { exact: true })
     ).toBeVisible();
 
-    await page.getByRole('button', { name: 'A Pagar' }).click();
+    await page.getByRole('button', { name: 'Contas', exact: true }).click();
+    await page.getByRole('button', { name: 'Nova Conta a Pagar', exact: true }).click();
     await page.getByLabel('Descrição da conta a pagar').fill('Conta E2E');
     await page.getByLabel('Valor da conta a pagar').fill('100');
     await page.getByRole('button', { name: 'Geral E2E' }).click();
@@ -57,7 +59,7 @@ test('@financial persists income, expense, balance, and payable', async ({ page 
     await expect(page.getByText('Conta E2E')).toBeVisible();
     await expect(page.getByText('Pendente', { exact: true })).toBeVisible();
     await page.reload();
-    await page.getByRole('button', { name: 'A Pagar' }).click();
+    await page.getByRole('button', { name: 'Contas', exact: true }).click();
     await expect(page.getByText('Conta E2E')).toBeVisible();
   } finally {
     await deleteEmulatorUser(uid);
@@ -73,9 +75,7 @@ test('@financial gets a mock AI response', async ({ page }) => {
     await page.getByLabel('Mensagem para a IA').fill('Qual é meu resumo financeiro?');
     await page.getByRole('button', { name: 'Enviar mensagem' }).click();
     await expect(page.getByText('Qual é meu resumo financeiro?')).toBeVisible();
-    await expect(page.getByTestId('chat-messages-list')).toContainText(
-      /Analisando seu contexto financeiro/
-    );
+    await expect(page.getByText(/Analisando seu contexto financeiro/)).toBeVisible();
   } finally {
     await deleteEmulatorUser(uid);
   }

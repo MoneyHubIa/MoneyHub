@@ -188,10 +188,7 @@ const styles = StyleSheet.create({
     elevation: 6,
     height: 54,
     justifyContent: 'center',
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
+    boxShadow: '0px 4px 8px rgba(16, 185, 129, 0.35)',
     width: 54
   },
   tab: {

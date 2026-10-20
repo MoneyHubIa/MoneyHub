@@ -109,7 +109,7 @@ export function PeriodComparison({
   baseMonth,
   baseYear
 }: PeriodComparisonProps): React.JSX.Element {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   const now = new Date();
   const initialBaseMonth = baseMonth ?? (now.getUTCMonth() + 1);
   const initialBaseYear = baseYear ?? now.getUTCFullYear();

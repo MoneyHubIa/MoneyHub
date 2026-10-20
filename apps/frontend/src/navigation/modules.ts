@@ -1,9 +1,7 @@
 import {
-  Bot,
   CalendarClock,
   CalendarDays,
   CreditCard,
-  HandCoins,
   LayoutDashboard,
   LucideIcon,
   Repeat,
