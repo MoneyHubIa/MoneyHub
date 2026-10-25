@@ -91,7 +91,90 @@ Prisma usando a conexão de produção cadastrada no GitHub.
 As opções dos painéis e os secrets são configurações externas. Alterar estes
 arquivos não modifica essas opções nem cadastra credenciais automaticamente.
 
-## Publicar uma versão
+## Publicar pelo terminal
+
+A automação local usa `release-it` e `@release-it/conventional-changelog`,
+instalados nas devDependencies da raiz. Use Node.js `22.x`, a partir de
+`22.13.0`, e execute os comandos na raiz do monorepo.
+
+### Preparar autenticação
+
+Instale as dependências com `npm ci`. Para autenticar a publicação da GitHub
+Release, use o GitHub CLI:
+
+```sh
+gh auth login --hostname github.com
+```
+
+O launcher reutiliza essa autenticação em memória. Se `GITHUB_TOKEN` ou
+`GH_TOKEN` já estiver definido no terminal, esse token tem preferência; ele
+precisa permitir criar Releases no repositório. Para um fine-grained personal
+access token, selecione o repositório e a permissão **Contents: Read and write**.
+Não coloque tokens no código, no `.release-it.json` ou no changelog.
+
+Os comandos Git usam as credenciais já usadas para `git push`. Se precisar
+configurar Git HTTPS para usar a autenticação do GitHub CLI, execute
+`gh auth setup-git`. Os cinco secrets do environment `production` continuam
+no GitHub; não é necessário copiá-los para a máquina local.
+
+### Simular e publicar
+
+Primeiro integre esta configuração na `main`, confirme os checks Quality e
+deixe o diretório de trabalho sem alterações pendentes. Atualize a branch:
+
+```sh
+git switch main
+git pull --ff-only
+```
+
+Simule uma correção de versão antes de publicar:
+
+```sh
+npm run release:dry-run -- patch
+```
+
+A simulação não lê a autenticação do `gh`, não cria commits ou tags, não altera
+os manifests/changelog e não publica a GitHub Release. Ela mostra as ações
+locais planejadas; não valida permissões da API GitHub nem os secrets de deploy.
+
+Para publicar, escolha uma das opções:
+
+| Comando | Resultado |
+| --- | --- |
+| `npm run release` | Recomenda a próxima versão pelos Conventional Commits e pede confirmação das etapas. |
+| `npm run release -- patch` | Incrementa correção, por exemplo `0.1.0` para `0.1.1`. |
+| `npm run release -- minor` | Incrementa funcionalidade, por exemplo `0.1.0` para `0.2.0`. |
+| `npm run release -- major` | Incrementa versão principal, por exemplo `0.1.0` para `1.0.0`. |
+| `npm run release -- 1.2.3` | Usa explicitamente a versão estável `1.2.3`. |
+
+Ao confirmar, a automação sincroniza os `package.json` da raiz, backend e
+frontend, atualiza todas as versões correspondentes no `package-lock.json`,
+gera `CHANGELOG.md`, cria o commit `chore(release): vX.Y.Z` e uma tag anotada
+`vX.Y.Z`. O push de commit e tag usa `--atomic`. Depois, publica a GitHub
+Release estável com as notas do changelog, disparando o workflow de produção.
+Não publica pacotes no registro npm e não adiciona comentários em issues/PRs.
+
+Use mensagens como `fix: corrigir filtro` e `feat: adicionar relatório` para
+alimentar as notas e a recomendação de versão. Commits fora do padrão podem
+não aparecer no changelog. Uma versão explícita permite publicar quando o
+histórico não tem Conventional Commits suficientes para recomendar um bump.
+
+Para execução sem perguntas, acrescente `--ci`, por exemplo
+`npm run release -- patch --ci`. Esse comando confirma automaticamente a
+criação do commit, tag, push e publicação da Release; o workflow pode alterar
+o banco e os deployments de produção.
+
+O comando exige `main`, upstream configurado, diretório limpo e commits novos
+desde a tag anterior. Ele não contorna proteções do GitHub: se `main` exigir
+PR, o push direto do commit de versão será recusado. Nesse caso, prepare as
+alterações de versão/changelog em um PR conforme a política do repositório e
+publique pela interface após o merge. Não use push forçado para publicar.
+
+Se o push funcionar, mas a publicação da GitHub Release falhar, não incremente
+a versão novamente. Confira commit/tag no GitHub e publique a Release para a
+tag já enviada pela interface abaixo. A publicação dessa Release dispara o deploy.
+
+## Publicar pela interface do GitHub
 
 1. Integre as alterações na `main` e confirme os checks Quality.
 2. No GitHub, abra **Releases > Draft a new release**.
@@ -120,8 +203,9 @@ dois deployments será promovido por esse workflow.
 
 O resumo do job registra tag, SHA, resultado das migrations, URLs e resultados
 das promoções. Cada deployment recebe `releaseVersion` e `releaseCommit` como
-metadata na Vercel. A versão da entrega é a tag; os campos `version` dos
-`package.json` não são alterados automaticamente.
+metadata na Vercel. A versão da entrega é a tag. O comando local `npm run release`
+sincroniza as versões dos pacotes; publicar somente pela interface do GitHub
+não altera os `package.json` automaticamente.
 
 O grupo de concurrency impede duas execuções ativas de Release ao mesmo tempo
 e não cancela uma execução já em andamento. O GitHub mantém no máximo uma

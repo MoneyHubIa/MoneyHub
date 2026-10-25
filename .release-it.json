@@ -1,0 +1,39 @@
+{
+  "$schema": "https://unpkg.com/release-it@20.2.1/schema/release-it.json",
+  "hooks": {
+    "after:npm:bump": "node scripts/sync-release-lock.mjs"
+  },
+  "git": {
+    "requireBranch": "main",
+    "requireCleanWorkingDir": true,
+    "requireUpstream": true,
+    "requireCommits": true,
+    "commitMessage": "chore(release): v${version}",
+    "tagName": "v${version}",
+    "tagMatch": "v[0-9]*",
+    "tagAnnotation": "Release v${version}",
+    "pushRepo": "origin",
+    "pushArgs": ["--atomic", "--follow-tags"]
+  },
+  "npm": {
+    "publish": false,
+    "versionArgs": ["--workspaces", "--include-workspace-root", "--ignore-scripts"]
+  },
+  "github": {
+    "release": true,
+    "releaseName": "v${version}",
+    "draft": false,
+    "preRelease": false,
+    "comments": {
+      "submit": false
+    }
+  },
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "infile": "CHANGELOG.md",
+      "preset": {
+        "name": "conventionalcommits"
+      }
+    }
+  }
+}

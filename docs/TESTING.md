@@ -9,7 +9,8 @@ export de bundle e status de entrega não substituem execução registrada.
 
 | Comando | Alcance |
 | --- | --- |
-| npm test | Testes dos workspaces; backend node:test e frontend Jest/jest-expo. |
+| npm test | Automação de release e testes dos workspaces; backend node:test e frontend Jest/jest-expo. |
+| npm run test:release | Testes da automação de release, incluindo versionamento em repositórios Git temporários sem publicação externa. |
 | npm run lint | ESLint dos workspaces e e2e. |
 | npm run typecheck | TypeScript dos workspaces. |
 | npm run typecheck:e2e | TypeScript do Playwright. |
@@ -108,6 +109,8 @@ Expo export não gera APK/AAB/IPA nem prova execução nativa.
 
 Workflow quality possui jobs quality, backend-coverage, frontend-coverage e
 web-e2e em Node 22. Não executa Maestro Android/iOS.
+O job quality também executa `npm run test:release`. O workflow Release reutiliza
+os mesmos jobs antes do deploy; veja [Releases](RELEASE.md).
 Branch protection e estado atual dos checks são externos ao conteúdo do workflow.
 
 Registre comando, ambiente, revisão/build, resultado e artefato na entrega.
