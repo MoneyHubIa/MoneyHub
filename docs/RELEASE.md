@@ -29,6 +29,11 @@ os seguintes environment secrets:
 | `VERCEL_FRONTEND_PROJECT_ID` | ID do projeto `money-hub-frontend`, diferente do backend. |
 | `PRODUCTION_DATABASE_URL` | Conexão PostgreSQL de produção do Supabase para migrations Prisma, com senha e SSL conforme o provedor. |
 
+Cadastre também a environment variable `BACKEND_URL` no mesmo environment
+`production` do GitHub, com domínio estável público do backend. O workflow injeta
+esse valor no passo de build e deploy frontend, pois variáveis **Sensitive** da
+Vercel não são baixadas por `vercel pull` para o runner.
+
 Os IDs Vercel estão nos painéis dos projetos/equipe ou no arquivo local
 `.vercel/project.json` gerado por `vercel link`. Não versione esse arquivo.
 Use conexão direta do Supabase ou pooler em modo de sessão compatível com

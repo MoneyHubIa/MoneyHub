@@ -90,9 +90,10 @@ jobs:
           VERCEL_BACKEND_PROJECT_ID: ${{ secrets.VERCEL_BACKEND_PROJECT_ID }}
           VERCEL_FRONTEND_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
           PRODUCTION_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          BACKEND_URL: ${{ vars.BACKEND_URL }}
         run: |
           set -euo pipefail
-          for key in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_BACKEND_PROJECT_ID VERCEL_FRONTEND_PROJECT_ID PRODUCTION_DATABASE_URL; do
+          for key in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_BACKEND_PROJECT_ID VERCEL_FRONTEND_PROJECT_ID PRODUCTION_DATABASE_URL BACKEND_URL; do
             if [[ -z "${!key}" ]]; then
               printf '::error::Configure %s in the production GitHub environment.\n' "$key"
               exit 1
@@ -126,6 +127,7 @@ jobs:
         working-directory: frontend-release
         env:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
+          BACKEND_URL: ${{ vars.BACKEND_URL }}
         run: |
           set -euo pipefail
           vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
