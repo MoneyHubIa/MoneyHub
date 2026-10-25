@@ -12,7 +12,7 @@
     "start": "node dist/src/server.js",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test tests/**/*.test.ts",
+    "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "test:coverage": "c8 npm test",
     "lint": "eslint app.ts src tests",
     "db:generate": "prisma generate",
