@@ -19,6 +19,7 @@
     "db:validate": "prisma validate",
     "db:migrate": "prisma migrate deploy",
     "db:status": "prisma migrate status",
+    "db:seed:demo": "tsx src/demo/seed-demo.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

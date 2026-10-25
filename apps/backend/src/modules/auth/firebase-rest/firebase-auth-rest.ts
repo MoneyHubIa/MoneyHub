@@ -17,14 +17,18 @@ export class FirebaseAuthRestError extends Error {
 type FirebaseAuthRestClientOptions = Readonly<{
   apiKey: string;
   timeoutMs?: number;
+  emulatorHost?: string;
   fetchRequest?: typeof fetch;
 }>;
 
 const FIREBASE_AUTH_BASE_URL = 'https://identitytoolkit.googleapis.com/v1';
 const PROVIDER_CODE_PATTERN = /^[A-Z0-9_:/-]{1,100}$/i;
 
-function endpoint(path: string, apiKey: string) {
-  return `${FIREBASE_AUTH_BASE_URL}/${path}?key=${apiKey}`;
+function endpoint(path: string, apiKey: string, emulatorHost?: string) {
+  const baseUrl = emulatorHost
+    ? `http://${emulatorHost}/identitytoolkit.googleapis.com/v1`
+    : FIREBASE_AUTH_BASE_URL;
+  return `${baseUrl}/${path}?key=${encodeURIComponent(apiKey)}`;
 }
 
 async function providerCodeFromResponse(response: Response) {
@@ -63,7 +67,7 @@ export function createFirebaseAuthRestClient(
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const response = await fetchRequest(endpoint(path, options.apiKey), {
+      const response = await fetchRequest(endpoint(path, options.apiKey, options.emulatorHost), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),

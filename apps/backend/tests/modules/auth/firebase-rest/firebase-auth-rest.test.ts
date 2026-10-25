@@ -37,6 +37,28 @@ function createClient(overrides: {
 }
 
 describe('Firebase Auth REST adapter', () => {
+  test('routes all password recovery operations to the configured Auth Emulator', async () => {
+    const urls: string[] = [];
+    const client = createFirebaseAuthRestClient({
+      apiKey: 'demo-api-key',
+      emulatorHost: '127.0.0.1:9099',
+      fetchRequest: async (input) => {
+        urls.push(String(input));
+        return okResponse();
+      }
+    });
+    await client.requestPasswordReset({
+      email: 'demo@moneyhub.local', continueUrl: 'http://localhost:8080/login', userIp: '127.0.0.1'
+    });
+    await client.verifyPasswordResetCode('demo-code');
+    await client.confirmPasswordReset('demo-code', 'NewPassword123!');
+    assert.deepEqual(urls, [
+      'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=demo-api-key',
+      'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:resetPassword?key=demo-api-key',
+      'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:resetPassword?key=demo-api-key'
+    ]);
+  });
+
   test('requestPasswordReset posts exact Firebase password reset payload', async () => {
     const { client, requests } = createClient();
 

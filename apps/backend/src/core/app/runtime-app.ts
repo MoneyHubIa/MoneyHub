@@ -16,7 +16,9 @@ export async function createRuntimeApp(
   const environment = options.environment ?? process.env;
   const { appUrl, firebaseWebApiKey } = loadRuntimeConfig(environment);
   const firebaseAuthRest = createFirebaseAuthRestClient({
-    apiKey: firebaseWebApiKey
+    apiKey: firebaseWebApiKey,
+    ...(environment.FIREBASE_AUTH_EMULATOR_HOST
+      ? { emulatorHost: environment.FIREBASE_AUTH_EMULATOR_HOST } : {})
   });
   const passwordRecovery = createPasswordRecoveryService({
     appUrl,

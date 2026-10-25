@@ -11,7 +11,9 @@ loadRootEnvironment();
 const { appUrl, firebaseWebApiKey } = loadRuntimeConfig();
 const port = Number(process.env.PORT || 3000);
 const firebaseAuthRest = createFirebaseAuthRestClient({
-  apiKey: firebaseWebApiKey
+  apiKey: firebaseWebApiKey,
+  ...(process.env.FIREBASE_AUTH_EMULATOR_HOST
+    ? { emulatorHost: process.env.FIREBASE_AUTH_EMULATOR_HOST } : {})
 });
 const passwordRecovery = createPasswordRecoveryService({
   appUrl,

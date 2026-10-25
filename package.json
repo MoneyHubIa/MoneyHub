@@ -17,7 +17,8 @@
     "dev:backend": "npm run dev -w apps/backend",
     "dev:frontend": "npm run dev -w apps/frontend",
     "test:e2e": "node e2e/run.mjs",
-    "typecheck:e2e": "tsc -p e2e/tsconfig.json --noEmit"
+    "typecheck:e2e": "tsc -p e2e/tsconfig.json --noEmit",
+    "dev": "concurrently --kill-others --names BACK,FRONT \"npm run dev:backend\" \"npm run dev:frontend\""
   },
   "engines": {
     "node": ">=22.13.0 <23"
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.63.0",
+    "concurrently": "^10.0.6",
     "typescript-eslint": "^8.65.0"
   }
 }
