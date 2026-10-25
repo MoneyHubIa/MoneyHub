@@ -6,6 +6,12 @@ A configuração usa projetos Vercel separados para backend Express e frontend
 Expo Web. PostgreSQL tem Supabase como destino documentado; configuração no
 repositório não comprova estado atual dos provedores.
 
+Produção é publicada pelo workflow [Release](../.github/workflows/release.yml)
+ao publicar uma GitHub Release estável com tag `vMAJOR.MINOR.PATCH`.
+Deploys automáticos por push estão desativados nas configurações Vercel dos
+dois projetos. Consulte [Releases](RELEASE.md) para configurar os painéis,
+cadastrar os secrets e publicar uma versão.
+
 ## Projetos Vercel
 
 | Configuração | Backend | Frontend |

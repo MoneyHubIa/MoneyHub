@@ -1,0 +1,154 @@
+# Releases de produção
+
+O workflow [Release](../.github/workflows/release.yml) publica uma versão quando
+uma GitHub Release estável é publicada. A tag deve seguir `vMAJOR.MINOR.PATCH`,
+por exemplo `v1.2.3`, e apontar para um commit que já pertence à `main`.
+
+Commits e merges continuam executando o workflow Quality. Eles não publicam
+produção pelo workflow Release. Criar uma tag sem publicar a Release, salvar
+um rascunho ou marcar a Release como pré-release também não publica produção.
+As configurações Vercel dos dois projetos desativam deploys automáticos por
+Git em todas as branches, incluindo previews automáticos. Deploys pelo CLI
+continuam disponíveis.
+
+## Configuração inicial
+
+Faça esta configuração antes de publicar a primeira Release. As alterações
+nos arquivos precisam estar na `main` e no commit escolhido para a versão.
+
+### GitHub
+
+Em **Settings > Environments**, crie o environment `production` e cadastre
+os seguintes environment secrets:
+
+| Secret | Valor |
+| --- | --- |
+| `VERCEL_TOKEN` | Token Vercel com acesso aos dois projetos. |
+| `VERCEL_ORG_ID` | ID da conta ou equipe que contém os dois projetos. |
+| `VERCEL_BACKEND_PROJECT_ID` | ID do projeto `money-hub-backend`. |
+| `VERCEL_FRONTEND_PROJECT_ID` | ID do projeto `money-hub-frontend`, diferente do backend. |
+| `PRODUCTION_DATABASE_URL` | Conexão PostgreSQL de produção do Supabase para migrations Prisma, com senha e SSL conforme o provedor. |
+
+Os IDs Vercel estão nos painéis dos projetos/equipe ou no arquivo local
+`.vercel/project.json` gerado por `vercel link`. Não versione esse arquivo.
+Use conexão direta do Supabase ou pooler em modo de sessão compatível com
+Prisma Migrate; não use o pooler em modo de transação para migrations.
+
+Se limitar as referências autorizadas no environment, permita **tags `v*`**.
+Uma regra que permite somente a branch `main` bloqueia jobs disparados por tag.
+Opcionalmente configure required reviewers para exigir aprovação antes do
+job de produção, quando o plano do GitHub oferecer essa opção.
+
+Proteja `main` com os checks Quality e proteja tags de release contra alterações
+ou exclusões. Uma versão publicada deve continuar identificando o mesmo commit.
+
+### Vercel
+
+Mantenha os dois projetos conectados ao monorepo e configure:
+
+| Configuração | Backend | Frontend |
+| --- | --- | --- |
+| Root Directory | `apps/backend` | `apps/frontend` |
+| Node | `22.x` | `22.x` |
+| Framework | Express | Other |
+| Build | Padrão Express | `npm run build:web` |
+| Output Directory | Não definir | `dist` |
+
+Permita os arquivos necessários fora do Root Directory para os workspaces.
+O workflow executa o CLI na raiz de cada cópia do monorepo; o Root Directory
+salvo no projeto seleciona a aplicação correta.
+
+Configure as variáveis **Production** descritas em [Deploy](DEPLOY.md).
+`APP_URL` do backend deve apontar para o domínio estável do frontend.
+`BACKEND_URL` do frontend deve apontar para o domínio estável do backend,
+e não para uma URL temporária de outro build. O `DATABASE_URL` do backend
+e o secret `PRODUCTION_DATABASE_URL` devem identificar o mesmo banco.
+
+O CLI baixa a configuração de produção com `vercel pull`, cria o build com
+`vercel build --prod` e envia o resultado com `--prebuilt --prod --skip-domain`.
+Esse envio prepara o deployment sem promover os domínios de produção.
+Após migrations, `vercel promote` publica primeiro o backend e depois o frontend.
+
+O bloqueio de Git está em [backend/vercel.json](../apps/backend/vercel.json)
+e [frontend/vercel.ts](../apps/frontend/vercel.ts). Não é necessário desconectar
+o repositório da Vercel. Revise outros deploy hooks ou automações externas que
+possam publicar independentemente desse workflow.
+
+### Supabase
+
+Em **Project Settings > Integrations > GitHub Integration**, desative
+**Deploy to production**. Para manter somente o fluxo por Release descrito
+aqui, desative também **Automatic branching**. Se essa integração não tiver
+outra função, também é possível desconectar apenas a integração do projeto
+com o repositório. Isso não exige remover o banco ou o projeto Supabase.
+
+MoneyHub mantém o histórico em `apps/backend/prisma/migrations`. A integração
+nativa do Supabase procura `supabase/migrations`; ela não substitui Prisma
+Migrate. Não copie migrations para manter dois históricos concorrentes.
+O banco continua hospedado no Supabase e o job Release aplica as migrations
+Prisma usando a conexão de produção cadastrada no GitHub.
+
+As opções dos painéis e os secrets são configurações externas. Alterar estes
+arquivos não modifica essas opções nem cadastra credenciais automaticamente.
+
+## Publicar uma versão
+
+1. Integre as alterações na `main` e confirme os checks Quality.
+2. No GitHub, abra **Releases > Draft a new release**.
+3. Escolha uma tag nova, como `v1.2.3`, apontando para o commit desejado da
+   `main`. Registre as mudanças nas notas da versão.
+4. Deixe a opção de pré-release desmarcada e clique em **Publish release**.
+5. Acompanhe **Actions > Release**. Se houver required reviewers no environment
+   `production`, aprove o job após revisar a versão e o commit.
+6. Confira o resumo do job e execute as verificações pós-publicação de
+   [Deploy](DEPLOY.md#verificações-após-publicar).
+
+Publicar uma Release autoriza esse workflow a aplicar as migrations pendentes
+e promover os deployments de produção daquela versão.
+
+## Validações e rastreabilidade
+
+O workflow rejeita tags fora do formato estável, commits que não pertencem à
+`main` e tags que mudaram após o disparo. O Quality é reutilizado para executar
+lint, TypeScript, builds, cobertura backend/frontend e E2E Web sobre o commit
+da Release. Uma falha impede o job de produção.
+
+As duas aplicações usam o mesmo SHA, com cópias separadas do monorepo para
+não misturar as configurações Vercel. Ambos os builds e deployments preparados
+precisam concluir antes das migrations. Se as migrations falharem, nenhum dos
+dois deployments será promovido por esse workflow.
+
+O resumo do job registra tag, SHA, resultado das migrations, URLs e resultados
+das promoções. Cada deployment recebe `releaseVersion` e `releaseCommit` como
+metadata na Vercel. A versão da entrega é a tag; os campos `version` dos
+`package.json` não são alterados automaticamente.
+
+O grupo de concurrency impede duas execuções ativas de Release ao mesmo tempo
+e não cancela uma execução já em andamento. O GitHub mantém no máximo uma
+execução pendente por grupo e pode substituir a pendente por outra mais nova;
+publique uma versão por vez e confira o resultado antes de publicar a próxima.
+
+## Falhas e rollback
+
+Migrations e promoções dos dois projetos são operações separadas. As migrations
+devem manter compatibilidade com a aplicação anterior, que ainda atende usuários
+durante a atualização. Se a promoção do frontend falhar após a do backend,
+produção ficará temporariamente com versões diferentes. Consulte o resumo
+antes de decidir entre repetir a execução e restaurar o deployment anterior.
+
+Uma execução pode ser repetida em **Actions > Release > Re-run jobs** mantendo
+a tag e o commit originais. Migrations já aplicadas não são reaplicadas pelo
+`prisma migrate deploy`. Reexecutar também pode substituir uma versão mais nova
+que já esteja em produção; confira a versão atual antes dessa ação.
+
+Para rollback da aplicação, use os deployments anteriores na Vercel e mantenha
+backend/frontend compatíveis. Rollback da aplicação não desfaz migrations nem
+restaura dados. Mudanças no banco exigem uma correção revisada e uma nova versão.
+
+## Referências
+
+- [GitHub: gatilhos de Release](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#release).
+- [Vercel: desativar deploys Git](https://vercel.com/docs/project-configuration/git-configuration).
+- [Vercel: deploy pelo CLI](https://vercel.com/docs/cli/deploy).
+- [Vercel: promoção de deployments](https://vercel.com/docs/cli/promote).
+- [Supabase: integração GitHub](https://supabase.com/docs/guides/deployment/branching/github-integration).

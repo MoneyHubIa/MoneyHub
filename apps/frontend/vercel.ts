@@ -13,6 +13,9 @@ function requiredBackendUrl(value: string | undefined): string {
 const backendUrl = requiredBackendUrl(process.env.BACKEND_URL);
 
 export const config: VercelConfig = {
+  git: {
+    deploymentEnabled: false
+  },
   buildCommand: 'npm run build:web',
   outputDirectory: 'dist',
   cleanUrls: true,

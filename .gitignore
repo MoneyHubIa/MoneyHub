@@ -8,6 +8,7 @@ coverage/
 npm-debug.log*
 firebase-debug.log*
 .vite/
+.vercel/
 .expo/
 *.apk
 *.aab

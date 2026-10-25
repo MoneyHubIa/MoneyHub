@@ -1,0 +1,171 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: moneyhub-production-release
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate release
+    if: ${{ !github.event.release.prerelease && !github.event.release.draft }}
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.release.outputs.sha }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate version and source commit
+        id: release
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            printf '%s\n' '::error::Use a stable release tag in the format v1.2.3.'
+            exit 1
+          fi
+          tag_sha=$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")
+          if [[ "$tag_sha" != "$GITHUB_SHA" ]]; then
+            printf '%s\n' '::error::The release tag moved after this workflow started.'
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$tag_sha" origin/main; then
+            printf '%s\n' '::error::The release commit must belong to main.'
+            exit 1
+          fi
+          printf 'sha=%s\nversion=%s\n' "$tag_sha" "$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+  checks:
+    name: Release checks
+    needs: validate
+    uses: ./.github/workflows/quality.yml
+
+  deploy:
+    name: Deploy production
+    needs: [validate, checks]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    defaults:
+      run:
+        shell: bash
+        working-directory: backend-release
+    env:
+      CI: 'true'
+      VERCEL_TELEMETRY_DISABLED: '1'
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      RELEASE_SHA: ${{ needs.validate.outputs.sha }}
+      RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+          path: backend-release
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+          path: frontend-release
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend-release/package-lock.json
+      - name: Check production configuration
+        env:
+          VERCEL_BACKEND_PROJECT_ID: ${{ secrets.VERCEL_BACKEND_PROJECT_ID }}
+          VERCEL_FRONTEND_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
+          PRODUCTION_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          for key in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_BACKEND_PROJECT_ID VERCEL_FRONTEND_PROJECT_ID PRODUCTION_DATABASE_URL; do
+            if [[ -z "${!key}" ]]; then
+              printf '::error::Configure %s in the production GitHub environment.\n' "$key"
+              exit 1
+            fi
+          done
+          if [[ "$VERCEL_BACKEND_PROJECT_ID" == "$VERCEL_FRONTEND_PROJECT_ID" ]]; then
+            printf '%s\n' '::error::Backend and frontend must use different Vercel projects.'
+            exit 1
+          fi
+      - name: Install Vercel CLI
+        run: npm install --global vercel@65.2.0
+      - name: Install backend workspace dependencies
+        run: npm ci
+      - name: Install frontend workspace dependencies
+        working-directory: frontend-release
+        run: npm ci
+      - name: Build and stage backend
+        id: backend
+        env:
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BACKEND_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
+          vercel build --prod --token "$VERCEL_TOKEN"
+          deployment_url=$(vercel deploy --prebuilt --prod --skip-domain --yes \
+            --meta "releaseVersion=$RELEASE_VERSION" --meta "releaseCommit=$RELEASE_SHA" \
+            --token "$VERCEL_TOKEN")
+          printf 'url=%s\n' "$deployment_url" >> "$GITHUB_OUTPUT"
+      - name: Build and stage frontend
+        id: frontend
+        working-directory: frontend-release
+        env:
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
+          vercel build --prod --token "$VERCEL_TOKEN"
+          deployment_url=$(vercel deploy --prebuilt --prod --skip-domain --yes \
+            --meta "releaseVersion=$RELEASE_VERSION" --meta "releaseCommit=$RELEASE_SHA" \
+            --token "$VERCEL_TOKEN")
+          printf 'url=%s\n' "$deployment_url" >> "$GITHUB_OUTPUT"
+      - name: Apply production Prisma migrations
+        id: migrate
+        env:
+          DIRECT_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: npm run db:migrate -w apps/backend
+      - name: Promote backend to production
+        id: promote-backend
+        env:
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BACKEND_PROJECT_ID }}
+          DEPLOYMENT_URL: ${{ steps.backend.outputs.url }}
+        run: vercel promote "$DEPLOYMENT_URL" --yes --timeout=5m --token "$VERCEL_TOKEN"
+      - name: Promote frontend to production
+        id: promote-frontend
+        working-directory: frontend-release
+        env:
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
+          DEPLOYMENT_URL: ${{ steps.frontend.outputs.url }}
+        run: vercel promote "$DEPLOYMENT_URL" --yes --timeout=5m --token "$VERCEL_TOKEN"
+      - name: Record release result
+        if: ${{ always() }}
+        env:
+          BACKEND_DEPLOYMENT_URL: ${{ steps.backend.outputs.url }}
+          FRONTEND_DEPLOYMENT_URL: ${{ steps.frontend.outputs.url }}
+          MIGRATION_RESULT: ${{ steps.migrate.outcome }}
+          BACKEND_RESULT: ${{ steps.promote-backend.outcome }}
+          FRONTEND_RESULT: ${{ steps.promote-frontend.outcome }}
+        run: |
+          {
+            printf '# Release %s\n\n' "$RELEASE_VERSION"
+            printf 'Commit: `%s`\n\n' "$RELEASE_SHA"
+            printf '| Component | Result | Deployment |\n| --- | --- | --- |\n'
+            printf '| Prisma migrations | %s | Supabase production database |\n' "$MIGRATION_RESULT"
+            printf '| Backend promotion | %s | %s |\n' "$BACKEND_RESULT" "$BACKEND_DEPLOYMENT_URL"
+            printf '| Frontend promotion | %s | %s |\n' "$FRONTEND_RESULT" "$FRONTEND_DEPLOYMENT_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
