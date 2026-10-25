@@ -122,6 +122,7 @@ docker compose up --build
 - Para acompanhar falhas, execute `docker compose logs --tail=100 backend db frontend`.
 - Se a autenticação foi alterada durante os testes, use a nova senha ou recrie a demonstração com o procedimento acima.
 
+
 Documentação: [índice por assunto e palavra-chave](docs/INDEX.md).
 
 Agentes e LLMs: comece pelo índice e carregue somente os assuntos necessários.
