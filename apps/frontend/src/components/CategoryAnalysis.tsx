@@ -105,7 +105,7 @@ export function CategoryAnalysis({
           <View style={[styles.iconBadge, { backgroundColor: theme.incomeBadge }]}>
             <PieChart color={theme.income} size={20} />
           </View>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text accessibilityRole="header" style={[styles.title, { color: theme.textPrimary }]}>
               Análise por Categoria
             </Text>

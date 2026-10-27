@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import type { ColorTokens } from '../theme/tokens';
+import { confirmDestructiveAction } from '../utils/confirmAction';
 
 const MY_COST_CENTERS_QUERY = gql`
   query MyCostCenters {
@@ -87,8 +88,15 @@ export function CostCenters() {
     });
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteCostCenter({ variables: { id } });
+  const handleDelete = (id: string, name?: string) => {
+    confirmDestructiveAction({
+      title: 'Excluir Centro de Custo',
+      message: `Tem certeza de que deseja excluir ${name ? `"${name}"` : 'este centro de custo'}? Esta ação não pode ser desfeita.`,
+      confirmLabel: 'Excluir',
+      onConfirm: async () => {
+        await deleteCostCenter({ variables: { id } });
+      }
+    });
   };
 
   return (
@@ -170,7 +178,8 @@ export function CostCenters() {
                 </View>
                 <Pressable
                   accessibilityLabel={`Excluir centro de custo ${item.name}`}
-                  onPress={() => handleDelete(item.id)}
+                  hitSlop={8}
+                  onPress={() => handleDelete(item.id, item.name)}
                   style={styles.deleteButton}
                 >
                   <Trash2 color={theme.expense} size={16} />
@@ -245,5 +254,11 @@ const getThemedStyles = (theme: ColorTokens) =>
     itemBadge: { alignItems: 'center', flexDirection: 'row', gap: 12 },
     itemName: { color: theme.textPrimary, fontSize: 15, fontWeight: '600' },
     itemDesc: { color: theme.textSecondary, fontSize: 13 },
-    deleteButton: { padding: 6 }
+    deleteButton: {
+      alignItems: 'center',
+      borderRadius: 8,
+      height: 40,
+      justifyContent: 'center',
+      width: 40
+    }
   });

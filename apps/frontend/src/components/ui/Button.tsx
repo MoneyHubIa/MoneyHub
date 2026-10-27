@@ -45,35 +45,35 @@ export function Button({
   accessibilityLabel,
   testID
 }: ButtonProps): React.JSX.Element {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
 
   const isInteractive = !disabled && !loading;
 
-  let backgroundColor = theme.income;
+  let backgroundColor = isDark ? '#059669' : theme.income;
   let textColor = '#FFFFFF';
   let borderColor = 'transparent';
   let borderWidth = 0;
 
   switch (variant) {
     case 'primary':
-      backgroundColor = theme.income;
+      backgroundColor = isDark ? '#059669' : theme.income;
       textColor = '#FFFFFF';
       break;
     case 'secondary':
       backgroundColor = theme.bgElevated;
       textColor = theme.textPrimary;
       borderColor = theme.borderElevated;
-      borderWidth = 1;
+      borderWidth = StyleSheet.hairlineWidth;
       break;
     case 'danger':
-      backgroundColor = theme.expense;
+      backgroundColor = isDark ? '#E11D48' : theme.expense;
       textColor = '#FFFFFF';
       break;
     case 'outline':
       backgroundColor = 'transparent';
       textColor = theme.textPrimary;
       borderColor = theme.border;
-      borderWidth = 1;
+      borderWidth = StyleSheet.hairlineWidth;
       break;
     case 'ghost':
       backgroundColor = 'transparent';
@@ -84,6 +84,7 @@ export function Button({
   const height = size === 'sm' ? 36 : size === 'lg' ? 52 : 44;
   const paddingHorizontal = size === 'sm' ? 12 : size === 'lg' ? 20 : 16;
   const fontSize = size === 'sm' ? 13 : size === 'lg' ? 16 : 14;
+  const hitSlop = size === 'sm' ? { top: 8, bottom: 8, left: 8, right: 8 } : undefined;
 
   return (
     <Pressable
@@ -91,6 +92,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityState={{ disabled: !isInteractive, busy: loading }}
       disabled={!isInteractive}
+      hitSlop={hitSlop}
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
@@ -100,7 +102,8 @@ export function Button({
           borderWidth,
           minHeight: height,
           paddingHorizontal,
-          opacity: disabled ? 0.5 : pressed ? 0.85 : 1
+          opacity: disabled ? 0.5 : pressed ? 0.9 : 1,
+          transform: [{ scale: isInteractive && pressed ? 0.98 : 1.0 }]
         },
         style
       ]}
@@ -142,7 +145,7 @@ export function Button({
 const styles = StyleSheet.create({
   base: {
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 12,
     flexDirection: 'row',
     gap: 8,
     justifyContent: 'center'

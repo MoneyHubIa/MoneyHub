@@ -14,6 +14,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { formatISOToRegionalDate, parseRegionalDateToISO, SupportedCurrency } from '../utils/formatters';
 import { DatePickerInput } from './DatePickerInput';
 import { ThemedModal } from './ui/ThemedModal';
+import { haptic } from '../services/haptics';
 
 export const CREATE_INCOME = gql`
   mutation CreateIncome($input: CreateIncomeInput!) {
@@ -120,6 +121,7 @@ export function TransactionModal({
   const [createIncome, { loading: creatingIncome }] = useMutation(CREATE_INCOME, {
     refetchQueries: ['DashboardSummary', 'MyTransactions'],
     onCompleted: () => {
+      void haptic.success();
       onSuccess?.();
       onClose();
     },
@@ -129,6 +131,7 @@ export function TransactionModal({
   const [createExpense, { loading: creatingExpense }] = useMutation(CREATE_EXPENSE, {
     refetchQueries: ['DashboardSummary', 'MyTransactions'],
     onCompleted: () => {
+      void haptic.success();
       onSuccess?.();
       onClose();
     },

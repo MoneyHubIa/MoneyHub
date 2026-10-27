@@ -27,6 +27,7 @@ import { allNavigationItems, NavigationId } from '../navigation/modules';
 import { useAuth } from '../providers/AuthProvider';
 import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../theme/useResponsive';
+import { useAppSafeArea } from '../theme/useAppSafeArea';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { AccountsPayable } from './AccountsPayable';
 import { AccountsReceivable } from './AccountsReceivable';
@@ -199,6 +200,7 @@ function formatLongDate(value: Date): string {
 
 export function DashboardShell(): React.JSX.Element {
   const { isDesktop } = useResponsive();
+  const insets = useAppSafeArea();
   const { theme, isDark } = useTheme();
   const { logout } = useAuth();
   const router = useRouter();
@@ -333,60 +335,119 @@ export function DashboardShell(): React.JSX.Element {
     <>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerCopy}>
-            <Text style={[styles.eyebrow, { color: theme.income }]}>
-              Controle financeiro inteligente
-            </Text>
-            <Text accessibilityRole="header" style={[styles.title, { color: theme.textPrimary }]}>
-              Dashboard financeiro
-            </Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Acompanhe saldo, receitas, despesas, metas e proximos compromissos.
-            </Text>
-          </View>
+        {isDesktop ? (
+          <View style={styles.headerRow}>
+            <View style={styles.headerCopy}>
+              <Text style={[styles.eyebrow, { color: theme.income }]}>
+                Controle financeiro inteligente
+              </Text>
+              <Text accessibilityRole="header" style={[styles.title, { color: theme.textPrimary }]}>
+                Dashboard financeiro
+              </Text>
+              <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+                Acompanhe saldo, receitas, despesas, metas e proximos compromissos.
+              </Text>
+            </View>
 
-          <View style={styles.headerActions}>
-            <Pressable
-              accessibilityLabel="Nova Transação"
-              accessibilityRole="button"
-              onPress={() => setIsTransactionModalOpen(true)}
-              style={({ pressed }) => [
-                styles.primaryCtaButton,
-                { backgroundColor: theme.brandAI, opacity: pressed ? 0.85 : 1 }
-              ]}
-            >
-              <Plus color="#FFFFFF" size={16} strokeWidth={2.5} />
-              <Text style={styles.primaryCtaText}>Nova Transação</Text>
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable
+                accessibilityLabel="Nova Transação"
+                accessibilityRole="button"
+                onPress={() => setIsTransactionModalOpen(true)}
+                style={({ pressed }) => [
+                  styles.primaryCtaButton,
+                  { backgroundColor: theme.brandAI, opacity: pressed ? 0.85 : 1 }
+                ]}
+              >
+                <Plus color="#FFFFFF" size={16} strokeWidth={2.5} />
+                <Text style={styles.primaryCtaText}>Nova Transação</Text>
+              </Pressable>
 
-            <Pressable
-              accessibilityLabel={isEyeOpen ? 'Ocultar valores' : 'Mostrar valores'}
-              accessibilityRole="button"
-              onPress={() => setIsEyeOpen((prev) => !prev)}
-              style={({ pressed }) => [
-                styles.iconButton,
-                {
-                  backgroundColor: theme.bgSurface,
-                  borderColor: theme.border,
-                  opacity: pressed ? 0.75 : 1
-                }
-              ]}
-            >
-              {isEyeOpen ? (
-                <Eye color={theme.textSecondary} size={18} />
-              ) : (
-                <EyeOff color={theme.income} size={18} />
-              )}
-            </Pressable>
+              <Pressable
+                accessibilityLabel={isEyeOpen ? 'Ocultar valores' : 'Mostrar valores'}
+                accessibilityRole="button"
+                onPress={() => setIsEyeOpen((prev) => !prev)}
+                style={({ pressed }) => [
+                  styles.iconButton,
+                  {
+                    backgroundColor: theme.bgSurface,
+                    borderColor: theme.border,
+                    opacity: pressed ? 0.75 : 1
+                  }
+                ]}
+              >
+                {isEyeOpen ? (
+                  <Eye color={theme.textSecondary} size={18} />
+                ) : (
+                  <EyeOff color={theme.income} size={18} />
+                )}
+              </Pressable>
+            </View>
           </View>
-        </View>
+        ) : (
+          <View style={styles.headerRowMobile}>
+            <View style={styles.headerCopyMobile}>
+              <Text style={[styles.eyebrow, { color: theme.income }]}>
+                Controle financeiro inteligente
+              </Text>
+              <View style={styles.titleRowMobile}>
+                <Text
+                  accessibilityRole="header"
+                  numberOfLines={1}
+                  style={[styles.titleMobile, { color: theme.textPrimary }]}
+                >
+                  Dashboard financeiro
+                </Text>
+                <Pressable
+                  accessibilityLabel={isEyeOpen ? 'Ocultar valores' : 'Mostrar valores'}
+                  accessibilityRole="button"
+                  onPress={() => setIsEyeOpen((prev) => !prev)}
+                  style={({ pressed }) => [
+                    styles.iconButton,
+                    {
+                      backgroundColor: theme.bgSurface,
+                      borderColor: theme.border,
+                      opacity: pressed ? 0.75 : 1
+                    }
+                  ]}
+                >
+                  {isEyeOpen ? (
+                    <Eye color={theme.textSecondary} size={18} />
+                  ) : (
+                    <EyeOff color={theme.income} size={18} />
+                  )}
+                </Pressable>
+              </View>
+              <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+                Acompanhe saldo, receitas, despesas, metas e proximos compromissos.
+              </Text>
+            </View>
+
+            <View style={styles.headerActionsMobile}>
+              <Pressable
+                accessibilityLabel="Nova Transação"
+                accessibilityRole="button"
+                onPress={() => setIsTransactionModalOpen(true)}
+                style={({ pressed }) => [
+                  styles.primaryCtaButtonMobile,
+                  { backgroundColor: theme.brandAI, opacity: pressed ? 0.85 : 1 }
+                ]}
+              >
+                <Plus color="#FFFFFF" size={16} strokeWidth={2.5} />
+                <Text style={styles.primaryCtaText}>Nova Transação</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
       </View>
 
       {/* 4 KPIs */}
       <View accessibilityLabel="Resumo financeiro" style={styles.kpiGrid}>
         {/* 1. Saldo — gradient hero card */}
-        <Card style={[styles.kpiCard, styles.heroCard]} variant="gradient">
+        <Card
+          style={[styles.kpiCard, styles.heroCard, !isDesktop && styles.kpiCardHeroMobile]}
+          variant="gradient"
+        >
           <View style={styles.kpiHeaderRow}>
             <Text style={[styles.kpiLabel, styles.heroLabel]}>Saldo previsto</Text>
             <View style={styles.heroIconWrap}>
@@ -397,20 +458,23 @@ export function DashboardShell(): React.JSX.Element {
           {loadingSummary && !summaryData?.dashboardSummary ? (
             <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
-            <Text style={[styles.kpiValue, styles.heroValue]}>
+            <Text numberOfLines={1} style={[styles.kpiValue, styles.heroValue]}>
               {showValue(summaryData?.dashboardSummary?.netBalance)}
             </Text>
           )}
 
           <View style={styles.heroFooter}>
-            <Text style={styles.heroFooterText}>
+            <Text numberOfLines={1} style={styles.heroFooterText}>
               Saldo Projetado: {showValue(projectedBalance.toString())}
             </Text>
           </View>
         </Card>
 
         {/* 2. Receitas */}
-        <Card style={styles.kpiCard} variant="surface">
+        <Card
+          style={[styles.kpiCard, !isDesktop && styles.kpiCardHalfMobile]}
+          variant="surface"
+        >
           <View style={styles.kpiHeaderRow}>
             <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>Receitas do mes</Text>
             <View style={[styles.kpiIconWrap, { backgroundColor: theme.incomeBadge }]}>
@@ -420,11 +484,11 @@ export function DashboardShell(): React.JSX.Element {
           {loadingSummary && !summaryData?.dashboardSummary ? (
             <ActivityIndicator color={theme.income} size="small" />
           ) : (
-            <Text style={[styles.kpiValue, { color: theme.income }]}>
+            <Text numberOfLines={1} style={[styles.kpiValue, { color: theme.income }]}>
               {showValue(summaryData?.dashboardSummary?.totalIncome)}
             </Text>
           )}
-          <Text style={[styles.kpiSub, { color: theme.textMuted }]}>
+          <Text numberOfLines={2} style={[styles.kpiSub, { color: theme.textMuted }]}>
             {summaryData?.dashboardSummary?.incomeCount ?? 0} entradas ·{' '}
             {isEyeOpen ? formatCurrency(totalReceivablePending.toString(), currency) : HIDDEN_VALUE} a
             receber
@@ -432,7 +496,10 @@ export function DashboardShell(): React.JSX.Element {
         </Card>
 
         {/* 3. Despesas */}
-        <Card style={styles.kpiCard} variant="surface">
+        <Card
+          style={[styles.kpiCard, !isDesktop && styles.kpiCardHalfMobile]}
+          variant="surface"
+        >
           <View style={styles.kpiHeaderRow}>
             <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>Despesas do mes</Text>
             <View style={[styles.kpiIconWrap, { backgroundColor: theme.expenseBadge }]}>
@@ -442,11 +509,11 @@ export function DashboardShell(): React.JSX.Element {
           {loadingSummary && !summaryData?.dashboardSummary ? (
             <ActivityIndicator color={theme.expense} size="small" />
           ) : (
-            <Text style={[styles.kpiValue, { color: theme.expense }]}>
+            <Text numberOfLines={1} style={[styles.kpiValue, { color: theme.expense }]}>
               {showValue(summaryData?.dashboardSummary?.totalExpense)}
             </Text>
           )}
-          <Text style={[styles.kpiSub, { color: theme.textMuted }]}>
+          <Text numberOfLines={2} style={[styles.kpiSub, { color: theme.textMuted }]}>
             {summaryData?.dashboardSummary?.expenseCount ?? 0} saídas ·{' '}
             {isEyeOpen ? formatCurrency(totalPayablePending.toString(), currency) : HIDDEN_VALUE} a
             pagar
@@ -454,7 +521,10 @@ export function DashboardShell(): React.JSX.Element {
         </Card>
 
         {/* 4. Alertas */}
-        <Card style={styles.kpiCard} variant="surface">
+        <Card
+          style={[styles.kpiCard, !isDesktop && styles.kpiCardHeroMobile]}
+          variant="surface"
+        >
           <View style={styles.kpiHeaderRow}>
             <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>
               Alertas de Vencimento
@@ -463,10 +533,10 @@ export function DashboardShell(): React.JSX.Element {
               <Clock color={theme.warning} size={16} />
             </View>
           </View>
-          <Text style={[styles.kpiValue, { color: theme.warning }]}>
+          <Text numberOfLines={1} style={[styles.kpiValue, { color: theme.warning }]}>
             {alertCount} {alertCount === 1 ? 'conta' : 'contas'}
           </Text>
-          <Text style={[styles.kpiSub, { color: theme.textMuted }]}>
+          <Text numberOfLines={2} style={[styles.kpiSub, { color: theme.textMuted }]}>
             {overdueCount > 0
               ? `${overdueCount} vencida${overdueCount === 1 ? '' : 's'} · próximos ${ALERT_WINDOW_DAYS} dias`
               : `Vencendo nos próximos ${ALERT_WINDOW_DAYS} dias`}
@@ -511,7 +581,7 @@ export function DashboardShell(): React.JSX.Element {
       {/* 2-column grid */}
       <View style={styles.twoColumnGrid}>
         {/* Próximos Vencimentos */}
-        <Card style={styles.gridCard} variant="surface">
+        <Card style={[styles.gridCard, !isDesktop && styles.gridCardMobile]} variant="surface">
           <View style={styles.gridCardHeader}>
             <Text style={[styles.gridCardTitle, { color: theme.textPrimary }]}>
               Próximos Vencimentos
@@ -591,6 +661,7 @@ export function DashboardShell(): React.JSX.Element {
                       accessibilityLabel={`${isPayable ? 'Pagar' : 'Receber'} ${item.description}`}
                       accessibilityRole="button"
                       disabled={isSettling}
+                      hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                       onPress={() => void handleSettle(item)}
                       style={({ pressed }) => [
                         styles.settleButton,
@@ -624,7 +695,11 @@ export function DashboardShell(): React.JSX.Element {
         </Card>
 
         {/* Metas */}
-        <Card accessibilityLabel="Metas no dashboard" style={styles.gridCard} variant="surface">
+        <Card
+          accessibilityLabel="Metas no dashboard"
+          style={[styles.gridCard, !isDesktop && styles.gridCardMobile]}
+          variant="surface"
+        >
           <View style={styles.gridCardHeader}>
             <View style={styles.inlineRow}>
               <Text style={[styles.gridCardTitle, { color: theme.textPrimary }]}>
@@ -795,7 +870,13 @@ export function DashboardShell(): React.JSX.Element {
         )}
 
         <ScrollView
-          contentContainerStyle={[styles.content, !isDesktop && styles.contentMobile]}
+          contentContainerStyle={[
+            styles.content,
+            !isDesktop && [
+              styles.contentMobile,
+              { paddingBottom: Math.max(insets.bottom + 84, 100) }
+            ]
+          ]}
           style={styles.scroll}
         >
           {renderSection()}
@@ -899,14 +980,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 9999,
     bottom: 28,
-    elevation: 6,
+    elevation: 4,
     flexDirection: 'row',
     gap: 8,
     minHeight: 48,
     paddingHorizontal: 20,
     position: 'absolute',
     right: 104,
-    boxShadow: '0px 6px 12px rgba(16, 185, 129, 0.35)'
+    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.2)'
   },
   desktopFabText: {
     color: '#FFFFFF',
@@ -933,6 +1014,11 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     gap: 12,
     padding: 18
+  },
+  gridCardMobile: {
+    flexBasis: '100%',
+    width: '100%',
+    padding: 14
   },
   gridCardHeader: {
     alignItems: 'center',
@@ -961,19 +1047,58 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8
   },
-  headerCopy: {
-    flex: 1,
-    gap: 6
-  },
   headerRow: {
     alignItems: 'flex-start',
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'space-between'
   },
+  headerRowMobile: {
+    alignItems: 'stretch',
+    flexDirection: 'column',
+    gap: 10,
+    width: '100%'
+  },
+  headerCopy: {
+    flex: 1,
+    gap: 6
+  },
+  headerCopyMobile: {
+    gap: 4,
+    width: '100%'
+  },
+  titleRowMobile: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 10
+  },
+  titleMobile: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.4
+  },
+  headerActionsMobile: {
+    flexDirection: 'row',
+    width: '100%',
+    marginTop: 2
+  },
+  primaryCtaButtonMobile: {
+    alignItems: 'center',
+    borderRadius: 8,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    height: 44,
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 14
+  },
   heroCard: {
-    borderWidth: 0,
-    boxShadow: '0px 8px 16px rgba(5, 150, 105, 0.3)'
+    borderRadius: 16,
+    boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.15)'
   },
   heroFooter: {
     backgroundColor: 'rgba(255, 255, 255, 0.14)',
@@ -996,10 +1121,13 @@ const styles = StyleSheet.create({
     width: 30
   },
   heroLabel: {
-    color: '#D1FAE5'
+    color: '#A7F3D0'
   },
   heroValue: {
-    color: '#FFFFFF'
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '800'
   },
   iconButton: {
     alignItems: 'center',
@@ -1015,11 +1143,22 @@ const styles = StyleSheet.create({
     gap: 8
   },
   kpiCard: {
+    borderRadius: 16,
     flexBasis: 220,
     flexGrow: 1,
     gap: 6,
     minHeight: 124,
-    padding: 18
+    padding: 16
+  },
+  kpiCardHeroMobile: {
+    flexBasis: '100%',
+    minHeight: 112
+  },
+  kpiCardHalfMobile: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    minHeight: 112,
+    padding: 12
   },
   kpiGrid: {
     flexDirection: 'row',
@@ -1125,7 +1264,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 8,
     justifyContent: 'center',
-    minHeight: 32,
+    minHeight: 38,
     minWidth: 76,
     paddingHorizontal: 12
   },

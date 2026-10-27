@@ -8,6 +8,7 @@ import {
   View,
   ViewStyle
 } from 'react-native';
+import { useAppSafeArea } from '../../theme/useAppSafeArea';
 import { useTheme } from '../../theme/ThemeContext';
 
 export interface AppHeaderProps {
@@ -34,10 +35,11 @@ export function AppHeader({
   style
 }: AppHeaderProps): React.JSX.Element {
   const { theme, isDark, toggleTheme } = useTheme();
+  const insets = useAppSafeArea();
 
   const handleToggle = onToggleTheme ?? toggleTheme;
-
   const nextCurrency = currentCurrency === 'BRL' ? 'USD' : currentCurrency === 'USD' ? 'EUR' : 'BRL';
+  const paddingTop = compact ? Math.max(insets.top, 8) : Math.max(insets.top, 12);
 
   return (
     <View
@@ -45,7 +47,8 @@ export function AppHeader({
         styles.container,
         {
           backgroundColor: theme.bgSurface,
-          borderBottomColor: theme.border
+          borderBottomColor: theme.separator || theme.border,
+          paddingTop
         },
         compact && styles.compactContainer,
         style
@@ -76,6 +79,7 @@ export function AppHeader({
           <Pressable
             accessibilityLabel={`Moeda atual ${currentCurrency}. Toque para alternar.`}
             accessibilityRole="button"
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
             onPress={() => onSelectCurrency(nextCurrency)}
             style={({ pressed }) => [
               styles.currencyBadge,
@@ -95,6 +99,7 @@ export function AppHeader({
         <Pressable
           accessibilityLabel="Alternar tema de cor"
           accessibilityRole="button"
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
           onPress={handleToggle}
           style={({ pressed }) => [
             styles.iconButton,
@@ -122,31 +127,31 @@ const styles = StyleSheet.create({
   actions: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 10
+    gap: 8
   },
   compactContainer: {
     minHeight: 56,
     paddingHorizontal: 16,
-    paddingVertical: 8
+    paddingBottom: 8
   },
   compactTitle: {
     fontSize: 18
   },
   container: {
     alignItems: 'center',
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     justifyContent: 'space-between',
     minHeight: 64,
+    paddingBottom: 12,
     paddingHorizontal: 24,
-    paddingVertical: 12,
     zIndex: 10
   },
   currencyBadge: {
     alignItems: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    height: 38,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: 44,
     justifyContent: 'center',
     paddingHorizontal: 12
   },
@@ -156,11 +161,11 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     alignItems: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    height: 38,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: 44,
     justifyContent: 'center',
-    width: 38
+    width: 44
   },
   subtitle: {
     fontSize: 13,

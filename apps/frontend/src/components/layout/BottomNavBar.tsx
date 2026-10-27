@@ -15,7 +15,9 @@ import {
   ViewStyle
 } from 'react-native';
 import { NavigationId } from '../../navigation/modules';
+import { useAppSafeArea } from '../../theme/useAppSafeArea';
 import { useTheme } from '../../theme/ThemeContext';
+import { haptic } from '../../services/haptics';
 
 export interface BottomNavBarProps {
   activeSection: NavigationId;
@@ -31,6 +33,20 @@ export function BottomNavBar({
   style
 }: BottomNavBarProps): React.JSX.Element {
   const { theme } = useTheme();
+  const insets = useAppSafeArea();
+
+  const bottomPadding = insets.bottom > 0 ? insets.bottom : 8;
+  const containerHeight = 52 + bottomPadding;
+
+  const handleTabPress = (id: NavigationId) => {
+    void haptic.selection();
+    onSelectSection(id);
+  };
+
+  const handleCenterPress = () => {
+    void haptic.impactLight();
+    onOpenQuickAction();
+  };
 
   return (
     <View
@@ -38,7 +54,9 @@ export function BottomNavBar({
         styles.container,
         {
           backgroundColor: theme.bgSurface,
-          borderTopColor: theme.border
+          borderTopColor: theme.separator || theme.border,
+          height: containerHeight,
+          paddingBottom: bottomPadding
         },
         style
       ]}
@@ -48,7 +66,8 @@ export function BottomNavBar({
         accessibilityLabel="Início"
         accessibilityRole="button"
         accessibilityState={{ selected: activeSection === 'dashboard' }}
-        onPress={() => onSelectSection('dashboard')}
+        hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+        onPress={() => handleTabPress('dashboard')}
         style={styles.tab}
       >
         <LayoutDashboard
@@ -60,7 +79,7 @@ export function BottomNavBar({
             styles.tabLabel,
             {
               color: activeSection === 'dashboard' ? theme.income : theme.textSecondary,
-              fontWeight: activeSection === 'dashboard' ? '700' : '500'
+              fontWeight: activeSection === 'dashboard' ? '700' : '600'
             }
           ]}
         >
@@ -73,7 +92,8 @@ export function BottomNavBar({
         accessibilityLabel="A Pagar"
         accessibilityRole="button"
         accessibilityState={{ selected: activeSection === 'a_pagar' }}
-        onPress={() => onSelectSection('a_pagar')}
+        hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+        onPress={() => handleTabPress('a_pagar')}
         style={styles.tab}
       >
         <CalendarClock
@@ -85,7 +105,7 @@ export function BottomNavBar({
             styles.tabLabel,
             {
               color: activeSection === 'a_pagar' ? theme.income : theme.textSecondary,
-              fontWeight: activeSection === 'a_pagar' ? '700' : '500'
+              fontWeight: activeSection === 'a_pagar' ? '700' : '600'
             }
           ]}
         >
@@ -93,12 +113,13 @@ export function BottomNavBar({
         </Text>
       </Pressable>
 
-      {/* 3. Botão Flutuante Central (+) em #10B981 */}
+      {/* 3. Botão Central (+) */}
       <View style={styles.centerButtonWrapper}>
         <Pressable
           accessibilityLabel="Novo lançamento rápido"
           accessibilityRole="button"
-          onPress={onOpenQuickAction}
+          hitSlop={6}
+          onPress={handleCenterPress}
           style={({ pressed }) => [
             styles.floatingButton,
             {
@@ -107,7 +128,7 @@ export function BottomNavBar({
             }
           ]}
         >
-          <Plus color="#FFFFFF" size={26} strokeWidth={2.5} />
+          <Plus color="#FFFFFF" size={22} strokeWidth={2.5} />
         </Pressable>
       </View>
 
@@ -116,7 +137,8 @@ export function BottomNavBar({
         accessibilityLabel="Categorias"
         accessibilityRole="button"
         accessibilityState={{ selected: activeSection === 'financeiro' }}
-        onPress={() => onSelectSection('financeiro')}
+        hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+        onPress={() => handleTabPress('financeiro')}
         style={styles.tab}
       >
         <Tag
@@ -128,7 +150,7 @@ export function BottomNavBar({
             styles.tabLabel,
             {
               color: activeSection === 'financeiro' ? theme.income : theme.textSecondary,
-              fontWeight: activeSection === 'financeiro' ? '700' : '500'
+              fontWeight: activeSection === 'financeiro' ? '700' : '600'
             }
           ]}
         >
@@ -141,7 +163,8 @@ export function BottomNavBar({
         accessibilityLabel="Metas"
         accessibilityRole="button"
         accessibilityState={{ selected: activeSection === 'metas' }}
-        onPress={() => onSelectSection('metas')}
+        hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+        onPress={() => handleTabPress('metas')}
         style={styles.tab}
       >
         <Target
@@ -153,7 +176,7 @@ export function BottomNavBar({
             styles.tabLabel,
             {
               color: activeSection === 'metas' ? theme.income : theme.textSecondary,
-              fontWeight: activeSection === 'metas' ? '700' : '500'
+              fontWeight: activeSection === 'metas' ? '700' : '600'
             }
           ]}
         >
@@ -167,34 +190,32 @@ export function BottomNavBar({
 const styles = StyleSheet.create({
   centerButtonWrapper: {
     alignItems: 'center',
-    height: 60,
+    height: 44,
     justifyContent: 'center',
-    top: -12,
-    width: 60
+    width: 44
   },
   container: {
     alignItems: 'center',
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
-    height: 64,
     justifyContent: 'space-around',
-    paddingBottom: 6,
     paddingHorizontal: 8,
+    paddingTop: 6,
     zIndex: 20
   },
   floatingButton: {
     alignItems: 'center',
-    borderRadius: 27,
-    elevation: 6,
-    height: 54,
+    borderRadius: 22,
+    elevation: 4,
+    height: 44,
     justifyContent: 'center',
-    boxShadow: '0px 4px 8px rgba(16, 185, 129, 0.35)',
-    width: 54
+    boxShadow: '0px 3px 6px rgba(16, 185, 129, 0.25)',
+    width: 44
   },
   tab: {
     alignItems: 'center',
     flex: 1,
-    gap: 3,
+    gap: 2,
     justifyContent: 'center',
     minHeight: 44
   },

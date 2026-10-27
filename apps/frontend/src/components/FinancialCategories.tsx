@@ -28,6 +28,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Badge } from './ui/Badge';
+import { confirmDestructiveAction } from '../utils/confirmAction';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Input } from './ui/Input';
@@ -201,11 +202,18 @@ export function FinancialCategories(): React.JSX.Element {
     resetForm();
   };
 
-  const handleDelete = async (id: string) => {
-    if (editingId === id) {
-      cancelEdit();
-    }
-    await deleteCategory({ variables: { id } });
+  const handleDelete = (id: string, name?: string) => {
+    confirmDestructiveAction({
+      title: 'Excluir Categoria',
+      message: `Tem certeza de que deseja excluir ${name ? `"${name}"` : 'esta categoria'}? Esta ação não pode ser desfeita.`,
+      confirmLabel: 'Excluir',
+      onConfirm: async () => {
+        if (editingId === id) {
+          cancelEdit();
+        }
+        await deleteCategory({ variables: { id } });
+      }
+    });
   };
 
   const isSaving = creating || updating;
@@ -492,7 +500,8 @@ export function FinancialCategories(): React.JSX.Element {
                     <Pressable
                       accessibilityLabel={`Excluir categoria ${cat.name}`}
                       accessibilityRole="button"
-                      onPress={() => handleDelete(cat.id)}
+                      hitSlop={4}
+                      onPress={() => handleDelete(cat.id, cat.name)}
                       style={({ pressed }) => [
                         styles.actionButton,
                         { backgroundColor: theme.bgElevated, opacity: pressed ? 0.7 : 1 }
@@ -517,11 +526,12 @@ export function FinancialCategories(): React.JSX.Element {
 const styles = StyleSheet.create({
   actionButton: {
     alignItems: 'center',
-    borderRadius: 6,
+    borderRadius: 8,
     flex: 1,
     flexDirection: 'row',
     gap: 6,
-    height: 34,
+    height: 40,
+    minHeight: 40,
     justifyContent: 'center'
   },
   actionButtonText: {

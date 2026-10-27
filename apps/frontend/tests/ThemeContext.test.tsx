@@ -37,7 +37,7 @@ describe('ThemeContext', () => {
 
     expect(screen.getByText('dark')).toBeOnTheScreen();
     expect(screen.getByText('dark-yes')).toBeOnTheScreen();
-    expect(screen.getByText('#0B0F19')).toBeOnTheScreen();
+    expect(screen.getByText('#090D16')).toBeOnTheScreen();
     expect(screen.getByText('#111827')).toBeOnTheScreen();
     expect(screen.getByText('#10B981')).toBeOnTheScreen();
     expect(screen.getByText('#F43F5E')).toBeOnTheScreen();
@@ -57,7 +57,7 @@ describe('ThemeContext', () => {
     });
 
     expect(screen.getByText('dark-no')).toBeOnTheScreen();
-    expect(screen.getByText('#F8FAFC')).toBeOnTheScreen();
+    expect(screen.getByText('#F2F2F7')).toBeOnTheScreen();
     expect(screen.getByText('#FFFFFF')).toBeOnTheScreen();
 
     const stored = await AsyncStorage.getItem('@moneyhub:theme_mode');

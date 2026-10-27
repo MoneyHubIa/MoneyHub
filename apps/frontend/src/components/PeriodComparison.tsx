@@ -217,7 +217,7 @@ export function PeriodComparison({
           <View style={[styles.iconBadge, { backgroundColor: theme.incomeBadge }]}>
             <GitCompare color={theme.income} size={20} />
           </View>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text accessibilityRole="header" style={[styles.title, { color: theme.textPrimary }]}>
               Comparativo de Períodos Personalizado
             </Text>

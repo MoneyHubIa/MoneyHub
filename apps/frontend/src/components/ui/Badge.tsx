@@ -35,23 +35,23 @@ export function Badge({
   switch (tone) {
     case 'income':
       bgColor = theme.incomeBadge;
-      textColor = theme.income;
+      textColor = theme.incomeBadgeText ?? theme.income;
       break;
     case 'expense':
       bgColor = theme.expenseBadge;
-      textColor = theme.expense;
+      textColor = theme.expenseBadgeText ?? theme.expense;
       break;
     case 'warning':
       bgColor = theme.warningBadge;
-      textColor = theme.warning;
+      textColor = theme.warningBadgeText ?? theme.warning;
       break;
     case 'brandAI':
       bgColor = theme.brandAIBadge;
-      textColor = theme.brandAI;
+      textColor = theme.brandAIBadgeText ?? theme.brandAI;
       break;
     case 'info':
       bgColor = theme.infoBadge;
-      textColor = theme.info;
+      textColor = theme.infoBadgeText ?? theme.info;
       break;
     case 'neutral':
     default:
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 5,
     paddingHorizontal: 9,
-    paddingVertical: 4
+    paddingVertical: 3
   },
   icon: {
     marginRight: 1

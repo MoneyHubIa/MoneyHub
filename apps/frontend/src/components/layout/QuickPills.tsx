@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { allNavigationItems, NavigationId } from '../../navigation/modules';
 import { useTheme } from '../../theme/ThemeContext';
+import { haptic } from '../../services/haptics';
 
 export interface QuickPillsProps {
   activeSection: NavigationId;
@@ -32,7 +33,7 @@ export function QuickPills({
         styles.scrollView,
         {
           backgroundColor: theme.bgSurface,
-          borderBottomColor: theme.border
+          borderBottomColor: theme.separator
         },
         style
       ]}
@@ -50,8 +51,12 @@ export function QuickPills({
             accessibilityLabel={`Pílula ${item.label}`}
             accessibilityRole="button"
             accessibilityState={{ selected: isActive }}
+            hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
             key={item.id}
-            onPress={() => onSelectSection(item.id)}
+            onPress={() => {
+              void haptic.selection();
+              onSelectSection(item.id);
+            }}
             style={({ pressed }) => [
               styles.pill,
               {
@@ -61,20 +66,21 @@ export function QuickPills({
                 borderColor: isActive
                   ? activeBg
                   : theme.borderElevated,
-                opacity: pressed ? 0.75 : 1
+                transform: [{ scale: pressed ? 0.97 : 1 }],
+                opacity: pressed ? 0.8 : 1
               }
             ]}
           >
             <Icon
               color={isActive ? activeText : theme.textSecondary}
-              size={14}
+              size={15}
             />
             <Text
               style={[
                 styles.pillText,
                 {
                   color: isActive ? activeText : theme.textSecondary,
-                  fontWeight: isActive ? '700' : '500'
+                  fontWeight: isActive ? '700' : '600'
                 }
               ]}
             >
@@ -92,7 +98,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 16,
-    paddingVertical: 10
+    paddingVertical: 8
   },
   pill: {
     alignItems: 'center',
@@ -100,15 +106,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: 'row',
     gap: 6,
-    minHeight: 36,
+    minHeight: 40,
     paddingHorizontal: 14,
-    paddingVertical: 6
+    paddingVertical: 8
   },
   pillText: {
-    fontSize: 13
+    fontSize: 13,
+    fontWeight: '600'
   },
   scrollView: {
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     maxHeight: 56
   }
 });
