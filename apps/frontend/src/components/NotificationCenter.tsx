@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   container: { position: 'relative' },
   trigger: { alignItems: 'center', borderColor: '#ccfbf1', borderRadius: 6, borderWidth: 1, justifyContent: 'center', minHeight: 40, minWidth: 40, padding: 8 },
   badge: { alignItems: 'center', backgroundColor: '#dc2626', borderColor: '#ffffff', borderRadius: 10, borderWidth: 1, justifyContent: 'center', minHeight: 18, minWidth: 18, paddingHorizontal: 4, position: 'absolute', right: -6, top: -6 },
-  badgeText: { color: '#ffffff', fontSize: 10, fontWeight: '800' },
+  badgeText: { color: '#ffffff', fontSize: 11, fontWeight: '800' },
   panel: { backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: 8, borderWidth: 1, elevation: 3, gap: 12, maxHeight: 420, padding: 14, position: 'absolute', top: 48, width: 360, zIndex: 10 },
   panelLeft: { right: 0 },
   panelRight: { left: 0 },

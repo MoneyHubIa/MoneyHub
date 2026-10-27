@@ -984,7 +984,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2
   },
   latencyBadgeText: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '700'
   },
   loadingBubble: {
@@ -1040,7 +1040,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2
   },
   modelBadgeText: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '600'
   },
   numberPrefix: {
@@ -1054,7 +1054,7 @@ const styles = StyleSheet.create({
     paddingVertical: 1
   },
   onlineText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700'
   },
   paragraphGap: {

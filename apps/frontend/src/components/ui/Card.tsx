@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Platform,
   Pressable,
   StyleProp,
   StyleSheet,
@@ -25,27 +26,35 @@ export function Card({
   testID,
   accessibilityLabel
 }: CardProps): React.JSX.Element {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
 
   const baseStyle: ViewStyle = {
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     backgroundColor:
       variant === 'elevated'
         ? theme.bgElevated
         : variant === 'gradient'
-          ? '#059669'
+          ? (isDark ? '#064E3B' : '#059669')
           : theme.bgSurface,
     borderColor:
       variant === 'elevated'
         ? theme.borderElevated
         : variant === 'gradient'
-          ? '#0D9488'
+          ? (isDark ? 'rgba(16, 185, 129, 0.3)' : '#0D9488')
           : theme.border,
     ...(variant === 'gradient'
-      ? { experimental_backgroundImage: 'linear-gradient(135deg, #059669 0%, #0F766E 100%)' }
-      : {})
+      ? { experimental_backgroundImage: isDark ? 'linear-gradient(135deg, #064E3B 0%, #0F2F29 100%)' : 'linear-gradient(135deg, #059669 0%, #0F766E 100%)' }
+      : {}),
+    ...(Platform.OS === 'ios' || Platform.OS === 'web'
+      ? {
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: isDark ? 0.25 : 0.05,
+          shadowRadius: 8
+        }
+      : { elevation: 2 })
   };
 
   if (onPress) {
@@ -57,6 +66,7 @@ export function Card({
         style={({ pressed }) => [
           baseStyle,
           pressed && styles.pressed,
+          pressed && { transform: [{ scale: 0.985 }] },
           style
         ]}
         testID={testID}
@@ -79,6 +89,6 @@ export function Card({
 
 const styles = StyleSheet.create({
   pressed: {
-    opacity: 0.85
+    opacity: 0.88
   }
 });

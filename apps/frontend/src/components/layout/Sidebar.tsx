@@ -51,7 +51,7 @@ export function Sidebar({
         styles.container,
         {
           backgroundColor: theme.bgSurface,
-          borderRightColor: theme.border
+          borderRightColor: theme.separator || theme.border
         },
         style
       ]}
@@ -275,7 +275,7 @@ export function Sidebar({
       </ScrollView>
 
       {/* Footer: Settings and Logout */}
-      <View style={[styles.footer, { borderTopColor: theme.border }]}>
+      <View style={[styles.footer, { borderTopColor: theme.separator || theme.border }]}>
         <Pressable
           accessibilityLabel="Ajustes"
           accessibilityRole="button"
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4
   },
   container: {
-    borderRightWidth: 1,
+    borderRightWidth: StyleSheet.hairlineWidth,
     flexDirection: 'column',
     height: '100%',
     width: 260
@@ -357,11 +357,12 @@ const styles = StyleSheet.create({
     paddingVertical: 2
   },
   countText: {
-    fontSize: 11,
+    fontSize: 12,
+    fontVariant: ['tabular-nums'],
     fontWeight: '700'
   },
   footer: {
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     gap: 4,
     padding: 12
   },
@@ -382,8 +383,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     flexDirection: 'row',
     gap: 10,
-    minHeight: 42,
-    paddingHorizontal: 12
+    minHeight: 40,
+    paddingHorizontal: 12,
+    paddingVertical: 8
   },
   navLabel: {
     fontSize: 14
@@ -402,16 +404,17 @@ const styles = StyleSheet.create({
   },
   quickButton: {
     alignItems: 'center',
-    borderRadius: 6,
-    borderWidth: 1,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
     flexBasis: '47%',
     flexDirection: 'row',
     gap: 4,
-    height: 32,
+    height: 36,
+    minHeight: 36,
     justifyContent: 'center'
   },
   quickButtonText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600'
   },
   quickButtonsGrid: {

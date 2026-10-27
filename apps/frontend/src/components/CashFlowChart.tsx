@@ -18,6 +18,7 @@ import {
   View
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useResponsive } from '../theme/useResponsive';
 import { formatCurrency } from '../utils/formatters';
 
 export const CASH_FLOW_QUERY = gql`
@@ -70,6 +71,7 @@ type CashFlowChartProps = Readonly<{
 
 export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps): React.JSX.Element {
   const { theme, isDark } = useTheme();
+  const { isDesktop } = useResponsive();
   const [granularity, setGranularity] = useState<'DAILY' | 'MONTHLY'>('DAILY');
   const [selectedPoint, setSelectedPoint] = useState<CashFlowDataPoint | null>(null);
 
@@ -105,12 +107,12 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
         }
       ]}
     >
-      <View style={styles.header}>
+      <View style={[styles.header, !isDesktop && styles.headerMobile]}>
         <View style={styles.headerTitleGroup}>
           <View style={[styles.iconBadge, { backgroundColor: theme.incomeBadge }]}>
             <BarChart3 color={theme.income} size={20} />
           </View>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text accessibilityRole="header" style={[styles.title, { color: theme.textPrimary }]}>
               Fluxo de Caixa
             </Text>
@@ -120,7 +122,13 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
           </View>
         </View>
 
-        <View style={[styles.toggleGroup, { backgroundColor: theme.bgElevated }]}>
+        <View
+          style={[
+            styles.toggleGroup,
+            !isDesktop && styles.toggleGroupMobile,
+            { backgroundColor: theme.bgElevated }
+          ]}
+        >
           <Pressable
             accessibilityLabel="Visualização Diária"
             accessibilityRole="button"
@@ -130,6 +138,7 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
             }}
             style={[
               styles.toggleButton,
+              !isDesktop && styles.toggleButtonMobile,
               granularity === 'DAILY' && [styles.toggleButtonActive, { backgroundColor: theme.income }]
             ]}
           >
@@ -157,6 +166,7 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
             }}
             style={[
               styles.toggleButton,
+              !isDesktop && styles.toggleButtonMobile,
               granularity === 'MONTHLY' && [styles.toggleButtonActive, { backgroundColor: theme.income }]
             ]}
           >
@@ -181,42 +191,48 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
       <View
         style={[
           styles.ribbon,
+          !isDesktop && styles.ribbonMobile,
           {
             backgroundColor: theme.bgElevated,
             borderColor: theme.borderElevated
           }
         ]}
       >
-        <View style={styles.ribbonItem}>
+        <View style={[styles.ribbonItem, !isDesktop && styles.ribbonItemMobile]}>
           <View style={styles.ribbonLabelGroup}>
             <ArrowUpRight color={theme.income} size={16} />
             <Text style={[styles.ribbonLabel, { color: theme.textSecondary }]}>Total Entradas</Text>
           </View>
-          <Text style={[styles.ribbonValue, { color: theme.income }]}>
+          <Text numberOfLines={1} style={[styles.ribbonValue, { color: theme.income }]}>
             {formatCurrency(totals?.totalIncome ?? '0.00', preferredCurrency)}
           </Text>
         </View>
 
-        <View style={[styles.ribbonDivider, { backgroundColor: theme.borderElevated }]} />
+        {isDesktop && (
+          <View style={[styles.ribbonDivider, { backgroundColor: theme.borderElevated }]} />
+        )}
 
-        <View style={styles.ribbonItem}>
+        <View style={[styles.ribbonItem, !isDesktop && styles.ribbonItemMobile]}>
           <View style={styles.ribbonLabelGroup}>
             <ArrowDownRight color={theme.expense} size={16} />
             <Text style={[styles.ribbonLabel, { color: theme.textSecondary }]}>Total Saídas</Text>
           </View>
-          <Text style={[styles.ribbonValue, { color: theme.expense }]}>
+          <Text numberOfLines={1} style={[styles.ribbonValue, { color: theme.expense }]}>
             {formatCurrency(totals?.totalExpense ?? '0.00', preferredCurrency)}
           </Text>
         </View>
 
-        <View style={[styles.ribbonDivider, { backgroundColor: theme.borderElevated }]} />
+        {isDesktop && (
+          <View style={[styles.ribbonDivider, { backgroundColor: theme.borderElevated }]} />
+        )}
 
-        <View style={styles.ribbonItem}>
+        <View style={[styles.ribbonItem, !isDesktop && styles.ribbonItemMobile]}>
           <View style={styles.ribbonLabelGroup}>
             <Scale color={theme.income} size={16} />
             <Text style={[styles.ribbonLabel, { color: theme.textSecondary }]}>Saldo do Período</Text>
           </View>
           <Text
+            numberOfLines={1}
             style={[
               styles.ribbonValue,
               { color: Number(totals?.netBalance ?? 0) >= 0 ? theme.income : theme.expense }
@@ -405,7 +421,7 @@ const styles = StyleSheet.create({
     borderWidth: 1
   },
   barLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500'
   },
   barLabelSelected: {
@@ -468,8 +484,14 @@ const styles = StyleSheet.create({
     gap: 12,
     justifyContent: 'space-between'
   },
+  headerMobile: {
+    alignItems: 'stretch',
+    flexDirection: 'column',
+    gap: 12
+  },
   headerTitleGroup: {
     alignItems: 'center',
+    flex: 1,
     flexDirection: 'row',
     gap: 12
   },
@@ -529,6 +551,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingVertical: 12
   },
+  ribbonMobile: {
+    flexDirection: 'column',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
   ribbonDivider: {
     height: '100%',
     width: 1
@@ -539,9 +567,41 @@ const styles = StyleSheet.create({
     minWidth: 110,
     paddingHorizontal: 8
   },
+  ribbonItemMobile: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 0,
+    width: '100%'
+  },
   ribbonLabel: {
     fontSize: 11,
     fontWeight: '500'
+  },
+  toggleButton: {
+    alignItems: 'center',
+    borderRadius: 6,
+    flexDirection: 'row',
+    gap: 6,
+    minHeight: 36,
+    paddingHorizontal: 12,
+    paddingVertical: 6
+  },
+  toggleButtonActive: {
+    elevation: 1
+  },
+  toggleButtonMobile: {
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 44
+  },
+  toggleGroup: {
+    borderRadius: 8,
+    flexDirection: 'row',
+    padding: 3
+  },
+  toggleGroupMobile: {
+    width: '100%'
   },
   ribbonLabelGroup: {
     alignItems: 'center',
@@ -564,22 +624,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700'
-  },
-  toggleButton: {
-    alignItems: 'center',
-    borderRadius: 6,
-    flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6
-  },
-  toggleButtonActive: {
-    elevation: 1
-  },
-  toggleGroup: {
-    borderRadius: 8,
-    flexDirection: 'row',
-    padding: 3
   },
   toggleText: {
     fontSize: 12,

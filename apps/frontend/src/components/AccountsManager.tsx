@@ -36,6 +36,7 @@ import { DatePickerInput } from './DatePickerInput';
 import { Badge } from './ui/Badge';
 import { Card } from './ui/Card';
 import { ThemedModal } from './ui/ThemedModal';
+import { confirmDestructiveAction } from '../utils/confirmAction';
 
 export const MY_ACCOUNTS_PAYABLE_QUERY = gql`
   query MyAccountsPayable($status: AccountPayableStatus) {
@@ -559,17 +560,24 @@ export function AccountsManager({
     }
   };
 
-  const handleDelete = async (id: string) => {
-    setActionError(null);
-    try {
-      if (isPayable) {
-        await deletePayable({ variables: { id } });
-      } else {
-        await deleteReceivable({ variables: { id } });
+  const handleDelete = (id: string, description?: string) => {
+    confirmDestructiveAction({
+      title: isPayable ? 'Excluir Conta a Pagar' : 'Excluir Conta a Receber',
+      message: `Tem certeza de que deseja remover ${description ? `"${description}"` : 'este registro'}? Esta ação não pode ser desfeita.`,
+      confirmLabel: 'Excluir',
+      onConfirm: async () => {
+        setActionError(null);
+        try {
+          if (isPayable) {
+            await deletePayable({ variables: { id } });
+          } else {
+            await deleteReceivable({ variables: { id } });
+          }
+        } catch (error) {
+          setActionError(error instanceof Error ? error.message : 'Não foi possível excluir a conta. Tente novamente.');
+        }
       }
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Não foi possível excluir a conta. Tente novamente.');
-    }
+    });
   };
 
   const markingSettled = settling || markingPayablePaid || markingReceivableReceived;
@@ -584,18 +592,30 @@ export function AccountsManager({
       )}
       {/* Top Header */}
       <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <View style={styles.headerTextWrap}>
-            <Text style={[styles.eyebrow, { color: isPayable ? theme.expense : theme.income }]}>
+        <View style={[styles.headerTitleRow, !isDesktop && styles.headerTitleRowMobile]}>
+          <View style={[styles.headerTextWrap, !isDesktop && styles.headerTextWrapMobile]}>
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.eyebrow,
+                !isDesktop && styles.eyebrowMobile,
+                { color: isPayable ? theme.expense : theme.income }
+              ]}
+            >
               {isPayable ? 'COMPROMISSOS FINANCEIROS' : 'RECEITAS PROGRAMADAS'}
             </Text>
             <Text
               accessibilityRole="header"
-              style={[styles.title, { color: theme.textPrimary }]}
+              numberOfLines={1}
+              style={[
+                styles.title,
+                !isDesktop && styles.titleMobile,
+                { color: theme.textPrimary }
+              ]}
             >
               {isPayable ? 'Contas a Pagar' : 'Contas a Receber'}
             </Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            <Text style={[styles.subtitle, !isDesktop && styles.subtitleMobile, { color: theme.textSecondary }]}>
               Controle unificado de obrigações e recebimentos futuros.
             </Text>
           </View>
@@ -607,6 +627,7 @@ export function AccountsManager({
             onPress={openNewModal}
             style={({ pressed }) => [
               styles.actionButton,
+              !isDesktop && styles.actionButtonMobile,
               {
                 backgroundColor: isPayable ? theme.expense : theme.income,
                 opacity: pressed ? 0.85 : 1
@@ -621,10 +642,11 @@ export function AccountsManager({
         </View>
 
         {/* Tab Switcher & Metrics */}
-        <View style={styles.tabBarWrap}>
+        <View style={[styles.tabBarWrap, !isDesktop && styles.tabBarWrapMobile]}>
           <View
             style={[
               styles.tabPillContainer,
+              !isDesktop && styles.tabPillContainerMobile,
               { backgroundColor: theme.bgElevated, borderColor: theme.borderElevated }
             ]}
           >
@@ -637,6 +659,7 @@ export function AccountsManager({
               }}
               style={[
                 styles.tabPill,
+                !isDesktop && styles.tabPillMobile,
                 isPayable && { backgroundColor: theme.expense }
               ]}
             >
@@ -659,6 +682,7 @@ export function AccountsManager({
               }}
               style={[
                 styles.tabPill,
+                !isDesktop && styles.tabPillMobile,
                 !isPayable && { backgroundColor: theme.income }
               ]}
             >
@@ -674,61 +698,113 @@ export function AccountsManager({
           </View>
         </View>
 
-        {/* 3 Metric Cards */}
-        <View style={styles.metricsRow}>
-          <Card style={styles.metricCard} variant="surface">
-            <View style={styles.metricHeader}>
-              <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
-                Total a Pagar (Pendente)
+        {/* Metric Cards */}
+        {isDesktop ? (
+          <View style={styles.metricsRow}>
+            <Card style={styles.metricCard} variant="surface">
+              <View style={styles.metricHeader}>
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+                  Total a Pagar (Pendente)
+                </Text>
+                <ArrowDownRight color={theme.expense} size={16} />
+              </View>
+              <Text numberOfLines={1} style={[styles.metricValue, { color: theme.expense }]}>
+                {formatCurrency(pendingPayablesTotal.toString(), currency)}
               </Text>
-              <ArrowDownRight color={theme.expense} size={16} />
-            </View>
-            <Text style={[styles.metricValue, { color: theme.expense }]}>
-              {formatCurrency(pendingPayablesTotal.toString(), currency)}
-            </Text>
-            <Text style={[styles.metricSub, { color: theme.textMuted }]}>
-              {payablesList.filter((p) => p.status === 'PENDING').length} pendentes
-            </Text>
-          </Card>
+              <Text style={[styles.metricSub, { color: theme.textMuted }]}>
+                {payablesList.filter((p) => p.status === 'PENDING').length} pendentes
+              </Text>
+            </Card>
 
-          <Card style={styles.metricCard} variant="surface">
-            <View style={styles.metricHeader}>
-              <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
-                Total a Receber (Pendente)
+            <Card style={styles.metricCard} variant="surface">
+              <View style={styles.metricHeader}>
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+                  Total a Receber (Pendente)
+                </Text>
+                <ArrowUpRight color={theme.income} size={16} />
+              </View>
+              <Text numberOfLines={1} style={[styles.metricValue, { color: theme.income }]}>
+                {formatCurrency(pendingReceivablesTotal.toString(), currency)}
               </Text>
-              <ArrowUpRight color={theme.income} size={16} />
-            </View>
-            <Text style={[styles.metricValue, { color: theme.income }]}>
-              {formatCurrency(pendingReceivablesTotal.toString(), currency)}
-            </Text>
-            <Text style={[styles.metricSub, { color: theme.textMuted }]}>
-              {receivablesList.filter((r) => r.status === 'PENDING').length} previstos
-            </Text>
-          </Card>
+              <Text style={[styles.metricSub, { color: theme.textMuted }]}>
+                {receivablesList.filter((r) => r.status === 'PENDING').length} previstos
+              </Text>
+            </Card>
 
-          <Card style={styles.metricCard} variant="surface">
-            <View style={styles.metricHeader}>
-              <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
-                Balanço Previsto
+            <Card style={styles.metricCard} variant="surface">
+              <View style={styles.metricHeader}>
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+                  Balanço Previsto
+                </Text>
+                <WalletCards
+                  color={projectedBalance >= 0 ? theme.income : theme.expense}
+                  size={16}
+                />
+              </View>
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.metricValue,
+                  { color: projectedBalance >= 0 ? theme.income : theme.expense }
+                ]}
+              >
+                {formatCurrency(projectedBalance.toString(), currency)}
               </Text>
-              <WalletCards
-                color={projectedBalance >= 0 ? theme.income : theme.expense}
-                size={16}
-              />
+              <Text style={[styles.metricSub, { color: theme.textMuted }]}>
+                Resultado projetado
+              </Text>
+            </Card>
+          </View>
+        ) : (
+          <View style={styles.metricsRowMobile}>
+            <Card style={styles.metricHeroMobile} variant="surface">
+              <View style={styles.metricHeader}>
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+                  Balanço Previsto
+                </Text>
+                <WalletCards
+                  color={projectedBalance >= 0 ? theme.income : theme.expense}
+                  size={16}
+                />
+              </View>
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.metricHeroValueMobile,
+                  { color: projectedBalance >= 0 ? theme.income : theme.expense }
+                ]}
+              >
+                {formatCurrency(projectedBalance.toString(), currency)}
+              </Text>
+            </Card>
+
+            <View style={styles.metricsSubRowMobile}>
+              <Card style={styles.metricSubCardMobile} variant="surface">
+                <View style={styles.metricHeader}>
+                  <Text numberOfLines={1} style={[styles.metricLabel, { color: theme.textSecondary }]}>
+                    Total a Pagar (Pendente)
+                  </Text>
+                  <ArrowDownRight color={theme.expense} size={14} />
+                </View>
+                <Text numberOfLines={1} style={[styles.metricValueMobile, { color: theme.expense }]}>
+                  {formatCurrency(pendingPayablesTotal.toString(), currency)}
+                </Text>
+              </Card>
+
+              <Card style={styles.metricSubCardMobile} variant="surface">
+                <View style={styles.metricHeader}>
+                  <Text numberOfLines={1} style={[styles.metricLabel, { color: theme.textSecondary }]}>
+                    Total a Receber (Pendente)
+                  </Text>
+                  <ArrowUpRight color={theme.income} size={14} />
+                </View>
+                <Text numberOfLines={1} style={[styles.metricValueMobile, { color: theme.income }]}>
+                  {formatCurrency(pendingReceivablesTotal.toString(), currency)}
+                </Text>
+              </Card>
             </View>
-            <Text
-              style={[
-                styles.metricValue,
-                { color: projectedBalance >= 0 ? theme.income : theme.expense }
-              ]}
-            >
-              {formatCurrency(projectedBalance.toString(), currency)}
-            </Text>
-            <Text style={[styles.metricSub, { color: theme.textMuted }]}>
-              Resultado projetado
-            </Text>
-          </Card>
-        </View>
+          </View>
+        )}
       </View>
 
       {/* Filter and Search Bar */}
@@ -833,7 +909,7 @@ export function AccountsManager({
                       </View>
 
                       <View style={styles.itemInfo}>
-                        <Text style={[styles.itemDesc, { color: theme.textPrimary }]}>
+                        <Text numberOfLines={1} style={[styles.itemDesc, { color: theme.textPrimary }]}>
                           {item.description}
                         </Text>
 
@@ -873,6 +949,7 @@ export function AccountsManager({
 
                     <View style={styles.itemRight}>
                       <Text
+                        numberOfLines={1}
                         style={[
                           styles.itemAmount,
                           { color: isPayable ? theme.expense : theme.income }
@@ -928,7 +1005,8 @@ export function AccountsManager({
                         <Pressable
                           accessibilityLabel={`Excluir ${item.description}`}
                           accessibilityRole="button"
-                          onPress={() => void handleDelete(item.id)}
+                          hitSlop={4}
+                          onPress={() => void handleDelete(item.id, item.description)}
                           style={({ pressed }) => [
                             styles.iconActionButton,
                             {
@@ -964,7 +1042,7 @@ export function AccountsManager({
                         </View>
 
                         <View style={styles.mobileDescWrap}>
-                          <Text style={[styles.itemDesc, { color: theme.textPrimary }]}>
+                          <Text numberOfLines={1} style={[styles.itemDesc, { color: theme.textPrimary }]}>
                             {item.description}
                           </Text>
                           <Text style={[styles.itemDate, { color: theme.textMuted }]}>
@@ -974,6 +1052,7 @@ export function AccountsManager({
                       </View>
 
                       <Text
+                        numberOfLines={1}
                         style={[
                           styles.itemAmount,
                           { color: isPayable ? theme.expense : theme.income }
@@ -1067,7 +1146,8 @@ export function AccountsManager({
                         <Pressable
                           accessibilityLabel={`Excluir ${item.description}`}
                           accessibilityRole="button"
-                          onPress={() => void handleDelete(item.id)}
+                          hitSlop={4}
+                          onPress={() => void handleDelete(item.id, item.description)}
                           style={({ pressed }) => [
                             styles.iconActionButton,
                             {
@@ -1333,6 +1413,12 @@ const styles = StyleSheet.create({
     minHeight: 42,
     paddingHorizontal: 16
   },
+  actionButtonMobile: {
+    borderRadius: 12,
+    justifyContent: 'center',
+    minHeight: 44,
+    width: '100%'
+  },
   actionButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
@@ -1402,6 +1488,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: 'uppercase'
   },
+  eyebrowMobile: {
+    fontSize: 11,
+    letterSpacing: 0.8
+  },
   fieldLabel: {
     fontSize: 13,
     fontWeight: '600',
@@ -1445,6 +1535,11 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4
   },
+  headerTextWrapMobile: {
+    flex: undefined,
+    gap: 4,
+    width: '100%'
+  },
   headerTitleRow: {
     alignItems: 'flex-start',
     flexDirection: 'row',
@@ -1452,13 +1547,19 @@ const styles = StyleSheet.create({
     gap: 12,
     justifyContent: 'space-between'
   },
+  headerTitleRowMobile: {
+    alignItems: 'stretch',
+    flexDirection: 'column',
+    gap: 12,
+    width: '100%'
+  },
   iconActionButton: {
     alignItems: 'center',
     borderRadius: 8,
     borderWidth: 1,
-    height: 36,
+    height: 40,
     justifyContent: 'center',
-    width: 36
+    width: 40
   },
   iconWrap: {
     alignItems: 'center',
@@ -1567,6 +1668,36 @@ const styles = StyleSheet.create({
   list: {
     gap: 10
   },
+  metricsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  metricsRowMobile: {
+    gap: 8,
+    width: '100%'
+  },
+  metricHeroMobile: {
+    gap: 4,
+    padding: 12,
+    width: '100%'
+  },
+  metricHeroValueMobile: {
+    fontSize: 22,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '800',
+    marginTop: 2
+  },
+  metricsSubRowMobile: {
+    flexDirection: 'row',
+    gap: 8,
+    width: '100%'
+  },
+  metricSubCardMobile: {
+    flex: 1,
+    gap: 3,
+    padding: 10
+  },
   metricCard: {
     flexBasis: 180,
     flexGrow: 1,
@@ -1592,10 +1723,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 2
   },
-  metricsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10
+  metricValueMobile: {
+    fontSize: 15,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '800',
+    marginTop: 2
   },
   modalActions: {
     flexDirection: 'row',
@@ -1660,13 +1792,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20
   },
+  subtitleMobile: {
+    fontSize: 13,
+    lineHeight: 18
+  },
   tabBarWrap: {
     flexDirection: 'row'
+  },
+  tabBarWrapMobile: {
+    width: '100%'
   },
   tabPill: {
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 8
+  },
+  tabPillMobile: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 10
   },
   tabPillContainer: {
     borderRadius: 10,
@@ -1674,6 +1820,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 4,
     padding: 4
+  },
+  tabPillContainerMobile: {
+    width: '100%'
   },
   tabPillText: {
     fontSize: 13
@@ -1689,5 +1838,10 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '800',
     letterSpacing: -0.4
+  },
+  titleMobile: {
+    fontSize: 22,
+    letterSpacing: -0.4,
+    lineHeight: 28
   }
 });

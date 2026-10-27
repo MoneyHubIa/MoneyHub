@@ -12,7 +12,9 @@ import {
   View,
   ViewStyle
 } from 'react-native';
+import { useAppSafeArea } from '../../theme/useAppSafeArea';
 import { useTheme } from '../../theme/ThemeContext';
+import { useResponsive } from '../../theme/useResponsive';
 
 export interface ThemedModalProps {
   visible: boolean;
@@ -34,17 +36,22 @@ export function ThemedModal({
   contentStyle
 }: ThemedModalProps): React.JSX.Element {
   const { theme } = useTheme();
+  const { isMobile } = useResponsive();
+  const insets = useAppSafeArea();
+
+  const animationType = isMobile ? 'slide' : 'fade';
+  const bottomInset = isMobile ? Math.max(insets.bottom, 16) : 20;
 
   return (
     <Modal
-      animationType="fade"
+      animationType={animationType}
       onRequestClose={onClose}
       transparent
       visible={visible}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.overlay}
+        style={[styles.overlay, isMobile && styles.overlayMobile]}
       >
         <Pressable
           accessibilityLabel="Fechar modal ao clicar fora"
@@ -54,14 +61,26 @@ export function ThemedModal({
         <View
           style={[
             styles.dialog,
+            isMobile ? styles.dialogMobile : styles.dialogDesktop,
             {
               backgroundColor: theme.bgSurface,
               borderColor: theme.border,
-              maxWidth
+              maxWidth: isMobile ? '100%' : maxWidth
             },
             contentStyle
           ]}
         >
+          {isMobile && (
+            <View style={styles.grabberContainer}>
+              <View
+                style={[
+                  styles.grabber,
+                  { backgroundColor: theme.separator || theme.textMuted }
+                ]}
+              />
+            </View>
+          )}
+
           <View style={styles.header}>
             <View style={styles.titleGroup}>
               <Text
@@ -79,6 +98,7 @@ export function ThemedModal({
             <Pressable
               accessibilityLabel="Fechar modal"
               accessibilityRole="button"
+              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
               onPress={onClose}
               style={({ pressed }) => [
                 styles.closeButton,
@@ -89,7 +109,10 @@ export function ThemedModal({
             </Pressable>
           </View>
           <ScrollView
-            contentContainerStyle={styles.body}
+            contentContainerStyle={[
+              styles.body,
+              { paddingBottom: bottomInset }
+            ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
@@ -110,34 +133,58 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     alignItems: 'center',
-    borderRadius: 8,
-    height: 36,
+    borderRadius: 22,
+    height: 44,
     justifyContent: 'center',
-    width: 36
+    width: 44
   },
   dialog: {
-    borderRadius: 16,
-    borderWidth: 1,
-    maxHeight: '90%',
+    borderWidth: StyleSheet.hairlineWidth,
+    maxHeight: '92%',
     overflow: 'hidden',
-    width: '92%',
     zIndex: 1
+  },
+  dialogDesktop: {
+    borderRadius: 16,
+    width: '92%'
+  },
+  dialogMobile: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    width: '100%'
+  },
+  grabber: {
+    alignSelf: 'center',
+    borderRadius: 2.5,
+    height: 5,
+    width: 36
+  },
+  grabberContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 8
   },
   header: {
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16
+    paddingVertical: 14
   },
   overlay: {
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     flex: 1,
     justifyContent: 'center',
     padding: 16
+  },
+  overlayMobile: {
+    justifyContent: 'flex-end',
+    padding: 0
   },
   subtitle: {
     fontSize: 13,

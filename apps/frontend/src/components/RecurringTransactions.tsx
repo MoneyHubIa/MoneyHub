@@ -20,6 +20,7 @@ import {
   View
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useResponsive } from '../theme/useResponsive';
 import type { ColorTokens } from '../theme/tokens';
 import { formatCurrency, formatDate, parseRegionalDateToISO } from '../utils/formatters';
 import { DatePickerInput } from './DatePickerInput';
@@ -125,6 +126,7 @@ type ProcessRecurringTransactionsData = {
 
 export function RecurringTransactions() {
   const { theme } = useTheme();
+  const { isDesktop } = useResponsive();
   const styles = useMemo(() => getThemedStyles(theme), [theme]);
   const [type, setType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
   const [description, setDescription] = useState('');
@@ -269,14 +271,18 @@ export function RecurringTransactions() {
     }, 0);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.preTitle}>Planejamento</Text>
-          <Text accessibilityRole="header" style={styles.title}>
+    <ScrollView contentContainerStyle={[styles.container, !isDesktop && styles.containerMobile]}>
+      <View style={[styles.header, !isDesktop && styles.headerMobile]}>
+        <View style={[styles.headerCopy, !isDesktop && styles.headerCopyMobile]}>
+          <Text style={[styles.preTitle, !isDesktop && styles.preTitleMobile]}>Planejamento</Text>
+          <Text
+            accessibilityRole="header"
+            numberOfLines={1}
+            style={[styles.title, !isDesktop && styles.titleMobile]}
+          >
             Transações Recorrentes
           </Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.subtitle, !isDesktop && styles.subtitleMobile]}>
             Cadastre receitas e despesas fixas com geração automática de contas a pagar e receber.
           </Text>
         </View>
@@ -286,7 +292,7 @@ export function RecurringTransactions() {
           accessibilityRole="button"
           disabled={processing}
           onPress={() => processRecurring()}
-          style={styles.syncButton}
+          style={[styles.syncButton, !isDesktop && styles.syncButtonMobile]}
         >
           {processing ? (
             <ActivityIndicator color={theme.income} size="small" />
@@ -300,7 +306,7 @@ export function RecurringTransactions() {
       </View>
 
       {/* KPI Cards */}
-      <View style={styles.kpiRow}>
+      <View style={[styles.kpiRow, !isDesktop && styles.kpiRowMobile]}>
         <View style={styles.kpiCard}>
           <View style={[styles.kpiIconWrapper, { backgroundColor: theme.expenseBadge }]}>
             <TrendingDown color={theme.expense} size={20} />
@@ -614,10 +620,28 @@ const getThemedStyles = (theme: ColorTokens) =>
       gap: 20,
       padding: 24
     },
+    containerMobile: {
+      gap: 16,
+      padding: 16
+    },
     header: {
       alignItems: 'center',
       flexDirection: 'row',
       justifyContent: 'space-between'
+    },
+    headerMobile: {
+      alignItems: 'stretch',
+      flexDirection: 'column',
+      gap: 12,
+      width: '100%'
+    },
+    headerCopy: {
+      flex: 1
+    },
+    headerCopyMobile: {
+      flex: undefined,
+      gap: 2,
+      width: '100%'
     },
     preTitle: {
       color: theme.income,
@@ -626,14 +650,27 @@ const getThemedStyles = (theme: ColorTokens) =>
       letterSpacing: 0.5,
       textTransform: 'uppercase'
     },
+    preTitleMobile: {
+      fontSize: 11,
+      letterSpacing: 0.8
+    },
     title: {
       color: theme.textPrimary,
       fontSize: 24,
       fontWeight: '800'
     },
+    titleMobile: {
+      fontSize: 22,
+      letterSpacing: -0.4
+    },
     subtitle: {
       color: theme.textSecondary,
       fontSize: 14,
+      marginTop: 2
+    },
+    subtitleMobile: {
+      fontSize: 13,
+      lineHeight: 18,
       marginTop: 2
     },
     syncButton: {
@@ -647,6 +684,12 @@ const getThemedStyles = (theme: ColorTokens) =>
       paddingHorizontal: 14,
       paddingVertical: 10
     },
+    syncButtonMobile: {
+      borderRadius: 12,
+      justifyContent: 'center',
+      minHeight: 44,
+      width: '100%'
+    },
     syncButtonText: {
       color: theme.income,
       fontSize: 13,
@@ -655,6 +698,11 @@ const getThemedStyles = (theme: ColorTokens) =>
     kpiRow: {
       flexDirection: 'row',
       gap: 16
+    },
+    kpiRowMobile: {
+      flexDirection: 'column',
+      gap: 10,
+      width: '100%'
     },
     kpiCard: {
       backgroundColor: theme.bgSurface,

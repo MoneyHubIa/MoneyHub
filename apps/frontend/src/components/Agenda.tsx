@@ -14,6 +14,7 @@ import { useTheme } from '../theme/ThemeContext';
 import type { ColorTokens } from '../theme/tokens';
 import { DatePickerInput } from './DatePickerInput';
 import { formatISOToRegionalDate, parseRegionalDateToISO } from '../utils/formatters';
+import { confirmDestructiveAction } from '../utils/confirmAction';
 
 const MY_AGENDA_QUERY = gql`
   query MyAgenda($input: AgendaRangeInput!) {
@@ -293,10 +294,17 @@ export function Agenda() {
     setRetryAction(null);
   }
 
-  function handleDelete(id: string) {
-    runMutation(async () => {
-      await deleteCalendarEvent({ variables: { id: calendarEventIdFromAgendaId(id) } });
-      refetchAfterMutation();
+  function handleDelete(id: string, title?: string) {
+    confirmDestructiveAction({
+      title: 'Excluir Evento',
+      message: `Tem certeza de que deseja excluir ${title ? `"${title}"` : 'este evento'} da agenda? Esta ação não pode ser desfeita.`,
+      confirmLabel: 'Excluir',
+      onConfirm: () => {
+        runMutation(async () => {
+          await deleteCalendarEvent({ variables: { id: calendarEventIdFromAgendaId(id) } });
+          refetchAfterMutation();
+        });
+      }
     });
   }
 
@@ -358,12 +366,12 @@ export function Agenda() {
             {selectedItems.map((item) => (
               <View key={`${item.source}-${item.id}`} style={styles.agendaItem}>
                 <View style={styles.itemCopy}>
-                  <Text style={styles.itemTitle}>{item.title}</Text>
+                  <Text numberOfLines={1} style={styles.itemTitle}>{item.title}</Text>
                   <Text style={[styles.sourceBadge, item.source === 'EVENT' ? styles.eventBadge : item.source === 'PAYABLE' ? styles.payableBadge : styles.receivableBadge]}>{sourceLabel(item.source)}</Text>
                 </View>
                 {item.source === 'EVENT' ? <View style={styles.itemActions}>
-                  <Pressable accessibilityLabel={`Editar ${item.title}`} accessibilityRole="button" onPress={() => handleEdit(item)} style={styles.smallButton}><Pencil color={theme.income} size={16} /></Pressable>
-                  <Pressable accessibilityLabel={`Excluir ${item.title}`} accessibilityRole="button" disabled={deleting} onPress={() => handleDelete(item.id)} style={styles.smallButton}><Trash2 color={theme.expense} size={16} /></Pressable>
+                  <Pressable accessibilityLabel={`Editar ${item.title}`} accessibilityRole="button" hitSlop={6} onPress={() => handleEdit(item)} style={styles.smallButton}><Pencil color={theme.income} size={16} /></Pressable>
+                  <Pressable accessibilityLabel={`Excluir ${item.title}`} accessibilityRole="button" disabled={deleting} hitSlop={6} onPress={() => handleDelete(item.id, item.title)} style={styles.smallButton}><Trash2 color={theme.expense} size={16} /></Pressable>
                 </View> : null}
               </View>
             ))}
@@ -409,8 +417,8 @@ const getThemedStyles = (theme: ColorTokens) =>
     container: { gap: 20 },
     header: { gap: 8 },
     eyebrow: { color: theme.income, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
-    title: { color: theme.textPrimary, fontSize: 30, fontWeight: '700' },
-    subtitle: { color: theme.textSecondary, fontSize: 16, lineHeight: 24 },
+    title: { color: theme.textPrimary, fontSize: 24, fontWeight: '700' },
+    subtitle: { color: theme.textSecondary, fontSize: 15, lineHeight: 22 },
     calendarCard: {
       backgroundColor: theme.bgSurface,
       borderColor: theme.border,
@@ -422,10 +430,25 @@ const getThemedStyles = (theme: ColorTokens) =>
     calendarHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
     iconButton: { borderRadius: 6, padding: 8 },
     monthTitle: { color: theme.textPrimary, fontSize: 18, fontWeight: '700' },
-    weekRow: { flexDirection: 'row' },
-    weekDay: { color: theme.textSecondary, flex: 1, fontSize: 12, fontWeight: '700', textAlign: 'center' },
-    daysGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-    dayCell: { alignItems: 'center', flexBasis: '14.2857%', minHeight: 54, paddingTop: 8 },
+    weekRow: { flexDirection: 'row', width: '100%' },
+    weekDay: {
+      color: theme.textSecondary,
+      width: '14.285%',
+      maxWidth: '14.285%',
+      fontSize: 12,
+      fontWeight: '700',
+      textAlign: 'center'
+    },
+    daysGrid: { flexDirection: 'row', flexWrap: 'wrap', width: '100%' },
+    dayCell: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '14.285%',
+      maxWidth: '14.285%',
+      flexBasis: '14.285%',
+      minHeight: 48,
+      paddingVertical: 6
+    },
     dayCellSelected: {
       backgroundColor: theme.incomeBadge,
       borderRadius: 6
@@ -477,8 +500,16 @@ const getThemedStyles = (theme: ColorTokens) =>
       backgroundColor: theme.incomeBadge,
       color: theme.income
     },
-    itemActions: { flexDirection: 'row', gap: 4 },
-    smallButton: { padding: 6 },
+    itemActions: { flexDirection: 'row', gap: 6 },
+    smallButton: {
+      alignItems: 'center',
+      borderRadius: 8,
+      height: 38,
+      justifyContent: 'center',
+      minHeight: 38,
+      minWidth: 38,
+      width: 38
+    },
     formCard: {
       backgroundColor: theme.bgSurface,
       borderColor: theme.border,
@@ -520,12 +551,15 @@ const getThemedStyles = (theme: ColorTokens) =>
     notesInput: { minHeight: 82, paddingTop: 10, textAlignVertical: 'top' },
     optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     optionButton: {
+      alignItems: 'center',
       backgroundColor: theme.bgElevated,
       borderColor: theme.borderElevated,
       borderRadius: 6,
       borderWidth: 1,
-      paddingHorizontal: 10,
-      paddingVertical: 7
+      justifyContent: 'center',
+      minHeight: 40,
+      paddingHorizontal: 12,
+      paddingVertical: 8
     },
     optionButtonSelected: { backgroundColor: theme.income, borderColor: theme.income },
     optionText: { color: theme.textSecondary, fontSize: 12, fontWeight: '600' },

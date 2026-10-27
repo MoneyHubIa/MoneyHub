@@ -30,6 +30,7 @@ import {
 import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../theme/useResponsive';
 import { formatCurrency, formatDate, SupportedCurrency } from '../utils/formatters';
+import { confirmDestructiveAction } from '../utils/confirmAction';
 import { TransactionModal } from './TransactionModal';
 import { Badge } from './ui/Badge';
 import { Card } from './ui/Card';
@@ -140,12 +141,18 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
     onCompleted: () => refetch()
   });
 
-  const handleDelete = async (id: string, typename: 'Income' | 'Expense') => {
-    if (typename === 'Income') {
-      await deleteIncome({ variables: { id } });
-    } else {
-      await deleteExpense({ variables: { id } });
-    }
+  const handleDelete = (id: string, typename: 'Income' | 'Expense', description?: string) => {
+    confirmDestructiveAction(
+      'Excluir Transação',
+      `Tem certeza de que deseja remover ${description ? `"${description}"` : 'esta transação'}? Esta ação não pode ser desfeita.`,
+      async () => {
+        if (typename === 'Income') {
+          await deleteIncome({ variables: { id } });
+        } else {
+          await deleteExpense({ variables: { id } });
+        }
+      }
+    );
   };
 
   const handleFilterTypeChange = (ft: FilterType) => {
@@ -227,9 +234,9 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
     <View style={[styles.container, !isDesktop && styles.containerMobile]}>
       {/* Top Header */}
       <View style={[styles.header, !isDesktop && styles.headerMobile]}>
-        <View style={styles.headerTitleRow}>
-          <View style={styles.headerTextWrap}>
-            <Text style={[styles.eyebrow, { color: theme.income }]}>FLUXO FINANCEIRO</Text>
+        <View style={[styles.headerTitleRow, !isDesktop && styles.headerTitleRowMobile]}>
+          <View style={[styles.headerTextWrap, !isDesktop && styles.headerTextWrapMobile]}>
+            <Text style={[styles.eyebrow, !isDesktop && styles.eyebrowMobile, { color: theme.income }]}>FLUXO FINANCEIRO</Text>
             <Text
               accessibilityRole="header"
               style={[
@@ -253,6 +260,7 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
             onPress={() => setIsModalOpen(true)}
             style={({ pressed }) => [
               styles.newTxButton,
+              !isDesktop && styles.newTxButtonMobile,
               { backgroundColor: theme.income, opacity: pressed ? 0.85 : 1 }
             ]}
           >
@@ -261,98 +269,103 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
           </Pressable>
         </View>
 
-        {/* 3 Metric Mini Cards */}
-        <View style={[styles.metricsRow, !isDesktop && styles.metricsRowMobile]}>
-          <Card style={[styles.metricCard, !isDesktop && styles.metricCardMobile]} variant="surface">
-            <View style={styles.metricHeader}>
-              <Text
-                style={[
-                  styles.metricLabel,
-                  { color: theme.textSecondary },
-                  !isDesktop && styles.metricLabelMobile
-                ]}
-              >
-                Entradas
+        {/* Metric Mini Cards */}
+        {isDesktop ? (
+          <View style={styles.metricsRow}>
+            <Card style={styles.metricCard} variant="surface">
+              <View style={styles.metricHeader}>
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Entradas</Text>
+                <ArrowUpRight color={theme.income} size={16} />
+              </View>
+              <Text numberOfLines={1} style={[styles.metricValue, { color: theme.income }]}>
+                {formatCurrency(totalIncomes.toString(), currency)}
               </Text>
-              <ArrowUpRight color={theme.income} size={isDesktop ? 16 : 14} />
-            </View>
-            <Text
-              style={[
-                styles.metricValue,
-                { color: theme.income },
-                !isDesktop && styles.metricValueMobile
-              ]}
-            >
-              {formatCurrency(totalIncomes.toString(), currency)}
-            </Text>
-            {isDesktop && (
               <Text style={[styles.metricSub, { color: theme.textMuted }]}>
                 {data?.myIncomes?.length ?? 0} lançamentos
               </Text>
-            )}
-          </Card>
+            </Card>
 
-          <Card style={[styles.metricCard, !isDesktop && styles.metricCardMobile]} variant="surface">
-            <View style={styles.metricHeader}>
-              <Text
-                style={[
-                  styles.metricLabel,
-                  { color: theme.textSecondary },
-                  !isDesktop && styles.metricLabelMobile
-                ]}
-              >
-                Saídas
+            <Card style={styles.metricCard} variant="surface">
+              <View style={styles.metricHeader}>
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Saídas</Text>
+                <ArrowDownRight color={theme.expense} size={16} />
+              </View>
+              <Text numberOfLines={1} style={[styles.metricValue, { color: theme.expense }]}>
+                {formatCurrency(totalExpenses.toString(), currency)}
               </Text>
-              <ArrowDownRight color={theme.expense} size={isDesktop ? 16 : 14} />
-            </View>
-            <Text
-              style={[
-                styles.metricValue,
-                { color: theme.expense },
-                !isDesktop && styles.metricValueMobile
-              ]}
-            >
-              {formatCurrency(totalExpenses.toString(), currency)}
-            </Text>
-            {isDesktop && (
               <Text style={[styles.metricSub, { color: theme.textMuted }]}>
                 {data?.myExpenses?.length ?? 0} lançamentos
               </Text>
-            )}
-          </Card>
+            </Card>
 
-          <Card style={[styles.metricCard, !isDesktop && styles.metricCardMobile]} variant="surface">
-            <View style={styles.metricHeader}>
+            <Card style={styles.metricCard} variant="surface">
+              <View style={styles.metricHeader}>
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Balanço</Text>
+                <WalletCards
+                  color={netBalance >= 0 ? theme.income : theme.expense}
+                  size={16}
+                />
+              </View>
               <Text
+                numberOfLines={1}
                 style={[
-                  styles.metricLabel,
-                  { color: theme.textSecondary },
-                  !isDesktop && styles.metricLabelMobile
+                  styles.metricValue,
+                  { color: netBalance >= 0 ? theme.income : theme.expense }
                 ]}
               >
-                Balanço
+                {formatCurrency(netBalance.toString(), currency)}
               </Text>
-              <WalletCards
-                color={netBalance >= 0 ? theme.income : theme.expense}
-                size={isDesktop ? 16 : 14}
-              />
-            </View>
-            <Text
-              style={[
-                styles.metricValue,
-                { color: netBalance >= 0 ? theme.income : theme.expense },
-                !isDesktop && styles.metricValueMobile
-              ]}
-            >
-              {formatCurrency(netBalance.toString(), currency)}
-            </Text>
-            {isDesktop && (
               <Text style={[styles.metricSub, { color: theme.textMuted }]}>
                 Resultado líquido
               </Text>
-            )}
-          </Card>
-        </View>
+            </Card>
+          </View>
+        ) : (
+          <View style={styles.metricsRowMobile}>
+            {/* Mobile Hero: Net Balance */}
+            <Card style={styles.metricHeroMobile} variant="surface">
+              <View style={styles.metricHeader}>
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Balanço Líquido</Text>
+                <WalletCards
+                  color={netBalance >= 0 ? theme.income : theme.expense}
+                  size={16}
+                />
+              </View>
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.metricHeroValueMobile,
+                  { color: netBalance >= 0 ? theme.income : theme.expense }
+                ]}
+              >
+                {formatCurrency(netBalance.toString(), currency)}
+              </Text>
+            </Card>
+
+            {/* Mobile 2-columns: Entradas & Saídas */}
+            <View style={styles.metricsSubRowMobile}>
+              <Card style={styles.metricSubCardMobile} variant="surface">
+                <View style={styles.metricHeader}>
+                  <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Entradas</Text>
+                  <ArrowUpRight color={theme.income} size={14} />
+                </View>
+                <Text numberOfLines={1} style={[styles.metricValueMobile, { color: theme.income }]}>
+                  {formatCurrency(totalIncomes.toString(), currency)}
+                </Text>
+              </Card>
+
+              <Card style={styles.metricSubCardMobile} variant="surface">
+                <View style={styles.metricHeader}>
+                  <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Saídas</Text>
+                  <ArrowDownRight color={theme.expense} size={14} />
+                </View>
+                <Text numberOfLines={1} style={[styles.metricValueMobile, { color: theme.expense }]}>
+                  {formatCurrency(totalExpenses.toString(), currency)}
+                </Text>
+              </Card>
+            </View>
+          </View>
+        )}
       </View>
 
       {/* Filter and Search Bar */}
@@ -602,7 +615,7 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
                           </View>
 
                           <View style={styles.tInfo}>
-                            <Text style={[styles.tDesc, { color: theme.textPrimary }]}>
+                            <Text numberOfLines={1} style={[styles.tDesc, { color: theme.textPrimary }]}>
                               {t.description}
                             </Text>
                             <View style={styles.tMetaRow}>
@@ -633,6 +646,7 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
 
                         <View style={styles.tRight}>
                           <Text
+                            numberOfLines={1}
                             style={[
                               styles.tAmount,
                               { color: isIncome ? theme.income : theme.expense }
@@ -644,7 +658,7 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
                           <Pressable
                             accessibilityLabel={`Excluir transação ${t.description}`}
                             accessibilityRole="button"
-                            onPress={() => void handleDelete(t.id, t.__typename)}
+                            onPress={() => handleDelete(t.id, t.__typename, t.description)}
                             style={({ pressed }) => [
                               styles.deleteButton,
                               {
@@ -694,6 +708,7 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
                           </View>
 
                           <Text
+                            numberOfLines={1}
                             style={[
                               styles.tAmount,
                               styles.mobileAmount,
@@ -730,7 +745,7 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
                           <Pressable
                             accessibilityLabel={`Excluir transação ${t.description}`}
                             accessibilityRole="button"
-                            onPress={() => void handleDelete(t.id, t.__typename)}
+                            onPress={() => handleDelete(t.id, t.__typename, t.description)}
                             style={({ pressed }) => [
                               styles.deleteButton,
                               styles.mobileDeleteButton,
@@ -741,7 +756,7 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
                               }
                             ]}
                           >
-                            <Trash2 color={theme.expense} size={14} />
+                            <Trash2 color={theme.expense} size={15} />
                           </Pressable>
                         </View>
                       </View>
@@ -847,10 +862,10 @@ const styles = StyleSheet.create({
   deleteButton: {
     alignItems: 'center',
     borderRadius: 8,
-    borderWidth: 1,
-    height: 36,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: 44,
     justifyContent: 'center',
-    width: 36
+    width: 44
   },
   emptyCard: {
     alignItems: 'center',
@@ -866,15 +881,19 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: 'uppercase'
   },
+  eyebrowMobile: {
+    fontSize: 11,
+    letterSpacing: 0.8
+  },
   filterCard: {
     padding: 8
   },
   filterChip: {
     alignItems: 'center',
     borderRadius: 8,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     justifyContent: 'center',
-    minHeight: 34,
+    minHeight: 40,
     paddingHorizontal: 12
   },
   filterChipText: {
@@ -901,12 +920,23 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4
   },
+  headerTextWrapMobile: {
+    flex: undefined,
+    gap: 4,
+    width: '100%'
+  },
   headerTitleRow: {
     alignItems: 'flex-start',
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
     justifyContent: 'space-between'
+  },
+  headerTitleRowMobile: {
+    alignItems: 'stretch',
+    flexDirection: 'column',
+    gap: 10,
+    width: '100%'
   },
   iconWrap: {
     alignItems: 'center',
@@ -918,17 +948,41 @@ const styles = StyleSheet.create({
   list: {
     gap: 6
   },
+  metricsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  metricsRowMobile: {
+    gap: 8,
+    width: '100%'
+  },
+  metricHeroMobile: {
+    gap: 4,
+    padding: 12,
+    width: '100%'
+  },
+  metricHeroValueMobile: {
+    fontSize: 22,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '800',
+    marginTop: 2
+  },
+  metricsSubRowMobile: {
+    flexDirection: 'row',
+    gap: 8,
+    width: '100%'
+  },
+  metricSubCardMobile: {
+    flex: 1,
+    gap: 3,
+    padding: 10
+  },
   metricCard: {
     flexBasis: 180,
     flexGrow: 1,
     gap: 3,
     padding: 10
-  },
-  metricCardMobile: {
-    flex: 1,
-    flexBasis: 0,
-    gap: 2,
-    padding: 8
   },
   metricHeader: {
     alignItems: 'center',
@@ -938,9 +992,6 @@ const styles = StyleSheet.create({
   metricLabel: {
     fontSize: 12,
     fontWeight: '600'
-  },
-  metricLabelMobile: {
-    fontSize: 11
   },
   metricSub: {
     fontSize: 11,
@@ -953,17 +1004,10 @@ const styles = StyleSheet.create({
     marginTop: 2
   },
   metricValueMobile: {
-    fontSize: 13,
-    marginTop: 0
-  },
-  metricsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10
-  },
-  metricsRowMobile: {
-    flexWrap: 'nowrap',
-    gap: 6
+    fontSize: 15,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '800',
+    marginTop: 2
   },
   newTxButton: {
     alignItems: 'center',
@@ -972,6 +1016,12 @@ const styles = StyleSheet.create({
     gap: 8,
     minHeight: 40,
     paddingHorizontal: 14
+  },
+  newTxButtonMobile: {
+    borderRadius: 12,
+    justifyContent: 'center',
+    minHeight: 44,
+    width: '100%'
   },
   newTxButtonText: {
     color: '#FFFFFF',
@@ -1096,8 +1146,8 @@ const styles = StyleSheet.create({
     gap: 6
   },
   mobileDeleteButton: {
-    height: 30,
-    width: 30
+    height: 44,
+    width: 44
   },
   catDot: {
     borderRadius: 4,
@@ -1107,7 +1157,7 @@ const styles = StyleSheet.create({
   categoryChip: {
     alignItems: 'center',
     borderRadius: 20,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     gap: 6,
     paddingHorizontal: 12,
@@ -1125,17 +1175,19 @@ const styles = StyleSheet.create({
   pageButton: {
     alignItems: 'center',
     borderRadius: 8,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     flexShrink: 0,
     gap: 6,
-    paddingHorizontal: 12,
+    minHeight: 44,
+    paddingHorizontal: 14,
     paddingVertical: 8
   },
   pageButtonMobile: {
     gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 6
+    minHeight: 44,
+    paddingHorizontal: 10,
+    paddingVertical: 8
   },
   pageButtonText: {
     fontSize: 13,

@@ -1,6 +1,8 @@
+import { XCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   KeyboardTypeOptions,
+  Pressable,
   StyleProp,
   StyleSheet,
   Text,
@@ -24,6 +26,7 @@ export interface InputProps {
   containerStyle?: StyleProp<ViewStyle> | undefined;
   testID?: string | undefined;
   accessibilityLabel?: string | undefined;
+  clearable?: boolean | undefined;
 }
 
 export function Input({
@@ -38,10 +41,13 @@ export function Input({
   style,
   containerStyle,
   testID,
-  accessibilityLabel
+  accessibilityLabel,
+  clearable = true
 }: InputProps): React.JSX.Element {
   const { theme } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
+
+  const showClear = clearable && !secureTextEntry && value.length > 0;
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -50,18 +56,9 @@ export function Input({
           {label}
         </Text>
       )}
-      <TextInput
-        accessibilityLabel={accessibilityLabel ?? label ?? placeholder}
-        autoCapitalize={autoCapitalize}
-        keyboardType={keyboardType}
-        onBlur={() => setIsFocused(false)}
-        onChangeText={onChangeText}
-        onFocus={() => setIsFocused(true)}
-        placeholder={placeholder}
-        placeholderTextColor={theme.textMuted}
-        secureTextEntry={secureTextEntry}
+      <View
         style={[
-          styles.input,
+          styles.inputWrapper,
           {
             backgroundColor: theme.bgElevated,
             borderColor: error
@@ -69,13 +66,42 @@ export function Input({
               : isFocused
                 ? theme.income
                 : theme.borderElevated,
-            color: theme.textPrimary
-          },
-          style
+            borderWidth: isFocused || error ? 1.5 : 1
+          }
         ]}
-        testID={testID}
-        value={value}
-      />
+      >
+        <TextInput
+          accessibilityLabel={accessibilityLabel ?? label ?? placeholder}
+          autoCapitalize={autoCapitalize}
+          keyboardType={keyboardType}
+          onBlur={() => setIsFocused(false)}
+          onChangeText={onChangeText}
+          onFocus={() => setIsFocused(true)}
+          placeholder={placeholder}
+          placeholderTextColor={theme.textMuted}
+          secureTextEntry={secureTextEntry}
+          style={[
+            styles.input,
+            {
+              color: theme.textPrimary
+            },
+            style
+          ]}
+          testID={testID}
+          value={value}
+        />
+        {showClear && (
+          <Pressable
+            accessibilityLabel="Limpar texto"
+            accessibilityRole="button"
+            hitSlop={6}
+            onPress={() => onChangeText('')}
+            style={styles.clearButton}
+          >
+            <XCircle color={theme.textMuted} size={18} />
+          </Pressable>
+        )}
+      </View>
       {error && (
         <Text style={[styles.errorText, { color: theme.expense }]}>
           {error}
@@ -86,6 +112,13 @@ export function Input({
 }
 
 const styles = StyleSheet.create({
+  clearButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+    minHeight: 24,
+    minWidth: 24
+  },
   container: {
     gap: 6,
     width: '100%'
@@ -95,12 +128,17 @@ const styles = StyleSheet.create({
     fontWeight: '500'
   },
   input: {
-    borderRadius: 8,
-    borderWidth: 1,
+    flex: 1,
     fontSize: 15,
-    minHeight: 44,
-    paddingHorizontal: 14,
-    paddingVertical: 10
+    minHeight: 48,
+    paddingVertical: 12
+  },
+  inputWrapper: {
+    alignItems: 'center',
+    borderRadius: 10,
+    flexDirection: 'row',
+    minHeight: 48,
+    paddingHorizontal: 14
   },
   label: {
     fontSize: 13,
