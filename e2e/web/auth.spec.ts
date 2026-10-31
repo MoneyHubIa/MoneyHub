@@ -14,8 +14,8 @@ test('@auth validates registration and registers through the UI', async ({ page 
     await page.getByLabel('Email', { exact: true }).fill(credentials.email);
     await page.getByLabel('Senha', { exact: true }).fill(credentials.password);
     await page.getByLabel('Confirmar senha', { exact: true }).fill('senha-diferente');
-    await page.getByRole('button', { name: 'Criar conta', exact: true }).click();
     await expect(page.getByRole('alert')).toContainText('As senhas nao coincidem.');
+    await expect(page.getByRole('button', { name: 'Criar conta', exact: true })).toBeDisabled();
 
     await page.getByLabel('Confirmar senha', { exact: true }).fill(credentials.password);
     await page.getByRole('button', { name: 'Criar conta', exact: true }).click();
