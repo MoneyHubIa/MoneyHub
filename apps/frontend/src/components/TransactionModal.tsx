@@ -1,3 +1,6 @@
+import { decimal, validText } from '../utils/validation';
+import { ValidatedInput as TextInput } from './ui/ValidatedInput';
+import { FinancialAccountSelector } from './FinancialAccountSelector';
 import { gql } from '@apollo/client';
 import { useMutation, useQuery } from '@apollo/client/react';
 import { ArrowDownCircle, ArrowUpCircle, Plus, Tag } from 'lucide-react-native';
@@ -7,7 +10,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
@@ -83,6 +85,7 @@ export function TransactionModal({
   const [type, setType] = useState<'INCOME' | 'EXPENSE'>(initialType);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
+  const [financialAccountIds, setFinancialAccountIds] = useState<string[]>([]);
   const [categoryId, setCategoryId] = useState('');
   const [occurredAtDate, setOccurredAtDate] = useState(() => {
     const today = new Date();
@@ -118,7 +121,7 @@ export function TransactionModal({
   }, [visible, initialType, currency]);
 
   const [createIncome, { loading: creatingIncome }] = useMutation(CREATE_INCOME, {
-    refetchQueries: ['DashboardSummary', 'MyTransactions'],
+    refetchQueries: ['FinancialAccounts', 'DashboardSummary', 'MyTransactions'],
     onCompleted: () => {
       onSuccess?.();
       onClose();
@@ -127,7 +130,7 @@ export function TransactionModal({
   });
 
   const [createExpense, { loading: creatingExpense }] = useMutation(CREATE_EXPENSE, {
-    refetchQueries: ['DashboardSummary', 'MyTransactions'],
+    refetchQueries: ['FinancialAccounts', 'DashboardSummary', 'MyTransactions'],
     onCompleted: () => {
       onSuccess?.();
       onClose();
@@ -137,12 +140,14 @@ export function TransactionModal({
 
   const isSubmitting = creatingIncome || creatingExpense;
 
+  const formValid = validText(description, 120) && !!decimal(amount) && !!categoryId && !!parseRegionalDateToISO(occurredAtDate, currency);
   const handleSave = async () => {
-    if (!description.trim()) {
+    if (!formValid) return;
+    if (!validText(description, 120)) {
       setErrorMessage('Informe a descrição.');
       return;
     }
-    if (!amount || isNaN(Number(amount))) {
+    if (!decimal(amount)) {
       setErrorMessage('Informe um valor válido.');
       return;
     }
@@ -162,7 +167,8 @@ export function TransactionModal({
     const variables = {
       input: {
         description: description.trim(),
-        amount: Number(amount).toString(),
+        amount: decimal(amount)!,
+        financialAccountId: financialAccountIds[0],
         categoryId,
         occurredAt: finalIso
       }
@@ -277,7 +283,7 @@ export function TransactionModal({
         <View style={styles.formGroup}>
           <Text style={[styles.label, { color: theme.textSecondary }]}>Descrição</Text>
           <TextInput
-            accessibilityLabel="Descrição da transação"
+            maxLength={120} accessibilityLabel="Descrição da transação"
             onChangeText={(t) => {
               setDescription(t);
               if (errorMessage) setErrorMessage(null);
@@ -303,7 +309,7 @@ export function TransactionModal({
           </Text>
           <TextInput
             accessibilityLabel="Valor da transação"
-            keyboardType="numeric"
+            moneyDigits={10}
             onChangeText={(t) => {
               setAmount(t);
               if (errorMessage) setErrorMessage(null);
@@ -332,6 +338,7 @@ export function TransactionModal({
           }}
           value={occurredAtDate}
         />
+        <FinancialAccountSelector value={financialAccountIds} onChange={setFinancialAccountIds} />
 
         {/* Categorias */}
         <View style={styles.formGroup}>
@@ -398,16 +405,17 @@ export function TransactionModal({
             </Text>
           </Pressable>
 
+          {!formValid && <Text>Preencha descrição, valor positivo, categoria e data válida.</Text>}
           <Pressable
             accessibilityLabel="Adicionar transação"
             accessibilityRole="button"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !formValid}
             onPress={handleSave}
             style={[
               styles.submitButton,
               {
                 backgroundColor: type === 'INCOME' ? theme.income : theme.expense,
-                opacity: isSubmitting ? 0.7 : 1
+                opacity: (isSubmitting || !formValid) ? 0.7 : 1
               }
             ]}
           >

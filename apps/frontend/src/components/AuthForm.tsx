@@ -1,3 +1,4 @@
+import { validEmail } from '../utils/validation';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -23,7 +24,9 @@ export function AuthForm({ mode, onSubmit }: AuthFormProps) {
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const formValid = validEmail(email) && !!password && (!registering || password === confirmation);
   const submit = async () => {
+    if (!formValid || submitting) return;
     setError(null);
     setSuccess(null);
     if (registering && password !== confirmation) {
@@ -33,7 +36,7 @@ export function AuthForm({ mode, onSubmit }: AuthFormProps) {
 
     setSubmitting(true);
     try {
-      await onSubmit(email, password);
+      await onSubmit(email.trim(), password);
       setSuccess(
         registering
           ? 'Conta criada com sucesso!'
@@ -55,7 +58,7 @@ export function AuthForm({ mode, onSubmit }: AuthFormProps) {
           autoCapitalize="none"
           autoComplete="email"
           keyboardType="email-address"
-          onChangeText={setEmail}
+          maxLength={320} onChangeText={setEmail}
           style={styles.input}
           value={email}
         />
@@ -84,16 +87,18 @@ export function AuthForm({ mode, onSubmit }: AuthFormProps) {
           />
         </View>
       ) : null}
+      {registering && confirmation && password !== confirmation ? <Text accessibilityRole="alert" style={styles.error}>As senhas nao coincidem.</Text> : null}
+      {email && !validEmail(email) ? <Text accessibilityRole="alert" style={styles.error}>Informe um e-mail válido.</Text> : null}
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       {success ? <Text accessibilityRole="alert" style={styles.success}>{success}</Text> : null}
       <Pressable
         accessibilityRole="button"
-        disabled={submitting}
+        disabled={submitting || !formValid}
         onPress={submit}
         style={({ pressed }) => [
           styles.submit,
           pressed && styles.submitPressed,
-          submitting && styles.submitDisabled
+          (submitting || !formValid) && styles.submitDisabled
         ]}
       >
         {submitting ? <ActivityIndicator color="#ffffff" /> : null}

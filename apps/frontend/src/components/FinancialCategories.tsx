@@ -1,3 +1,4 @@
+import { validText } from '../utils/validation';
 import { gql } from '@apollo/client';
 import { useMutation, useQuery } from '@apollo/client/react';
 import {
@@ -156,7 +157,7 @@ export function FinancialCategories(): React.JSX.Element {
   });
 
   const handleSave = async () => {
-    if (!name.trim()) {
+    if (!validText(name, 60)) {
       setErrorMessage('Informe o nome da categoria.');
       return;
     }
@@ -257,7 +258,8 @@ export function FinancialCategories(): React.JSX.Element {
         <Input
           accessibilityLabel="Nome da categoria"
           label="Nome da Categoria"
-          onChangeText={setName}
+          error={name.length > 0 && !validText(name, 60) ? 'Informe nome com até 60 caracteres.' : null}
+          maxLength={60} onChangeText={setName}
           placeholder="Ex: Alimentação, Salário, Lazer"
           value={name}
         />
@@ -369,7 +371,7 @@ export function FinancialCategories(): React.JSX.Element {
         <View style={styles.formActions}>
           <Button
             icon={editingId ? Check : Plus}
-            loading={isSaving}
+            loading={isSaving} disabled={!validText(name, 60)}
             onPress={handleSave}
             title={editingId ? 'Salvar Alterações' : 'Adicionar Categoria'}
             variant="primary"

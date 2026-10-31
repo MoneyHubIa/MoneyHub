@@ -81,6 +81,15 @@ describe('backend foundation', () => {
 
     assert.equal(response.status, 200);
     assert.match(response.text, /MoneyHub/);
+    const policy = String(response.headers['content-security-policy']);
+    const directives = policy.split(';');
+    assert.equal(
+      directives.find((directive) => directive.startsWith('connect-src ')),
+      "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com"
+    );
+    assert.ok(directives.includes("default-src 'self'"));
+    assert.ok(directives.includes("script-src 'self'"));
+    assert.ok(directives.includes("object-src 'none'"));
     await webApp.locals.stop?.();
   });
 

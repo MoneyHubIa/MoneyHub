@@ -356,7 +356,7 @@ describe('reset password screen', () => {
     await fireEvent.changeText(screen.getByLabelText('Confirmar nova senha'), 'different');
     await fireEvent.press(screen.getByRole('button', { name: 'Redefinir senha' }));
 
-    expect(screen.getByRole('alert')).toHaveTextContent('As senhas não coincidem.');
+    expect(screen.getByRole('button', { name: 'Redefinir senha' })).toBeDisabled();
     expect(recovery.confirm).not.toHaveBeenCalled();
   });
 
@@ -374,9 +374,7 @@ describe('reset password screen', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: 'Redefinir senha' }));
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Informe e confirme a nova senha.'
-    );
+    expect(screen.getByRole('button', { name: 'Redefinir senha' })).toBeDisabled();
     expect(recovery.confirm).not.toHaveBeenCalled();
   });
 

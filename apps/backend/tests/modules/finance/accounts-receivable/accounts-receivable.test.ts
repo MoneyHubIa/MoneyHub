@@ -99,7 +99,7 @@ function expectCode(error: unknown, code: string) {
 
 describe('accounts receivable', () => {
   test('exposes accounts receivable query and mutations in GraphQL typeDefs', () => {
-    assert.match(typeDefs, /myAccountsReceivable\(status: AccountReceivableStatus\): \[AccountReceivable!\]!/);
+    assert.match(typeDefs, /myAccountsReceivable\(status: AccountReceivableStatus, financialAccountIds: \[ID!\]\): \[AccountReceivable!\]!/);
     assert.match(typeDefs, /createAccountReceivable\(input: CreateAccountReceivableInput!\): AccountReceivable!/);
     assert.match(typeDefs, /updateAccountReceivable\(input: UpdateAccountReceivableInput!\): AccountReceivable!/);
     assert.match(typeDefs, /markAccountReceivableReceived\(id: ID!, receivedAt: String\): AccountReceivable!/);

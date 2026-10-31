@@ -1,3 +1,4 @@
+import { validText } from '../utils/validation';
 import { gql } from '@apollo/client';
 import { useMutation, useQuery } from '@apollo/client/react';
 import { Building2, Plus, Trash2 } from 'lucide-react-native';
@@ -72,7 +73,7 @@ export function CostCenters() {
   });
 
   const handleCreate = async () => {
-    if (!name.trim()) {
+    if (!validText(name, 60) || description.length > 255) {
       setErrorMessage('Informe o nome do centro de custo.');
       return;
     }
@@ -112,7 +113,7 @@ export function CostCenters() {
           <Text style={styles.label}>Nome</Text>
           <TextInput
             accessibilityLabel="Nome do centro de custo"
-            onChangeText={setName}
+            maxLength={60} onChangeText={setName}
             placeholder="Ex: Pessoal, Trabalho, Projeto X"
             placeholderTextColor={theme.textMuted}
             style={styles.input}
@@ -124,7 +125,7 @@ export function CostCenters() {
           <Text style={styles.label}>Descrição (opcional)</Text>
           <TextInput
             accessibilityLabel="Descrição do centro de custo"
-            onChangeText={setDescription}
+            maxLength={255} onChangeText={setDescription}
             placeholder="Breve detalhamento"
             placeholderTextColor={theme.textMuted}
             style={styles.input}
@@ -132,11 +133,12 @@ export function CostCenters() {
           />
         </View>
 
+        {!validText(name, 60) && <Text>Informe nome com até 60 caracteres.</Text>}
         <Pressable
           accessibilityRole="button"
-          disabled={creating}
+          disabled={creating || !validText(name, 60) || description.length > 255}
           onPress={handleCreate}
-          style={styles.createButton}
+          style={[styles.createButton, (creating || !validText(name, 60) || description.length > 255) && { opacity: 0.5 }]}
         >
           {creating ? (
             <ActivityIndicator color="#ffffff" size="small" />

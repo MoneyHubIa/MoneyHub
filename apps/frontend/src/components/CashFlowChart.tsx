@@ -65,10 +65,10 @@ export type CashFlowResultData = {
 };
 
 type CashFlowChartProps = Readonly<{
+  financialAccountIds?: string[];
   preferredCurrency?: string;
 }>;
-
-export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps): React.JSX.Element {
+export function CashFlowChart({ financialAccountIds, preferredCurrency = 'BRL' }: CashFlowChartProps): React.JSX.Element {
   const { theme, isDark } = useTheme();
   const [granularity, setGranularity] = useState<'DAILY' | 'MONTHLY'>('DAILY');
   const [selectedPoint, setSelectedPoint] = useState<CashFlowDataPoint | null>(null);
@@ -76,6 +76,7 @@ export function CashFlowChart({ preferredCurrency = 'BRL' }: CashFlowChartProps)
   const { data, loading, error, refetch } = useQuery<CashFlowResultData>(CASH_FLOW_QUERY, {
     variables: {
       input: {
+          financialAccountIds: financialAccountIds?.length ? financialAccountIds : undefined,
         granularity,
         monthsCount: granularity === 'MONTHLY' ? 6 : undefined
       }

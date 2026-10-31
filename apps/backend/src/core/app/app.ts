@@ -7,7 +7,7 @@ import { expressMiddleware } from '@as-integrations/express4';
 import cors from 'cors';
 import express, { type Express, type Request, type RequestHandler } from 'express';
 import { rateLimit } from 'express-rate-limit';
-import 'helmet';
+import type { HelmetOptions } from 'helmet';
 import { z } from 'zod';
 import {
   verifyFirebaseIdToken,
@@ -32,7 +32,9 @@ import {
   type HttpLogger
 } from '../http-logger/http-logger.js';
 
-const helmet = createRequire(import.meta.url)('helmet') as () => RequestHandler;
+const helmet = createRequire(import.meta.url)('helmet') as (
+  options?: HelmetOptions
+) => RequestHandler;
 
 type CreateAppOptions = {
   verifyIdToken?: VerifyIdToken;
@@ -184,7 +186,17 @@ export async function createApp(
   await apollo.start();
 
   app.disable('x-powered-by');
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        connectSrc: [
+          "'self'",
+          'https://identitytoolkit.googleapis.com',
+          'https://securetoken.googleapis.com'
+        ]
+      }
+    }
+  }));
   const nodeEnvironment = options.nodeEnvironment ?? process.env.NODE_ENV;
   app.use(cors({
     origin: (origin, callback) => {

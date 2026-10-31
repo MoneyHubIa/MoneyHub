@@ -95,6 +95,19 @@ jest.mock('@apollo/client/react', () => ({
 }));
 
 describe('MoneyHub dashboard shell', () => {
+  test.each(['sidebar', 'menu', 'mobile'])('opens Despesa Cartão from %s without changing the dashboard', async source => {
+    if (source === 'mobile') jest.mocked(Dimensions.get).mockReturnValue({ width: 390, height: 844, scale: 1, fontScale: 1 });
+    await render(<DashboardShell />, { wrapper: Wrapper });
+    if (source !== 'sidebar') {
+      await fireEvent.press(screen.getByRole('button', { name: 'Novo lançamento rápido' }));
+      await fireEvent.press(screen.getByRole('button', { name: 'Criar Despesa Cartão' }));
+    } else await fireEvent.press(screen.getByRole('button', { name: 'Despesa Cartão' }));
+    expect(screen.getByRole('header', { name: 'Despesa Cartão' })).toBeOnTheScreen();
+    expect(screen.queryByRole('header', { name: 'Novo Lançamento Rápido' })).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(screen.queryByRole('header', { name: 'Despesa Cartão' })).toBeNull();
+    expect(screen.getByText('Dashboard financeiro')).toBeOnTheScreen();
+  });
   beforeEach(() => {
     jest.clearAllMocks();
     mockAccountsData = {};
@@ -120,7 +133,7 @@ describe('MoneyHub dashboard shell', () => {
     expect(screen.getByText('MoneyHub')).toBeOnTheScreen();
     expect(screen.getByLabelText('Metas no dashboard')).toHaveTextContent('R$ 250,00', { exact: false });
     expect(screen.getByText('Dashboard financeiro')).toBeOnTheScreen();
-    expect(screen.getByText('Saldo previsto')).toBeOnTheScreen();
+    expect(screen.getByText('Resultado do período')).toBeOnTheScreen();
     expect(screen.getByText('R$ 3.200,00')).toBeOnTheScreen();
     expect(screen.getByText('Receitas do mes')).toBeOnTheScreen();
     expect(screen.getByText('R$ 5.000,00')).toBeOnTheScreen();
@@ -189,7 +202,7 @@ describe('MoneyHub dashboard shell', () => {
     expect(screen.getByText('Reserva real')).toBeOnTheScreen();
     expect(screen.getByText('25%')).toBeOnTheScreen();
     expect(screen.queryByText('Preview')).toBeNull();
-    const query = print(mockDashboardQuery.mock.calls[0]![0]);
+    const query = print(mockDashboardQuery.mock.calls.find(call => print(call[0]).includes('query DashboardSummary'))![0]);
     expect(query).toContain('financialGoalsSummary');
     expect(query).toContain('myFinancialGoals');
 
@@ -423,9 +436,9 @@ describe('MoneyHub dashboard shell', () => {
     }
     expect(screen.getByText(/1 vencida/)).toBeOnTheScreen();
     expect(screen.queryByText('Nenhuma conta pendente. Tudo em dia!')).toBeNull();
-    const query = print(mockDashboardQuery.mock.calls[0]![0]);
-    expect(query).toContain('overdueAccountsPayable: myAccountsPayable(status: OVERDUE)');
-    expect(query).toContain('overdueAccountsReceivable: myAccountsReceivable(status: OVERDUE)');
+    const query = print(mockDashboardQuery.mock.calls.find(call => print(call[0]).includes('query DashboardSummary'))![0]);
+    expect(query).toMatch(/overdueAccountsPayable: myAccountsPayable\(\s*status: OVERDUE[\s,]+financialAccountIds: \$financialAccountIds\s*\)/);
+    expect(query).toMatch(/overdueAccountsReceivable: myAccountsReceivable\(\s*status: OVERDUE[\s,]+financialAccountIds: \$financialAccountIds\s*\)/);
   });
 
   test('does not show all clear when only overdue accounts exist', async () => {

@@ -42,6 +42,7 @@ test('@financial persists income, expense, balance, and payable', async ({ page 
     await createTransaction(page, 'Despesa', 'Despesa E2E', '250');
 
     await page.getByRole('button', { name: 'Dashboard' }).click();
+    await expect(page.getByText(/Saldo das contas:.*750,00/)).toBeVisible();
     await expect(
       page.getByLabel('Resumo financeiro').getByText('R$ 750,00', { exact: true })
     ).toBeVisible();
@@ -50,7 +51,7 @@ test('@financial persists income, expense, balance, and payable', async ({ page 
       page.getByLabel('Resumo financeiro').getByText('R$ 750,00', { exact: true })
     ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Contas', exact: true }).click();
+    await page.getByRole('button', { name: 'Contas a pagar/receber', exact: true }).click();
     await page.getByRole('button', { name: 'Nova Conta a Pagar', exact: true }).click();
     await page.getByLabel('Descrição da conta a pagar').fill('Conta E2E');
     await page.getByLabel('Valor da conta a pagar').fill('100');
@@ -59,7 +60,7 @@ test('@financial persists income, expense, balance, and payable', async ({ page 
     await expect(page.getByText('Conta E2E')).toBeVisible();
     await expect(page.getByText('Pendente', { exact: true })).toBeVisible();
     await page.reload();
-    await page.getByRole('button', { name: 'Contas', exact: true }).click();
+    await page.getByRole('button', { name: 'Contas a pagar/receber', exact: true }).click();
     await expect(page.getByText('Conta E2E')).toBeVisible();
   } finally {
     await deleteEmulatorUser(uid);

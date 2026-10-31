@@ -1,3 +1,4 @@
+import { validText } from '../utils/validation';
 import { gql } from '@apollo/client';
 import { useMutation, useQuery } from '@apollo/client/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -116,7 +117,7 @@ export function ProfileSettings() {
 
   const handleSave = async () => {
     const normalizedName = fullName.trim();
-    if (!normalizedName) {
+    if (!validText(normalizedName, 120)) {
       setFormError('Informe seu nome completo.');
       setSuccessMessage(null);
       return;
@@ -222,7 +223,7 @@ export function ProfileSettings() {
         <TextInput
           accessibilityLabel="Nome completo"
           autoCapitalize="words"
-          onChangeText={setFullName}
+          maxLength={120} onChangeText={setFullName}
           placeholder="Seu nome"
           placeholderTextColor={appTheme.textMuted}
           style={styles.input}
@@ -296,7 +297,7 @@ export function ProfileSettings() {
                 onPress={handleResendVerification}
                 style={[
                   styles.verificationButton,
-                  actionsDisabled && styles.saveButtonDisabled
+                  (actionsDisabled || !validText(fullName, 120)) && styles.saveButtonDisabled
                 ]}
               >
                 <Text style={styles.verificationButtonText}>Reenviar e-mail</Text>
@@ -309,7 +310,7 @@ export function ProfileSettings() {
                 style={[
                   styles.verificationButton,
                   styles.verificationButtonPrimary,
-                  actionsDisabled && styles.saveButtonDisabled
+                  (actionsDisabled || !validText(fullName, 120)) && styles.saveButtonDisabled
                 ]}
               >
                 <Text style={styles.verificationButtonPrimaryText}>Já verifiquei</Text>
@@ -318,12 +319,13 @@ export function ProfileSettings() {
           </View>
         ) : null}
 
+        {!validText(fullName, 120) && <Text style={styles.errorText}>Informe nome completo com até 120 caracteres.</Text>}
         <Pressable
           accessibilityLabel="Salvar alterações"
           accessibilityRole="button"
-          disabled={actionsDisabled}
+          disabled={actionsDisabled || !validText(fullName, 120)}
           onPress={handleSave}
-          style={[styles.saveButton, actionsDisabled && styles.saveButtonDisabled]}
+          style={[styles.saveButton, (actionsDisabled || !validText(fullName, 120)) && styles.saveButtonDisabled]}
         >
           {saving ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.saveText}>Salvar alterações</Text>}
         </Pressable>

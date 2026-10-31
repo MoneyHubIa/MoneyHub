@@ -1,3 +1,10 @@
+import { Button, ToggleButton } from './ui';
+import { validSchedule, scheduleInput } from './CommitmentSchedule';
+import { decimal, validText } from '../utils/validation';
+import { ValidatedInput as TextInput } from './ui/ValidatedInput';
+import { randomUUID } from 'expo-crypto';
+import { CommitmentSchedule, defaultSchedule } from './CommitmentSchedule';
+import { FinancialAccountSelector } from './FinancialAccountSelector';
 import { gql } from '@apollo/client';
 import { useMutation, useQuery } from '@apollo/client/react';
 import {
@@ -14,13 +21,12 @@ import {
   Trash2,
   WalletCards
 } from 'lucide-react-native';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
@@ -42,6 +48,10 @@ export const MY_ACCOUNTS_PAYABLE_QUERY = gql`
     myAccountsPayable(status: $status) {
       id
       categoryId
+      financialAccountId
+      seriesId
+      installmentNumber
+      installmentTotal
       costCenterId
       description
       amount
@@ -74,6 +84,10 @@ export const MY_ACCOUNTS_RECEIVABLE_QUERY = gql`
     myAccountsReceivable(status: $status) {
       id
       categoryId
+      financialAccountId
+      seriesId
+      installmentNumber
+      installmentTotal
       costCenterId
       description
       amount
@@ -186,6 +200,10 @@ export const DELETE_ACCOUNT_RECEIVABLE = gql`
 export type AccountPayableItem = {
   id: string;
   categoryId: string;
+  financialAccountId?: string;
+  seriesId?: string;
+  installmentNumber?: number;
+  installmentTotal?: number;
   costCenterId?: string | null;
   description: string;
   amount: string;
@@ -199,6 +217,10 @@ export type AccountPayableItem = {
 export type AccountReceivableItem = {
   id: string;
   categoryId: string;
+  financialAccountId?: string;
+  seriesId?: string;
+  installmentNumber?: number;
+  installmentTotal?: number;
   costCenterId?: string | null;
   description: string;
   amount: string;
@@ -244,6 +266,7 @@ export function AccountsManager({
   const { theme } = useTheme();
   const { isDesktop } = useResponsive();
   const [activeTab, setActiveTab] = useState<AccountsTab>(initialTab);
+  const isPayable = activeTab === 'PAYABLE';
   const [isModalOpen, setIsModalOpen] = useState(initialModalOpen);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'SETTLED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -260,6 +283,14 @@ export function AccountsManager({
     return `${d}/${m}/${y}`;
   });
   const [categoryId, setCategoryId] = useState('');
+  const [financialAccountIds, setFinancialAccountIds] = useState<string[]>([]);
+  const [seriesEdit, setSeriesEdit] = useState<{ id: string; number: number } | null>(null);
+  const [futureScope, setFutureScope] = useState(false);
+  const [updateSeries] = useMutation(gql`mutation UpdateCommitmentSeries($input:UpdateCommitmentSeriesInput!) { updateCommitmentSeries(input:$input) }`, { refetchQueries: ['FinancialAccounts', 'DashboardSummary'], onCompleted: () => { setIsModalOpen(false); if (isPayable) void refetchPayables(); else void refetchReceivables(); }, onError: e => setErrorMessage(e.message) });
+  const [cancelSeries] = useMutation(gql`mutation CancelFinancialSeries($id:ID!, $fromNumber:Int!) { cancelFinancialSeries(id:$id,fromNumber:$fromNumber) }`, { refetchQueries: ['FinancialAccounts', 'DashboardSummary'], onCompleted: () => { setIsModalOpen(false); if (isPayable) void refetchPayables(); else void refetchReceivables(); }, onError: e => setErrorMessage(e.message) });
+  const seriesOperation = useRef<string | null>(null);
+  const [schedule, setSchedule] = useState(defaultSchedule);
+  const [createSeries, { loading: creatingSeries }] = useMutation(gql`mutation CreateCommitmentSeries($input: CommitmentSeriesInput!) { createCommitmentSeries(input:$input) }`, { refetchQueries: ['FinancialAccounts', 'DashboardSummary'], onCompleted: () => { setIsModalOpen(false); if (isPayable) void refetchPayables(); else void refetchReceivables(); }, onError: error => setErrorMessage(error.message) });
   const [costCenterId, setCostCenterId] = useState('');
   const [reminderOffsetDays, setReminderOffsetDays] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -285,10 +316,19 @@ export function AccountsManager({
   }>(MY_ACCOUNTS_RECEIVABLE_QUERY, {
     fetchPolicy: 'cache-and-network'
   });
+  const didSyncSeries = useRef(false);
+  const [syncSeries] = useMutation(gql`mutation SyncFinancialSeries { syncFinancialSeries }`);
+  useEffect(() => {
+    if (didSyncSeries.current) return;
+    didSyncSeries.current = true;
+    void Promise.resolve(syncSeries()).then(() => {
+      if (isPayable) void refetchPayables(); else void refetchReceivables();
+    }).catch(() => undefined);
+  }, [syncSeries, isPayable, refetchPayables, refetchReceivables]);
 
   // Mutations - Payables
   const [createPayable, { loading: creatingPayable }] = useMutation(CREATE_ACCOUNT_PAYABLE, {
-    refetchQueries: ['MyAccountsPayable', 'DashboardSummary'],
+    refetchQueries: ['FinancialAccounts', 'MyAccountsPayable', 'DashboardSummary'],
     onCompleted: () => {
       closeModal();
       void refetchPayables();
@@ -297,7 +337,7 @@ export function AccountsManager({
   });
 
   const [updatePayable, { loading: updatingPayable }] = useMutation(UPDATE_ACCOUNT_PAYABLE, {
-    refetchQueries: ['MyAccountsPayable', 'DashboardSummary'],
+    refetchQueries: ['FinancialAccounts', 'MyAccountsPayable', 'DashboardSummary'],
     onCompleted: () => {
       closeModal();
       void refetchPayables();
@@ -306,20 +346,20 @@ export function AccountsManager({
   });
 
   const [markPayablePaid, { loading: markingPayablePaid }] = useMutation(MARK_ACCOUNT_PAYABLE_PAID, {
-    refetchQueries: ['MyAccountsPayable', 'DashboardSummary'],
+    refetchQueries: ['FinancialAccounts', 'MyAccountsPayable', 'DashboardSummary'],
     onCompleted: () => void refetchPayables(),
     onError: (err) => setActionError(err.message)
   });
 
   const [deletePayable] = useMutation(DELETE_ACCOUNT_PAYABLE, {
-    refetchQueries: ['MyAccountsPayable', 'DashboardSummary'],
+    refetchQueries: ['FinancialAccounts', 'MyAccountsPayable', 'DashboardSummary'],
     onCompleted: () => void refetchPayables(),
     onError: (err) => setActionError(err.message)
   });
 
   // Mutations - Receivables
   const [createReceivable, { loading: creatingReceivable }] = useMutation(CREATE_ACCOUNT_RECEIVABLE, {
-    refetchQueries: ['MyAccountsReceivable', 'DashboardSummary'],
+    refetchQueries: ['FinancialAccounts', 'MyAccountsReceivable', 'DashboardSummary'],
     onCompleted: () => {
       closeModal();
       void refetchReceivables();
@@ -328,7 +368,7 @@ export function AccountsManager({
   });
 
   const [updateReceivable, { loading: updatingReceivable }] = useMutation(UPDATE_ACCOUNT_RECEIVABLE, {
-    refetchQueries: ['MyAccountsReceivable', 'DashboardSummary'],
+    refetchQueries: ['FinancialAccounts', 'MyAccountsReceivable', 'DashboardSummary'],
     onCompleted: () => {
       closeModal();
       void refetchReceivables();
@@ -337,18 +377,17 @@ export function AccountsManager({
   });
 
   const [markReceivableReceived, { loading: markingReceivableReceived }] = useMutation(MARK_ACCOUNT_RECEIVABLE_RECEIVED, {
-    refetchQueries: ['MyAccountsReceivable', 'DashboardSummary'],
+    refetchQueries: ['FinancialAccounts', 'MyAccountsReceivable', 'DashboardSummary'],
     onCompleted: () => void refetchReceivables(),
     onError: (err) => setActionError(err.message)
   });
 
   const [deleteReceivable] = useMutation(DELETE_ACCOUNT_RECEIVABLE, {
-    refetchQueries: ['MyAccountsReceivable', 'DashboardSummary'],
+    refetchQueries: ['FinancialAccounts', 'MyAccountsReceivable', 'DashboardSummary'],
     onCompleted: () => void refetchReceivables(),
     onError: (err) => setActionError(err.message)
   });
 
-  const isPayable = activeTab === 'PAYABLE';
   const currencyString =
     (isPayable
       ? payablesData?.myProfile?.preferredCurrency
@@ -420,6 +459,9 @@ export function AccountsManager({
     setDueDate(`${d}/${m}/${y}`);
     setCategoryId(categories[0]?.id ?? '');
     setCostCenterId('');
+    setFinancialAccountIds([]);
+    setSchedule(defaultSchedule());
+    setSeriesEdit(null); setFutureScope(false); seriesOperation.current = null;
     setReminderOffsetDays(null);
     setErrorMessage(null);
     setIsModalOpen(true);
@@ -432,6 +474,8 @@ export function AccountsManager({
     setDueDate(formatISOToRegionalDate(item.dueDate.split('T')[0] ?? '', currency));
     setCategoryId(item.categoryId);
     setCostCenterId(item.costCenterId ?? '');
+    setFinancialAccountIds(item.financialAccountId ? [item.financialAccountId] : []);
+    setSeriesEdit(item.seriesId ? { id: item.seriesId, number: item.installmentNumber ?? 1 } : null); setFutureScope(false);
     setReminderOffsetDays(item.reminderOffsetDays ?? null);
     setErrorMessage(null);
     setIsModalOpen(true);
@@ -444,6 +488,8 @@ export function AccountsManager({
     setDueDate(formatISOToRegionalDate(item.dueDate.split('T')[0] ?? '', currency));
     setCategoryId(item.categoryId);
     setCostCenterId(item.costCenterId ?? '');
+    setFinancialAccountIds(item.financialAccountId ? [item.financialAccountId] : []);
+    setSeriesEdit(item.seriesId ? { id: item.seriesId, number: item.installmentNumber ?? 1 } : null); setFutureScope(false);
     setReminderOffsetDays(item.reminderOffsetDays ?? null);
     setErrorMessage(null);
     setIsModalOpen(true);
@@ -455,12 +501,14 @@ export function AccountsManager({
     setErrorMessage(null);
   };
 
+  const formValid = validText(description, 120) && !!decimal(amount) && !!categoryId && !!parseRegionalDateToISO(dueDate, currency) && (editingId ? true : validSchedule(schedule));
   const handleSubmit = async () => {
-    if (!description.trim()) {
+    if (!formValid) return;
+    if (!validText(description, 120)) {
       setErrorMessage('Informe uma descrição.');
       return;
     }
-    if (!amount.trim() || isNaN(Number(amount)) || Number(amount) <= 0) {
+    if (!decimal(amount)) {
       setErrorMessage('Informe um valor numérico positivo.');
       return;
     }
@@ -477,6 +525,22 @@ export function AccountsManager({
 
     setErrorMessage(null);
     const dueDateISO = new Date(isoDueDate).toISOString();
+    if (editingId && seriesEdit && futureScope) {
+      await updateSeries({ variables: { input: { id: seriesEdit.id, fromNumber: seriesEdit.number, reminderOffsetDays, financialAccountId: financialAccountIds[0], categoryId, costCenterId: costCenterId || undefined, description: description.trim(), amount: decimal(amount)!, dueDate: isoDueDate } } });
+      return;
+    }
+    if (!editingId && (schedule.mode !== 'ONCE' || schedule.effective || schedule.overrides?.length)) {
+      await createSeries({ variables: { input: {
+        operationId: seriesOperation.current ?? (seriesOperation.current = randomUUID()),
+        financialAccountId: financialAccountIds[0] || undefined,
+        categoryId, costCenterId: costCenterId || undefined, reminderOffsetDays,
+        description: description.trim(), amount: decimal(amount)!, dueDate: isoDueDate,
+        type: isPayable ? 'EXPENSE' : 'INCOME',
+        schedule: scheduleInput(schedule),
+        ...(schedule.effective ? { effectiveDate: schedule.effectiveDate } : {}), overrides: schedule.overrides
+      } } });
+      return;
+    }
 
     if (isPayable) {
       if (editingId) {
@@ -485,9 +549,10 @@ export function AccountsManager({
             input: {
               id: editingId,
               description: description.trim(),
-              amount: amount.trim(),
+              amount: decimal(amount)!,
               dueDate: dueDateISO,
               categoryId,
+              financialAccountId: financialAccountIds[0],
               costCenterId: costCenterId || undefined,
               reminderOffsetDays: reminderOffsetDays ?? null
             }
@@ -498,9 +563,10 @@ export function AccountsManager({
           variables: {
             input: {
               description: description.trim(),
-              amount: amount.trim(),
+              amount: decimal(amount)!,
               dueDate: dueDateISO,
               categoryId,
+              financialAccountId: financialAccountIds[0],
               costCenterId: costCenterId || undefined,
               reminderOffsetDays: reminderOffsetDays ?? null
             }
@@ -514,9 +580,10 @@ export function AccountsManager({
             input: {
               id: editingId,
               description: description.trim(),
-              amount: amount.trim(),
+              amount: decimal(amount)!,
               dueDate: dueDateISO,
               categoryId,
+              financialAccountId: financialAccountIds[0],
               costCenterId: costCenterId || undefined,
               reminderOffsetDays: reminderOffsetDays ?? null
             }
@@ -527,9 +594,10 @@ export function AccountsManager({
           variables: {
             input: {
               description: description.trim(),
-              amount: amount.trim(),
+              amount: decimal(amount)!,
               dueDate: dueDateISO,
               categoryId,
+              financialAccountId: financialAccountIds[0],
               costCenterId: costCenterId || undefined,
               reminderOffsetDays: reminderOffsetDays ?? null
             }
@@ -834,7 +902,7 @@ export function AccountsManager({
 
                       <View style={styles.itemInfo}>
                         <Text style={[styles.itemDesc, { color: theme.textPrimary }]}>
-                          {item.description}
+                          {item.description}{item.installmentNumber ? ` (${item.installmentNumber}/${item.installmentTotal ?? 'mensal'})` : ''}
                         </Text>
 
                         <View style={styles.itemMetaRow}>
@@ -965,7 +1033,7 @@ export function AccountsManager({
 
                         <View style={styles.mobileDescWrap}>
                           <Text style={[styles.itemDesc, { color: theme.textPrimary }]}>
-                            {item.description}
+                            {item.description}{item.installmentNumber ? ` (${item.installmentNumber}/${item.installmentTotal ?? 'mensal'})` : ''}
                           </Text>
                           <Text style={[styles.itemDate, { color: theme.textMuted }]}>
                             Vence {formatDate(item.dueDate, currency)}
@@ -1122,7 +1190,7 @@ export function AccountsManager({
             <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Descrição</Text>
             <TextInput
               accessibilityLabel={isPayable ? 'Descrição da conta a pagar' : 'Descrição da conta a receber'}
-              onChangeText={setDescription}
+              maxLength={120} onChangeText={setDescription}
               placeholder={isPayable ? 'Ex: Aluguel, Internet...' : 'Ex: Consultoria, Venda...'}
               placeholderTextColor={theme.textMuted}
               style={[
@@ -1143,7 +1211,7 @@ export function AccountsManager({
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Valor ({currency})</Text>
               <TextInput
                 accessibilityLabel={isPayable ? 'Valor da conta a pagar' : 'Valor da conta a receber'}
-                keyboardType="decimal-pad"
+                moneyDigits={10}
                 onChangeText={setAmount}
                 placeholder="Ex: 350.00"
                 placeholderTextColor={theme.textMuted}
@@ -1202,6 +1270,12 @@ export function AccountsManager({
               })}
             </View>
           </View>
+          {editingId && seriesEdit && <View>
+            <ToggleButton label="Aplicar a esta e próximas pendentes" accessibilityLabel="Aplicar a esta e proximas pendentes" value={futureScope} onChange={setFutureScope} activeText="Esta e proximas pendentes" inactiveText="Somente esta parcela" />
+            <Button title="Cancelar esta e proximas pendentes" variant="danger" disabled={isSubmitting} onPress={() => void cancelSeries({ variables: { id: seriesEdit.id, fromNumber: seriesEdit.number } })} style={{ minHeight: 48 }} />
+          </View>}
+          {!editingId && <CommitmentSchedule value={schedule} onChange={setSchedule} amount={amount} dueDate={parseRegionalDateToISO(dueDate, currency) ?? ''} />}
+          <FinancialAccountSelector value={financialAccountIds} onChange={setFinancialAccountIds} />
 
           {/* Cost Centers */}
           {costCenters.length > 0 && (
@@ -1293,13 +1367,13 @@ export function AccountsManager({
                   : 'Agendar Conta a Receber'
               }
               accessibilityRole="button"
-              disabled={isSubmitting}
+              disabled={isSubmitting || creatingSeries || !formValid}
               onPress={() => void handleSubmit()}
               style={({ pressed }) => [
                 styles.submitButton,
                 {
                   backgroundColor: isPayable ? theme.expense : theme.income,
-                  opacity: isSubmitting ? 0.6 : pressed ? 0.85 : 1
+                  opacity: (isSubmitting || !formValid) ? 0.6 : pressed ? 0.85 : 1
                 }
               ]}
             >

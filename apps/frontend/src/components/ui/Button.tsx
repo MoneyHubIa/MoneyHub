@@ -1,5 +1,5 @@
 import { LucideIcon } from 'lucide-react-native';
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -46,6 +46,7 @@ export function Button({
   testID
 }: ButtonProps): React.JSX.Element {
   const { theme } = useTheme();
+  const [focused, setFocused] = useState(false);
 
   const isInteractive = !disabled && !loading;
 
@@ -92,6 +93,8 @@ export function Button({
       accessibilityState={{ disabled: !isInteractive, busy: loading }}
       disabled={!isInteractive}
       onPress={onPress}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
       style={({ pressed }) => [
         styles.base,
         {
@@ -102,6 +105,7 @@ export function Button({
           paddingHorizontal,
           opacity: disabled ? 0.5 : pressed ? 0.85 : 1
         },
+        focused && { outlineColor: theme.textPrimary, outlineWidth: 2, outlineStyle: 'solid', outlineOffset: 2 },
         style
       ]}
       testID={testID}

@@ -125,7 +125,7 @@ describe('AccountsReceivable component', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Nova Conta a Receber' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Agendar Conta a Receber' }));
 
-    expect(screen.getByText('Informe uma descrição.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Agendar Conta a Receber' })).toBeDisabled();
   });
 
   test.each(reminderOptions)('sends $value as selected reminder offset when creating an account receivable', async ({ label, value }) => {

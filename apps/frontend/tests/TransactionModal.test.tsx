@@ -63,15 +63,15 @@ describe('TransactionModal Component', () => {
 
     // Trigger validation
     await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
-    expect(screen.getByText('Informe a descrição.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Adicionar transação' })).toBeDisabled();
 
     await fireEvent.changeText(screen.getByLabelText('Descrição da transação'), 'Compras');
     await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
-    expect(screen.getByText('Informe um valor válido.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Adicionar transação' })).toBeDisabled();
 
     await fireEvent.changeText(screen.getByLabelText('Valor da transação'), '250.50');
     await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
-    expect(screen.getByText('Selecione uma categoria.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Adicionar transação' })).toBeDisabled();
   });
 
   it('submits a new expense when properly filled', async () => {
@@ -91,7 +91,7 @@ describe('TransactionModal Component', () => {
     );
 
     await fireEvent.changeText(screen.getByLabelText('Descrição da transação'), 'Mercado Semanal');
-    await fireEvent.changeText(screen.getByLabelText('Valor da transação'), '320.00');
+    await fireEvent.changeText(screen.getByLabelText('Valor da transação'), '320,00');
     await fireEvent.press(screen.getByRole('button', { name: 'Supermercado' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
 
@@ -101,7 +101,7 @@ describe('TransactionModal Component', () => {
           variables: {
             input: expect.objectContaining({
               description: 'Mercado Semanal',
-              amount: '320',
+              amount: '320.00',
               categoryId: 'cat-2'
             })
           }
@@ -139,7 +139,7 @@ describe('TransactionModal Component', () => {
           variables: {
             input: expect.objectContaining({
               description: 'Freelance',
-              amount: '1500',
+              amount: '1500.00',
               categoryId: 'cat-1'
             })
           }
@@ -176,7 +176,7 @@ describe('TransactionModal Component', () => {
     for (const invalidDate of ['', 'abc', '31/02/2026', '2026-02-30']) {
       await fireEvent.changeText(screen.getByLabelText('Data da Ocorrência'), invalidDate);
       await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
-      expect(screen.getByText('Informe uma data válida.')).toBeOnTheScreen();
+      expect(screen.getByRole('button', { name: 'Adicionar transação' })).toBeDisabled();
       expect(mockCreateExpense).not.toHaveBeenCalled();
       expect(mockCreateIncome).not.toHaveBeenCalled();
     }

@@ -94,6 +94,7 @@ export type PeriodComparisonData = {
 };
 
 type PeriodComparisonProps = Readonly<{
+  financialAccountIds?: string[];
   preferredCurrency?: string;
   baseMonth?: number;
   baseYear?: number;
@@ -105,6 +106,7 @@ const MONTH_NAMES_SHORT = [
 ];
 
 export function PeriodComparison({
+  financialAccountIds,
   preferredCurrency = 'BRL',
   baseMonth,
   baseYear
@@ -131,6 +133,7 @@ export function PeriodComparison({
     {
       variables: {
         input: {
+          financialAccountIds: financialAccountIds?.length ? financialAccountIds : undefined,
           baseMonth: bMonth,
           baseYear: bYear,
           comparisonMonth: cMonth,

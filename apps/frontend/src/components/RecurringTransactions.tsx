@@ -1,3 +1,6 @@
+import { decimal, validText } from '../utils/validation';
+import { ValidatedInput as TextInput } from './ui/ValidatedInput';
+import { FinancialAccountSelector } from './FinancialAccountSelector';
 import { gql } from '@apollo/client';
 import { useMutation, useQuery } from '@apollo/client/react';
 import {
@@ -16,7 +19,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
@@ -138,6 +140,7 @@ export function RecurringTransactions() {
     return `${d}/${m}/${y}`;
   });
   const [categoryId, setCategoryId] = useState('');
+  const [financialAccountIds, setFinancialAccountIds] = useState<string[]>([]);
   const [costCenterId, setCostCenterId] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -152,7 +155,7 @@ export function RecurringTransactions() {
   });
 
   const [createRecurring, { loading: creating }] = useMutation(CREATE_RECURRING_TRANSACTION, {
-    refetchQueries: ['MyRecurringTransactions', 'MyAccountsPayable', 'MyAccountsReceivable', 'DashboardSummary'],
+    refetchQueries: ['FinancialAccounts', 'MyRecurringTransactions', 'MyAccountsPayable', 'MyAccountsReceivable', 'DashboardSummary'],
     onCompleted: () => {
       resetForm();
       setSuccessMessage('Regra de recorrência cadastrada e conta agendada com sucesso!');
@@ -161,7 +164,7 @@ export function RecurringTransactions() {
   });
 
   const [deleteRecurring] = useMutation(DELETE_RECURRING_TRANSACTION, {
-    refetchQueries: ['MyRecurringTransactions'],
+    refetchQueries: ['FinancialAccounts', 'MyRecurringTransactions'],
     onCompleted: () => {
       refetch();
       setSuccessMessage('Regra de recorrência excluída com sucesso.');
@@ -170,7 +173,7 @@ export function RecurringTransactions() {
   });
 
   const [processRecurring, { loading: processing }] = useMutation<ProcessRecurringTransactionsData>(PROCESS_RECURRING_TRANSACTIONS, {
-    refetchQueries: ['MyRecurringTransactions', 'MyAccountsPayable', 'MyAccountsReceivable', 'DashboardSummary'],
+    refetchQueries: ['FinancialAccounts', 'MyRecurringTransactions', 'MyAccountsPayable', 'MyAccountsReceivable', 'DashboardSummary'],
     onCompleted: (res) => {
       const p = res?.processRecurringTransactions?.generatedPayables ?? 0;
       const r = res?.processRecurringTransactions?.generatedReceivables ?? 0;
@@ -210,12 +213,14 @@ export function RecurringTransactions() {
     }
   }, [type, allCategories, categoryId]);
 
+  const formValid = validText(description, 120) && !!decimal(amount) && !!categoryId && !!parseRegionalDateToISO(startDate, currency);
   const handleCreate = async () => {
-    if (!description.trim()) {
+    if (!formValid) return;
+    if (!validText(description, 120)) {
       setErrorMessage('Informe uma descrição.');
       return;
     }
-    if (!amount.trim() || isNaN(Number(amount)) || Number(amount) <= 0) {
+    if (!decimal(amount)) {
       setErrorMessage('Informe um valor numérico positivo.');
       return;
     }
@@ -238,9 +243,10 @@ export function RecurringTransactions() {
         input: {
           type,
           categoryId,
-          costCenterId: costCenterId || undefined,
+          financialAccountId: financialAccountIds[0],
+              costCenterId: costCenterId || undefined,
           description: description.trim(),
-          amount: Number(amount).toString(),
+          amount: decimal(amount)!,
           recurrenceRule,
           startDate: new Date(isoStartDate).toISOString()
         }
@@ -384,7 +390,7 @@ export function RecurringTransactions() {
             <Text style={styles.label}>Descrição</Text>
             <TextInput
               accessibilityLabel="Descrição da recorrência"
-              onChangeText={setDescription}
+              maxLength={120} onChangeText={setDescription}
               placeholder={type === 'EXPENSE' ? 'Ex: Assinatura de Software' : 'Ex: Contrato de Prestação'}
               placeholderTextColor={theme.textMuted}
               style={styles.input}
@@ -396,7 +402,7 @@ export function RecurringTransactions() {
             <Text style={styles.label}>Valor ({currency})</Text>
             <TextInput
               accessibilityLabel="Valor da recorrência"
-              keyboardType="decimal-pad"
+              moneyDigits={10}
               onChangeText={setAmount}
               placeholder="0,00"
               placeholderTextColor={theme.textMuted}
@@ -475,6 +481,7 @@ export function RecurringTransactions() {
             </ScrollView>
           )}
         </View>
+        <FinancialAccountSelector value={financialAccountIds} onChange={setFinancialAccountIds} />
 
         {costCenters.length > 0 && (
           <View style={styles.inputGroup}>
@@ -503,12 +510,13 @@ export function RecurringTransactions() {
           </View>
         )}
 
+        {!formValid && <Text style={{ color: theme.textSecondary }}>Preencha descrição, valor positivo, categoria e data de início válida.</Text>}
         <Pressable
           accessibilityLabel="Criar Regra de Recorrência"
           accessibilityRole="button"
-          disabled={creating}
+          disabled={creating || !formValid}
           onPress={handleCreate}
-          style={styles.submitButton}
+          style={[styles.submitButton, (creating || !formValid) && { opacity: 0.5 }]}
         >
           {creating ? (
             <ActivityIndicator color="#ffffff" />

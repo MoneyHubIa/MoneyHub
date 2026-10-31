@@ -372,7 +372,7 @@ export function AiAssistant({
 
   const handleSendMessage = async (customMessage?: string, templateId?: string) => {
     const textToSend = (customMessage ?? inputText).trim();
-    if (!textToSend || loading) {
+    if (!textToSend || textToSend.length > 2000 || loading) {
       return;
     }
 
@@ -750,7 +750,7 @@ export function AiAssistant({
           <TextInput
             accessibilityLabel="Mensagem para a IA"
             multiline
-            onChangeText={setInputText}
+            maxLength={2000} onChangeText={setInputText}
             placeholder="Pergunte sobre seus gastos, receitas ou metas..."
             placeholderTextColor={theme.textMuted}
             style={[
@@ -767,12 +767,12 @@ export function AiAssistant({
           <Pressable
             accessibilityLabel="Enviar mensagem"
             accessibilityRole="button"
-            disabled={!inputText.trim() || loading}
+            disabled={!inputText.trim() || inputText.length > 2000 || loading}
             onPress={() => handleSendMessage()}
             style={[
               styles.sendButton,
               { backgroundColor: theme.brandAI },
-              (!inputText.trim() || loading) && styles.sendButtonDisabled
+              (!inputText.trim() || inputText.length > 2000 || loading) && styles.sendButtonDisabled
             ]}
           >
             {loading ? (

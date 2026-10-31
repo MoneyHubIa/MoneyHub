@@ -1,5 +1,7 @@
 export * from './Badge';
 export * from './Button';
+export * from './ChoiceButton';
+export * from './ToggleButton';
 export * from './Card';
 export * from './Input';
 export * from './KpiCard';

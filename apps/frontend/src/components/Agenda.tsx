@@ -1,3 +1,4 @@
+import { validText } from '../utils/validation';
 import { gql } from '@apollo/client';
 import { useMutation, useQuery } from '@apollo/client/react';
 import { ChevronLeft, ChevronRight, Pencil, PlusCircle, Trash2 } from 'lucide-react-native';
@@ -213,7 +214,9 @@ export function Agenda() {
     });
   }
 
+  const formValid = validText(title, 120) && notes.length <= 500 && !!parseRegionalDateToISO(eventDate, 'BRL') && (!recurrenceEndDate || (!!recurrenceRule && !!parseRegionalDateToISO(recurrenceEndDate, 'BRL') && parseRegionalDateToISO(recurrenceEndDate, 'BRL')! >= parseRegionalDateToISO(eventDate, 'BRL')!));
   function handleSave() {
+    if (!formValid) return;
     const scheduledDate = parseRegionalDateToISO(eventDate, 'BRL');
     const endDate = recurrenceEndDate
       ? parseRegionalDateToISO(recurrenceEndDate, 'BRL')
@@ -379,13 +382,13 @@ export function Agenda() {
         </View> : null}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Título</Text>
-          <TextInput accessibilityLabel="Título do evento" onChangeText={setTitle} placeholder="Ex: Renovar seguro" placeholderTextColor={theme.textMuted} style={styles.input} value={title} />
+          <TextInput accessibilityLabel="Título do evento" maxLength={120} onChangeText={setTitle} placeholder="Ex: Renovar seguro" placeholderTextColor={theme.textMuted} style={styles.input} value={title} />
         </View>
         <DatePickerInput accessibilityLabel="Data do evento" label="Data" onChangeText={setEventDate} value={eventDate} />
         {editingOccurrence && recurrenceRule ? <Text style={styles.recurrenceHint}>Alterar data move a âncora de toda a série.</Text> : null}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Notas</Text>
-          <TextInput accessibilityLabel="Notas do evento" multiline onChangeText={setNotes} placeholder="Ex: Apólice, instruções ou contexto" placeholderTextColor={theme.textMuted} style={[styles.input, styles.notesInput]} value={notes} />
+          <TextInput accessibilityLabel="Notas do evento" multiline maxLength={500} onChangeText={setNotes} placeholder="Ex: Apólice, instruções ou contexto" placeholderTextColor={theme.textMuted} style={[styles.input, styles.notesInput]} value={notes} />
         </View>
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Recorrência</Text>
@@ -396,7 +399,8 @@ export function Agenda() {
           <Text style={styles.label}>Lembrete</Text>
           <View style={styles.optionRow}>{reminderOptions.map((option) => <Pressable accessibilityRole="button" key={option.label} onPress={() => setReminderOffsetDays(option.value)} style={[styles.optionButton, reminderOffsetDays === option.value && styles.optionButtonSelected]}><Text style={[styles.optionText, reminderOffsetDays === option.value && styles.optionTextSelected]}>{option.label}</Text></Pressable>)}</View>
         </View>
-        <Pressable accessibilityRole="button" disabled={creating || updating} onPress={handleSave} style={[styles.submitButton, (creating || updating) && styles.submitButtonDisabled]}>
+        {!formValid && <Text>Confira título, data e fim da recorrência.</Text>}
+        <Pressable accessibilityRole="button" disabled={creating || updating || !formValid} onPress={handleSave} style={[styles.submitButton, (creating || updating || !formValid) && styles.submitButtonDisabled]}>
           {creating || updating ? <ActivityIndicator color="#ffffff" size="small" /> : <><PlusCircle color="#ffffff" size={18} /><Text style={styles.submitButtonText}>{editingId ? 'Atualizar evento' : 'Salvar evento'}</Text></>}
         </Pressable>
       </View>

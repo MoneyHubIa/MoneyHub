@@ -1,3 +1,4 @@
+jest.mock('../src/components/FinancialAccountSelector', () => ({ FinancialAccountSelector: () => null }));
 import { ApolloClient, ApolloLink, InMemoryCache } from '@apollo/client';
 import { ApolloProvider } from '@apollo/client/react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';

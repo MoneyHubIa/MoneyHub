@@ -2,6 +2,18 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { AuthForm } from '../src/components/AuthForm';
 
 describe('AuthForm', () => {
+  test('blocks empty or malformed credentials without calling authentication', async () => {
+    const onSubmit = jest.fn();
+    await render(<AuthForm mode="login" onSubmit={onSubmit} />);
+    expect(screen.getByRole('button', { name: 'Entrar' })).toBeDisabled();
+    await fireEvent.changeText(screen.getByLabelText('Email'), 'invalid@');
+    await fireEvent.changeText(screen.getByLabelText('Senha'), ' secret ');
+    await fireEvent.press(screen.getByRole('button', { name: 'Entrar' }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    await fireEvent.changeText(screen.getByLabelText('Email'), ' user@example.com ');
+    await fireEvent.press(screen.getByRole('button', { name: 'Entrar' }));
+    expect(onSubmit).toHaveBeenCalledWith('user@example.com', ' secret ');
+  });
   test('submits email and password for login', async () => {
     const onSubmit = jest.fn().mockResolvedValue(undefined);
     await render(<AuthForm mode="login" onSubmit={onSubmit} />);

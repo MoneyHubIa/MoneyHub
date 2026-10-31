@@ -1,5 +1,8 @@
 # Regras financeiras, agenda e metas
 
+Contas financeiras, cartões, faturas, parcelas e transferências seguem também
+as regras descritas em [BANKING.md](BANKING.md).
+
 Palavras-chave: @finance | financeiro | metas | aportes | recorrencias | agenda | notificacoes | dashboard
 
 As regras backend prevalecem sobre apresentação e validação do formulário.

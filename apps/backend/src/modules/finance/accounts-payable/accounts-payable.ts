@@ -6,9 +6,11 @@ import { validateReminderOffsetDays, type ReminderOffsetDays } from '../../agend
 export type AccountPayableStatus = 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 
 export type AccountPayable = {
+  cardStatementKey?: string | null;
   id: string;
   userId: string;
   categoryId: string;
+  financialAccountId?: string;
   costCenterId?: string | null;
   description: string;
   amount: string;
@@ -23,6 +25,7 @@ export type AccountPayable = {
 
 export type CreateAccountPayableInput = {
   categoryId: string;
+  financialAccountId?: string;
   costCenterId?: string;
   description: string;
   amount: string;
@@ -34,6 +37,7 @@ export type CreateAccountPayableInput = {
 export type UpdateAccountPayableInput = {
   id: string;
   categoryId?: string;
+  financialAccountId?: string;
   costCenterId?: string;
   description?: string;
   amount?: string;
@@ -58,6 +62,7 @@ export type AccountPayableRepository = {
     data: {
       userId: string;
       categoryId: string;
+      financialAccountId?: string;
       costCenterId?: string | null;
       description: string;
       amount: string;
@@ -71,6 +76,7 @@ export type AccountPayableRepository = {
     where: { id: string };
     data: {
       categoryId?: string;
+      financialAccountId?: string;
       costCenterId?: string | null;
       description?: string;
       amount?: string;
@@ -85,6 +91,7 @@ export type AccountPayableRepository = {
     data: {
       userId: string;
       categoryId: string;
+      financialAccountId?: string;
       costCenterId?: string | null;
       description: string;
       amount: string;
@@ -138,7 +145,7 @@ export async function createAccountPayable(
     throw accountPayableError('Description must contain between 1 and 120 characters.', 'BAD_USER_INPUT');
   }
 
-  if (!input.amount || isNaN(Number(input.amount)) || Number(input.amount) <= 0) {
+  if (!/^\d{1,10}(\.\d{1,2})?$/.test(input.amount) || Number(input.amount) <= 0) {
     throw accountPayableError('Amount must be a positive number.', 'BAD_USER_INPUT');
   }
 
@@ -159,6 +166,7 @@ export async function createAccountPayable(
     data: {
       userId,
       categoryId: input.categoryId,
+      ...(input.financialAccountId ? { financialAccountId: input.financialAccountId } : {}),
       costCenterId: input.costCenterId || null,
       description,
       amount: input.amount,
@@ -185,6 +193,7 @@ export async function updateAccountPayable(
   if (!existing || existing.deletedAt || existing.userId !== userId) {
     throw accountPayableError('Account payable was not found.', 'NOT_FOUND');
   }
+  if (existing.cardStatementKey) throw accountPayableError('Use a tela Cartões de crédito para alterar ou pagar esta fatura.', 'BAD_USER_INPUT');
 
   const data: Parameters<AccountPayableRepository['update']>[0]['data'] = {};
 
@@ -197,7 +206,7 @@ export async function updateAccountPayable(
   }
 
   if (input.amount !== undefined) {
-    if (isNaN(Number(input.amount)) || Number(input.amount) <= 0) {
+    if (!/^\d{1,10}(\.\d{1,2})?$/.test(input.amount) || Number(input.amount) <= 0) {
       throw accountPayableError('Amount must be a positive number.', 'BAD_USER_INPUT');
     }
     data.amount = input.amount;
@@ -242,6 +251,7 @@ export async function updateAccountPayable(
   if (input.categoryId !== undefined) {
     data.categoryId = input.categoryId;
   }
+  if (input.financialAccountId !== undefined) data.financialAccountId = input.financialAccountId;
 
   if (input.costCenterId !== undefined) {
     data.costCenterId = input.costCenterId || null;
@@ -268,6 +278,8 @@ export async function markAccountPayablePaid(
   if (!existing || existing.deletedAt || existing.userId !== userId) {
     throw accountPayableError('Account payable was not found.', 'NOT_FOUND');
   }
+  if (existing.cardStatementKey) throw accountPayableError('Pague esta fatura na tela Cartões de crédito.', 'BAD_USER_INPUT');
+  if (existing.status === 'PAID') return existing;
 
   const paidAt = args.paidAt ? new Date(args.paidAt) : new Date();
   if (isNaN(paidAt.getTime())) {
@@ -287,6 +299,7 @@ export async function markAccountPayablePaid(
       data: {
         userId,
         categoryId: existing.categoryId,
+        ...(existing.financialAccountId ? { financialAccountId: existing.financialAccountId } : {}),
         costCenterId: existing.costCenterId ?? null,
         description: `[Pago] ${existing.description}`,
         amount: existing.amount,
@@ -314,6 +327,7 @@ export async function deleteAccountPayable(
   if (!existing || existing.deletedAt || existing.userId !== userId) {
     throw accountPayableError('Account payable was not found.', 'NOT_FOUND');
   }
+  if (existing.cardStatementKey) throw accountPayableError('Fatura vinculada ao cartão não pode ser excluída.', 'BAD_USER_INPUT');
 
   await repository.update({
     where: { id: args.id },
