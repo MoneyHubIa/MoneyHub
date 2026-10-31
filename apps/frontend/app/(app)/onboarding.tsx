@@ -35,7 +35,7 @@ export default function OnboardingScreen() {
   });
 
   const handleSubmit = async () => {
-    if (!fullName.trim()) return;
+    if ((!fullName.trim() || fullName.trim().length > 120)) return;
     
     try {
       await bootstrapProfile({
@@ -77,7 +77,7 @@ export default function OnboardingScreen() {
               accessibilityLabel="Nome completo"
               autoCapitalize="words"
               editable={!loading}
-              onChangeText={setFullName}
+              maxLength={120} onChangeText={setFullName}
               placeholder="Digite seu nome completo"
               style={styles.input}
               value={fullName}
@@ -138,11 +138,11 @@ export default function OnboardingScreen() {
 
           <Pressable
             accessibilityRole="button"
-            disabled={loading || !fullName.trim()}
+            disabled={loading || (!fullName.trim() || fullName.trim().length > 120)}
             onPress={handleSubmit}
             style={({ pressed }) => [
               styles.submitButton,
-              (!fullName.trim() || loading) && styles.submitButtonDisabled,
+              ((!fullName.trim() || fullName.trim().length > 120) || loading) && styles.submitButtonDisabled,
               pressed && styles.submitButtonPressed
             ]}
           >

@@ -22,6 +22,9 @@ export type NavigationId =
   | 'ai'
   | 'recorrencias'
   | 'contas'
+  | 'financial_accounts'
+  | 'credit_cards'
+  | 'transfers'
   | 'agenda'
   | 'ajustes';
 
@@ -38,7 +41,7 @@ export const primaryModules: NavigationItem[] = [
   { id: 'transacoes', label: 'Transações', icon: WalletCards, isPrimary: true },
   {
     id: 'a_pagar',
-    label: 'Contas',
+    label: 'Contas a pagar/receber',
     icon: CalendarClock,
     isPrimary: true,
     badgeCountKey: 'payables'
@@ -49,6 +52,9 @@ export const primaryModules: NavigationItem[] = [
 ];
 
 export const secondaryModules: NavigationItem[] = [
+  { id: 'financial_accounts', label: 'Contas financeiras', icon: WalletCards, isPrimary: false },
+  { id: 'credit_cards', label: 'Cartões de crédito', icon: CreditCard, isPrimary: false },
+  { id: 'transfers', label: 'Transferências', icon: Repeat, isPrimary: false },
   { id: 'recorrencias', label: 'Recorrências', icon: Repeat, isPrimary: false },
   { id: 'contas', label: 'Centros de Custo', icon: CreditCard, isPrimary: false },
   { id: 'agenda', label: 'Agenda', icon: CalendarDays, isPrimary: false }

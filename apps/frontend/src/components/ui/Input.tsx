@@ -12,6 +12,7 @@ import {
 import { useTheme } from '../../theme/ThemeContext';
 
 export interface InputProps {
+  maxLength?: number | undefined;
   label?: string | undefined;
   value: string;
   onChangeText: (text: string) => void;
@@ -27,6 +28,7 @@ export interface InputProps {
 }
 
 export function Input({
+  maxLength,
   label,
   value,
   onChangeText,
@@ -50,7 +52,7 @@ export function Input({
           {label}
         </Text>
       )}
-      <TextInput
+      <TextInput maxLength={maxLength}
         accessibilityLabel={accessibilityLabel ?? label ?? placeholder}
         autoCapitalize={autoCapitalize}
         keyboardType={keyboardType}

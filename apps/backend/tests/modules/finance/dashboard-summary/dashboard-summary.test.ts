@@ -35,7 +35,7 @@ function expectCode(error: unknown, code: string) {
 
 describe('dashboard summary', () => {
   test('exposes dashboardSummary query in GraphQL typeDefs', () => {
-    assert.match(typeDefs, /dashboardSummary\(month: Int, year: Int\): DashboardSummary!/);
+    assert.match(typeDefs, /dashboardSummary\(month: Int, year: Int, financialAccountIds: \[ID!\]\): DashboardSummary!/);
   });
 
   test('calculates totals and net balance for authenticated user', async () => {

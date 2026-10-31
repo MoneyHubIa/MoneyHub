@@ -91,7 +91,7 @@ describe.each([
     expect(screen.getByRole('alert')).toHaveTextContent('Falha ao excluir');
     await fireEvent.press(screen.getByRole('button', { name: newLabel }));
     await fireEvent.press(screen.getByRole('button', { name: saveLabel }));
-    expect(screen.getByText('Informe uma descrição.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: saveLabel })).toBeDisabled();
     expect(screen.getByText('Falha ao excluir')).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole('button', { name: 'Cancelar' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Excluir Conta pendente' }));

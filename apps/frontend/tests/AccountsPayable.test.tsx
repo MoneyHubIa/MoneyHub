@@ -35,6 +35,9 @@ const mockCreatePayable = jest.fn();
 const mockUpdatePayable = jest.fn();
 const mockMarkPaid = jest.fn();
 const mockDeletePayable = jest.fn();
+const mockCreateSeries = jest.fn();
+
+jest.mock('expo-crypto', () => ({ randomUUID: () => '11111111-1111-4111-8111-111111111111' }));
 
 type MutationDocument = {
   definitions: Array<{ name?: { value?: string } }>;
@@ -95,6 +98,7 @@ jest.mock('@apollo/client/react', () => ({
   }),
   useMutation: (mutation: MutationDocument) => {
     const mutationName = mutation.definitions[0]?.name?.value;
+    if (mutationName === 'CreateCommitmentSeries') return [mockCreateSeries, { loading: false }];
     if (mutationName === 'UpdateAccountPayable') return [mockUpdatePayable, { loading: false }];
     if (mutationName === 'MarkAccountPayablePaid') return [mockMarkPaid, { loading: false }];
     if (mutationName === 'DeleteAccountPayable') return [mockDeletePayable, { loading: false }];
@@ -105,6 +109,20 @@ jest.mock('@apollo/client/react', () => ({
 describe('AccountsPayable component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  test('passes selected reminder to installment creation', async () => {
+    await render(<AccountsPayable />, { wrapper: Wrapper });
+    await fireEvent.press(screen.getByRole('button', { name: 'Nova Conta a Pagar' }));
+    await fireEvent.changeText(screen.getByLabelText('Descrição da conta a pagar'), 'Parcelas');
+    await fireEvent.changeText(screen.getByLabelText('Valor da conta a pagar'), '300');
+    await fireEvent.press(screen.getByRole('button', { name: /^Parcelar$/ }));
+    await fireEvent.changeText(screen.getByLabelText('Total de parcelas'), '3');
+    await fireEvent.press(screen.getByRole('button', { name: '3 dias antes' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Agendar Conta a Pagar' }));
+    expect(mockCreateSeries).toHaveBeenCalledWith(expect.objectContaining({
+      variables: { input: expect.objectContaining({ reminderOffsetDays: 3, schedule: expect.objectContaining({ total: 3 }) }) }
+    }));
   });
 
   test('renders header, KPIs, form, and account items', async () => {
@@ -125,7 +143,7 @@ describe('AccountsPayable component', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Nova Conta a Pagar' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Agendar Conta a Pagar' }));
 
-    expect(screen.getByText('Informe uma descrição.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Agendar Conta a Pagar' })).toBeDisabled();
   });
 
   test.each(reminderOptions)('sends $value as selected reminder offset when creating an account payable', async ({ label, value }) => {

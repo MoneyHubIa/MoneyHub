@@ -1,13 +1,15 @@
 import { routes, type VercelConfig } from '@vercel/config/v1';
 
 function requiredBackendUrl(value: string | undefined): string {
-  const backendUrl = value?.replace(/\/+$/, '');
-
-  if (!backendUrl) {
-    throw new Error('BACKEND_URL is required to configure Vercel API rewrites.');
+  try {
+    if (!value || value !== value.trim() || !/^https?:\/\//i.test(value)) throw new Error();
+    const url = new URL(value);
+    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password ||
+        url.pathname !== '/' || value.includes('?') || value.includes('#')) throw new Error();
+    return url.origin;
+  } catch {
+    throw new Error('BACKEND_URL must be an absolute HTTP(S) origin without credentials, path, query or fragment.');
   }
-
-  return backendUrl;
 }
 
 const backendUrl = requiredBackendUrl(process.env.BACKEND_URL);

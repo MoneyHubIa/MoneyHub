@@ -1,4 +1,6 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import type { ReactElement } from 'react';
+import { ThemeProvider } from '../src/theme/ThemeContext';
+import { act, fireEvent, render as nativeRender, screen, waitFor } from '@testing-library/react-native';
 import { FinancialGoals } from '../src/components/FinancialGoals';
 
 const mockCreate = jest.fn(), mockUpdate = jest.fn(), mockRecord = jest.fn(), mockDelete = jest.fn();
@@ -19,7 +21,21 @@ jest.mock('@apollo/client/react', () => ({
 }));
 jest.mock('expo-crypto', () => ({ randomUUID: () => '11111111-1111-4111-8111-111111111111' }));
 
+const render = (element: ReactElement) => nativeRender(element, { wrapper: ThemeProvider });
+
 describe('FinancialGoals', () => {
+  test('keeps the editor open while saving and closes it after completion', async () => {
+    let finish!: () => void;
+    mockUpdate.mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+    await render(<FinancialGoals />);
+    await fireEvent.press(screen.getByLabelText('Editar meta Reserva'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Salvar meta' }));
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeDisabled();
+    await fireEvent.press(screen.getByRole('button', { name: 'Fechar modal' }));
+    expect(screen.getByLabelText('Nome da meta')).toBeOnTheScreen();
+    await act(async () => finish());
+    expect(screen.queryByLabelText('Nome da meta')).toBeNull();
+  });
   beforeEach(() => {
     jest.clearAllMocks(); mockGoals = [{ ...goal }]; mockLoading = false; mockError = undefined;
     mockHistory = { nodes: [{ id: 'm1', type: 'CONTRIBUTION', amount: '250.00', occurredOn: '2026-02-01', notes: 'Primeiro' }], hasNextPage: true, endCursor: 'm1' };
@@ -107,16 +123,16 @@ describe('FinancialGoals', () => {
   test('rejects invalid values and dates, cancels forms and displays mutation errors', async () => {
     await render(<FinancialGoals />);
     await fireEvent.press(screen.getByLabelText('Editar meta Reserva'));
-    await fireEvent.changeText(screen.getByLabelText('Valor-alvo'), '1.001');
+    await fireEvent.changeText(screen.getByLabelText('Valor-alvo'), '0');
     await fireEvent.press(screen.getByRole('button', { name: 'Salvar meta' }));
-    expect(screen.getByText('Informe valor positivo com até duas casas decimais.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Salvar meta' })).toBeDisabled();
     await fireEvent.changeText(screen.getByLabelText('Valor-alvo'), '1000');
     await fireEvent.changeText(screen.getByLabelText('Prazo da meta'), '30/02/2026');
     await fireEvent.press(screen.getByRole('button', { name: 'Salvar meta' }));
-    expect(screen.getByText('Informe data válida.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Salvar meta' })).toBeDisabled();
     await fireEvent.changeText(screen.getByLabelText('Prazo da meta'), '31/12/2025');
     await fireEvent.press(screen.getByRole('button', { name: 'Salvar meta' }));
-    expect(screen.getByText('Prazo não pode anteceder início.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Salvar meta' })).toBeDisabled();
     await fireEvent.changeText(screen.getByLabelText('Prazo da meta'), '01/01/2027');
     mockUpdate.mockRejectedValueOnce(new Error('Meta indisponível'));
     await fireEvent.press(screen.getByRole('button', { name: 'Salvar meta' }));

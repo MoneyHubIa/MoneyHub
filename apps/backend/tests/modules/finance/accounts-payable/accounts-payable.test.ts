@@ -99,7 +99,7 @@ function expectCode(error: unknown, code: string) {
 
 describe('accounts payable', () => {
   test('exposes accounts payable query and mutations in GraphQL typeDefs', () => {
-    assert.match(typeDefs, /myAccountsPayable\(status: AccountPayableStatus\): \[AccountPayable!\]!/);
+    assert.match(typeDefs, /myAccountsPayable\(status: AccountPayableStatus, financialAccountIds: \[ID!\]\): \[AccountPayable!\]!/);
     assert.match(typeDefs, /createAccountPayable\(input: CreateAccountPayableInput!\): AccountPayable!/);
     assert.match(typeDefs, /updateAccountPayable\(input: UpdateAccountPayableInput!\): AccountPayable!/);
     assert.match(typeDefs, /markAccountPayablePaid\(id: ID!, paidAt: String\): AccountPayable!/);

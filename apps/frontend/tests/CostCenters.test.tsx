@@ -59,7 +59,7 @@ describe('CostCenters', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: 'Adicionar Centro de Custo' }));
 
-    expect(screen.getByText('Informe o nome do centro de custo.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Adicionar Centro de Custo' })).toBeDisabled();
     expect(mockCreate).not.toHaveBeenCalled();
   });
 

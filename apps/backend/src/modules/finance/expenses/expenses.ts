@@ -3,9 +3,11 @@ import type { GraphQLContext } from '../../../core/graphql/graphql.js';
 import { requireVerifiedUserId } from '../financial-categories/financial-categories.js';
 
 export type Expense = {
+  settlementId?: string | null;
   id: string;
   userId: string;
   categoryId: string;
+  financialAccountId?: string;
   costCenterId?: string | null;
   description: string;
   amount: string; // Passed as string to GraphQL
@@ -18,6 +20,7 @@ export type Expense = {
 
 export type CreateExpenseInput = {
   categoryId: string;
+  financialAccountId?: string;
   costCenterId?: string;
   description: string;
   amount: string;
@@ -28,6 +31,7 @@ export type CreateExpenseInput = {
 export type UpdateExpenseInput = {
   id: string;
   categoryId?: string;
+  financialAccountId?: string;
   costCenterId?: string;
   description?: string;
   amount?: string;
@@ -46,6 +50,7 @@ export type ExpenseRepository = {
     data: {
       userId: string;
       categoryId: string;
+      financialAccountId?: string;
       costCenterId?: string | null;
       description: string;
       amount: string;
@@ -57,6 +62,7 @@ export type ExpenseRepository = {
     where: { id: string };
     data: Partial<{
       categoryId: string;
+      financialAccountId: string;
       costCenterId: string | null;
       description: string;
       amount: string;
@@ -95,7 +101,7 @@ export async function createExpense(
     throw expenseError('Description must contain between 1 and 120 characters.', 'BAD_USER_INPUT');
   }
 
-  if (!input.amount || isNaN(Number(input.amount)) || Number(input.amount) <= 0) {
+  if (!/^\d{1,10}(\.\d{1,2})?$/.test(input.amount) || Number(input.amount) <= 0) {
     throw expenseError('Amount must be a positive number.', 'BAD_USER_INPUT');
   }
 
@@ -113,6 +119,7 @@ export async function createExpense(
     data: {
       userId,
       categoryId: input.categoryId,
+      ...(input.financialAccountId ? { financialAccountId: input.financialAccountId } : {}),
       costCenterId: input.costCenterId || null,
       description,
       amount: input.amount,
@@ -137,6 +144,7 @@ export async function updateExpense(
   if (!existing || existing.deletedAt || existing.userId !== userId) {
     throw expenseError('Expense was not found.', 'NOT_FOUND');
   }
+  if (existing.settlementId || existing.notes?.startsWith('Pagamento de fatura ')) throw expenseError('Altere ou estorne o compromisso de origem.', 'BAD_USER_INPUT');
 
   const updateData: Parameters<ExpenseRepository['update']>[0]['data'] = {};
 
@@ -144,6 +152,7 @@ export async function updateExpense(
     if (!input.categoryId) throw expenseError('Category ID is required.', 'BAD_USER_INPUT');
     updateData.categoryId = input.categoryId;
   }
+  if (input.financialAccountId !== undefined) updateData.financialAccountId = input.financialAccountId;
 
   if (input.costCenterId !== undefined) {
     updateData.costCenterId = input.costCenterId || null;
@@ -158,7 +167,7 @@ export async function updateExpense(
   }
 
   if (input.amount !== undefined) {
-    if (!input.amount || isNaN(Number(input.amount)) || Number(input.amount) <= 0) {
+    if (!/^\d{1,10}(\.\d{1,2})?$/.test(input.amount) || Number(input.amount) <= 0) {
       throw expenseError('Amount must be a positive number.', 'BAD_USER_INPUT');
     }
     updateData.amount = input.amount;
@@ -198,6 +207,7 @@ export async function deleteExpense(
   if (!existing || existing.deletedAt || existing.userId !== userId) {
     throw expenseError('Expense was not found.', 'NOT_FOUND');
   }
+  if (existing.settlementId || existing.notes?.startsWith('Pagamento de fatura ')) throw expenseError('Altere ou estorne o compromisso de origem.', 'BAD_USER_INPUT');
 
   await repository.update({
     where: { id },

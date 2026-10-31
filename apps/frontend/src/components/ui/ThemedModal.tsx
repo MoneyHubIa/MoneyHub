@@ -16,6 +16,7 @@ import { useTheme } from '../../theme/ThemeContext';
 
 export interface ThemedModalProps {
   visible: boolean;
+  dismissDisabled?: boolean;
   onClose: () => void;
   title: string;
   subtitle?: string | undefined;
@@ -26,6 +27,7 @@ export interface ThemedModalProps {
 
 export function ThemedModal({
   visible,
+  dismissDisabled = false,
   onClose,
   title,
   subtitle,
@@ -38,7 +40,7 @@ export function ThemedModal({
   return (
     <Modal
       animationType="fade"
-      onRequestClose={onClose}
+      onRequestClose={() => { if (!dismissDisabled) onClose(); }}
       transparent
       visible={visible}
     >
@@ -48,6 +50,7 @@ export function ThemedModal({
       >
         <Pressable
           accessibilityLabel="Fechar modal ao clicar fora"
+          disabled={dismissDisabled}
           onPress={onClose}
           style={styles.backdrop}
         />
@@ -78,11 +81,12 @@ export function ThemedModal({
             </View>
             <Pressable
               accessibilityLabel="Fechar modal"
+              disabled={dismissDisabled}
               accessibilityRole="button"
               onPress={onClose}
               style={({ pressed }) => [
                 styles.closeButton,
-                { backgroundColor: theme.bgElevated, opacity: pressed ? 0.7 : 1 }
+                { backgroundColor: theme.bgElevated, opacity: dismissDisabled ? 0.5 : pressed ? 0.7 : 1 }
               ]}
             >
               <X color={theme.textSecondary} size={18} />

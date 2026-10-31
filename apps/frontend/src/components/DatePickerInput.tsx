@@ -160,7 +160,7 @@ export function DatePickerInput({
           }
         ]}
       >
-        <TextInput
+        <TextInput maxLength={10}
           accessibilityLabel={accessibilityLabel || label}
           onChangeText={onChangeText}
           placeholder={placeholder}

@@ -38,6 +38,7 @@ test('@financial goals persist progress, movements, dashboard and isolate accoun
     await page.getByRole('button', { name: 'Histórico de Reserva E2E' }).click();
     await expect(page.getByText('Retirada · R$ 50,00')).toBeVisible();
     await expect(page.getByText('Aporte · R$ 250,00')).toBeVisible();
+    await page.getByRole('button', { name: 'Fechar histórico' }).click();
     await page.getByRole('button', { name: 'Dashboard', exact: true }).click();
     await expect(page.getByLabel('Metas no dashboard')).toContainText('R$ 200,00');
     await expect(page.getByLabel('Resumo financeiro')).toContainText('R$ 0,00');

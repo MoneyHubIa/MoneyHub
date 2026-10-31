@@ -103,7 +103,7 @@ describe('Transactions Component', () => {
           variables: {
             input: expect.objectContaining({
               description: 'Aluguel',
-              amount: '1800',
+              amount: '1800.00',
               categoryId: 'cat-2'
             })
           }
@@ -116,16 +116,16 @@ describe('Transactions Component', () => {
     await render(<Transactions />, { wrapper: Wrapper });
     await fireEvent.press(screen.getByRole('button', { name: 'Nova Transação' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
-    expect(screen.getByText('Informe a descrição.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Adicionar transação' })).toBeDisabled();
 
     await fireEvent.changeText(screen.getByLabelText('Descrição da transação'), 'Teste');
     await fireEvent.changeText(screen.getByLabelText('Valor da transação'), 'inválido');
     await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
-    expect(screen.getByText('Informe um valor válido.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Adicionar transação' })).toBeDisabled();
 
     await fireEvent.changeText(screen.getByLabelText('Valor da transação'), '10');
     await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
-    expect(screen.getByText('Selecione uma categoria.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Adicionar transação' })).toBeDisabled();
   });
 
   test('creates income and deletes both transaction types', async () => {
@@ -139,7 +139,7 @@ describe('Transactions Component', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Trabalho' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
     expect(mockCreateIncome).toHaveBeenCalledWith(expect.objectContaining({
-      variables: { input: expect.objectContaining({ description: 'Projeto', amount: '900' }) }
+      variables: { input: expect.objectContaining({ description: 'Projeto', amount: '900.00' }) }
     }));
 
     await fireEvent.press(screen.getByRole('button', { name: 'Excluir transação Salário' }));

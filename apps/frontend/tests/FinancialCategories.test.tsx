@@ -101,7 +101,7 @@ describe('FinancialCategories component', () => {
     await render(<FinancialCategories />, { wrapper: Wrapper });
 
     await fireEvent.press(screen.getByRole('button', { name: 'Adicionar Categoria' }));
-    expect(screen.getByText('Informe o nome da categoria.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Adicionar Categoria' })).toBeDisabled();
 
     await fireEvent.changeText(screen.getByLabelText('Nome da categoria'), '  Lazer  ');
     await fireEvent.press(screen.getAllByText('Despesa')[0]!);

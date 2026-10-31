@@ -122,7 +122,7 @@ describe('RecurringTransactions component', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: 'Criar Regra de Recorrência' }));
 
-    expect(screen.getByText('Informe uma descrição.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Criar Regra de Recorrência' })).toBeDisabled();
   });
 
   test('submits valid form with category and amount', async () => {
@@ -144,12 +144,12 @@ describe('RecurringTransactions component', () => {
     await fireEvent.changeText(screen.getByLabelText('Descrição da recorrência'), 'Software');
     await fireEvent.changeText(screen.getByLabelText('Valor da recorrência'), '0');
     await fireEvent.press(screen.getByRole('button', { name: 'Criar Regra de Recorrência' }));
-    expect(screen.getByText('Informe um valor numérico positivo.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Criar Regra de Recorrência' })).toBeDisabled();
 
     await fireEvent.changeText(screen.getByLabelText('Valor da recorrência'), '120');
     await fireEvent.changeText(screen.getByLabelText('Data de Início'), 'data inválida');
     await fireEvent.press(screen.getByRole('button', { name: 'Criar Regra de Recorrência' }));
-    expect(screen.getByText('Informe uma data de início válida.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Criar Regra de Recorrência' })).toBeDisabled();
   });
 
   test('changes type and frequency before submitting income', async () => {

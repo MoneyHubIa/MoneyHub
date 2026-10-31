@@ -134,7 +134,7 @@ export function parseRegionalDateToISO(
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
     const [y, m, d] = trimmed.split('-').map(Number);
     if (m! >= 1 && m! <= 12 && d! >= 1 && d! <= 31 && y! >= 1900 && y! <= 2100) {
-      return trimmed;
+      return new Date(`${trimmed}T00:00:00Z`).toISOString().slice(0, 10) === trimmed ? trimmed : null;
     }
     return null;
   }
@@ -142,6 +142,7 @@ export function parseRegionalDateToISO(
   // Matches separator /, -, or .
   const parts = trimmed.split(/[/.-]/);
   if (parts.length !== 3) return null;
+  if (!parts.every(part => /^\d+$/.test(part))) return null;
 
   let day: number;
   let month: number;
@@ -170,6 +171,7 @@ export function parseRegionalDateToISO(
 
   const mm = String(month).padStart(2, '0');
   const dd = String(day).padStart(2, '0');
-  return `${year}-${mm}-${dd}`;
+  const iso = `${year}-${mm}-${dd}`;
+  return new Date(`${iso}T00:00:00Z`).toISOString().slice(0, 10) === iso ? iso : null;
 }
 

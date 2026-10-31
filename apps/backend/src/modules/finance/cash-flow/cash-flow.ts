@@ -6,6 +6,7 @@ import { getPrismaClient } from '../../../core/database/database.js';
 export type CashFlowGranularity = 'DAILY' | 'MONTHLY';
 
 export type CashFlowInput = {
+  financialAccountIds?: string[];
   granularity?: CashFlowGranularity;
   year?: number;
   month?: number;
@@ -59,8 +60,7 @@ const MONTH_NAMES_SHORT = [
 function padZero(num: number): string {
   return num < 10 ? `0${num}` : String(num);
 }
-
-export function cashFlowRepository(): CashFlowRepository {
+export function cashFlowRepository(financialAccountIds?: string[]): CashFlowRepository {
   const prisma = getPrismaClient();
 
   return {
@@ -68,6 +68,7 @@ export function cashFlowRepository(): CashFlowRepository {
       const rows = await prisma.income.findMany({
         where: {
           userId,
+          ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}),
           deletedAt: null,
           occurredAt: {
             gte: startDate,
@@ -89,6 +90,7 @@ export function cashFlowRepository(): CashFlowRepository {
       const rows = await prisma.expense.findMany({
         where: {
           userId,
+          ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}),
           deletedAt: null,
           occurredAt: {
             gte: startDate,

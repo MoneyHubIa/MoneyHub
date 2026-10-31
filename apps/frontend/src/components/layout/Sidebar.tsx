@@ -1,4 +1,5 @@
 import {
+  CreditCard,
   LogOut,
   Plus,
   Settings,
@@ -27,7 +28,7 @@ export interface SidebarProps {
   onSelectSection: (id: NavigationId) => void;
   pendingPayablesCount?: number | undefined;
   pendingReceivablesCount?: number | undefined;
-  onQuickAction: (action: 'a_pagar' | 'a_receber' | 'categoria' | 'meta') => void;
+  onQuickAction: (action: 'a_pagar' | 'a_receber' | 'categoria' | 'meta' | 'despesa_cartao') => void;
   onLogout: () => void;
   loggingOut?: boolean | undefined;
   style?: StyleProp<ViewStyle> | undefined;
@@ -223,6 +224,10 @@ export function Sidebar({
             Ações Rápidas
           </Text>
           <View style={styles.quickButtonsGrid}>
+            <Pressable accessibilityLabel="Despesa Cartão" accessibilityRole="button" onPress={() => onQuickAction('despesa_cartao')} style={({ pressed }) => [styles.quickButton, { backgroundColor: theme.expenseBadge, borderColor: theme.expense, borderWidth: 1, borderRadius: 8, minHeight: 48, height: 'auto', flexBasis: '100%', padding: 10, opacity: pressed ? 0.8 : 1 }]}>
+              <CreditCard color={theme.expense} size={16} />
+              <Text style={{ color: theme.textPrimary, fontWeight: '600' }}>Despesa Cartão</Text>
+            </Pressable>
             <Pressable
               accessibilityLabel="Criar A Pagar"
               accessibilityRole="button"

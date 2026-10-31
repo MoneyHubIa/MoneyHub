@@ -4,6 +4,7 @@ import { requireVerifiedUserId } from '../financial-categories/financial-categor
 import { getPrismaClient } from '../../../core/database/database.js';
 
 export type PeriodComparisonInput = {
+  financialAccountIds?: string[];
   baseMonth?: number;
   baseYear?: number;
   comparisonMonth?: number;
@@ -63,8 +64,7 @@ const MONTH_NAMES = [
   'Novembro',
   'Dezembro'
 ];
-
-export function periodComparisonRepository(): PeriodComparisonRepository {
+export function periodComparisonRepository(financialAccountIds?: string[]): PeriodComparisonRepository {
   const prisma = getPrismaClient();
 
   return {
@@ -77,6 +77,7 @@ export function periodComparisonRepository(): PeriodComparisonRepository {
         prisma.income.findMany({
           where: {
             userId,
+          ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}),
             deletedAt: null,
             occurredAt: { gte: startDate, lte: endDate }
           },
@@ -85,6 +86,7 @@ export function periodComparisonRepository(): PeriodComparisonRepository {
         prisma.expense.findMany({
           where: {
             userId,
+          ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}),
             deletedAt: null,
             occurredAt: { gte: startDate, lte: endDate }
           },

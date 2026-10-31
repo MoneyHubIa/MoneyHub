@@ -58,12 +58,14 @@ export type CategoryAnalysisData = {
 };
 
 type CategoryAnalysisProps = Readonly<{
+  financialAccountIds?: string[];
   preferredCurrency?: string;
   month?: number;
   year?: number;
 }>;
 
 export function CategoryAnalysis({
+  financialAccountIds,
   preferredCurrency = 'BRL',
   month,
   year
@@ -76,6 +78,7 @@ export function CategoryAnalysis({
     {
       variables: {
         input: {
+          financialAccountIds: financialAccountIds?.length ? financialAccountIds : undefined,
           type: analysisType,
           month,
           year

@@ -10,6 +10,7 @@ export type RecurringTransaction = {
   userId: string;
   type: RecurringType;
   categoryId: string;
+  financialAccountId?: string;
   costCenterId?: string | null;
   description: string;
   amount: string;
@@ -23,6 +24,7 @@ export type RecurringTransaction = {
 export type CreateRecurringTransactionInput = {
   type: RecurringType;
   categoryId: string;
+  financialAccountId?: string;
   costCenterId?: string;
   description: string;
   amount: string;
@@ -35,6 +37,7 @@ export type UpdateRecurringTransactionInput = {
   id: string;
   type?: RecurringType;
   categoryId?: string;
+  financialAccountId?: string;
   costCenterId?: string;
   description?: string;
   amount?: string;
@@ -60,6 +63,7 @@ export type RecurringTransactionRepository = {
       userId: string;
       type: RecurringType;
       categoryId: string;
+      financialAccountId?: string;
       costCenterId?: string | null;
       description: string;
       amount: string;
@@ -73,6 +77,7 @@ export type RecurringTransactionRepository = {
     data: {
       type?: RecurringType;
       categoryId?: string;
+      financialAccountId?: string;
       costCenterId?: string | null;
       description?: string;
       amount?: string;
@@ -88,6 +93,7 @@ export type RecurringTransactionRepository = {
     data: {
       userId: string;
       categoryId: string;
+      financialAccountId?: string;
       costCenterId?: string | null;
       description: string;
       amount: string;
@@ -99,6 +105,7 @@ export type RecurringTransactionRepository = {
     data: {
       userId: string;
       categoryId: string;
+      financialAccountId?: string;
       costCenterId?: string | null;
       description: string;
       amount: string;
@@ -136,7 +143,7 @@ export function recurringTransactionError(message: string, code: string): GraphQ
 function parseAmount(raw: string): number {
   const normalized = raw.trim().replace(',', '.');
   const value = Number(normalized);
-  if (!Number.isFinite(value) || value <= 0) {
+  if (!/^\d{1,10}(\.\d{1,2})?$/.test(normalized) || !Number.isFinite(value) || value <= 0) {
     throw recurringTransactionError(
       'O valor deve ser um número positivo.',
       'INVALID_AMOUNT'
@@ -204,7 +211,7 @@ export async function createRecurringTransaction(
 ): Promise<RecurringTransaction> {
   const userId = requireVerifiedUserId(context);
 
-  if (!input.description || input.description.trim() === '') {
+  if (!input.description || !input.description.trim() || input.description.trim().length > 120) {
     throw recurringTransactionError(
       'A descrição é obrigatória.',
       'INVALID_DESCRIPTION'
@@ -241,6 +248,7 @@ export async function createRecurringTransaction(
       userId,
       type: input.type,
       categoryId: input.categoryId,
+      ...(input.financialAccountId ? { financialAccountId: input.financialAccountId } : {}),
       costCenterId: input.costCenterId || null,
       description: input.description.trim(),
       amount: parsedAmount.toFixed(2),
@@ -256,6 +264,7 @@ export async function createRecurringTransaction(
       data: {
         userId,
         categoryId: input.categoryId,
+        ...(input.financialAccountId ? { financialAccountId: input.financialAccountId } : {}),
         costCenterId: input.costCenterId || null,
         description: input.description.trim(),
         amount: parsedAmount.toFixed(2),
@@ -268,6 +277,7 @@ export async function createRecurringTransaction(
       data: {
         userId,
         categoryId: input.categoryId,
+        ...(input.financialAccountId ? { financialAccountId: input.financialAccountId } : {}),
         costCenterId: input.costCenterId || null,
         description: input.description.trim(),
         amount: parsedAmount.toFixed(2),
@@ -340,8 +350,12 @@ export async function updateRecurringTransaction(
   const data: Parameters<RecurringTransactionRepository['update']>[0]['data'] = {};
   if (input.type !== undefined) data.type = input.type;
   if (input.categoryId !== undefined) data.categoryId = input.categoryId;
+  if (input.financialAccountId !== undefined) data.financialAccountId = input.financialAccountId;
   if (input.costCenterId !== undefined) data.costCenterId = input.costCenterId;
-  if (input.description !== undefined) data.description = input.description.trim();
+  if (input.description !== undefined) {
+    if (!input.description.trim() || input.description.trim().length > 120) throw recurringTransactionError('DescriÃ§Ã£o deve conter entre 1 e 120 caracteres.', 'BAD_USER_INPUT');
+    data.description = input.description.trim();
+  }
   if (formattedAmount !== undefined) data.amount = formattedAmount;
   if (input.recurrenceRule !== undefined) data.recurrenceRule = input.recurrenceRule;
   if (startDate !== undefined) data.startDate = startDate;
@@ -418,6 +432,7 @@ export async function processRecurringTransactions(
           data: {
             userId,
             categoryId: item.categoryId,
+            ...(item.financialAccountId ? { financialAccountId: item.financialAccountId } : {}),
             costCenterId: item.costCenterId || null,
             description: item.description,
             amount: item.amount,
@@ -444,6 +459,7 @@ export async function processRecurringTransactions(
           data: {
             userId,
             categoryId: item.categoryId,
+            ...(item.financialAccountId ? { financialAccountId: item.financialAccountId } : {}),
             costCenterId: item.costCenterId || null,
             description: item.description,
             amount: item.amount,

@@ -1,3 +1,4 @@
+import { validEmail } from '../utils/validation';
 import { Link, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -59,21 +60,23 @@ function RecoveryPage({ children }: Readonly<{ children: React.ReactNode }>) {
 function SubmitButton({
   label,
   loading,
-  onPress
+  onPress,
+  disabled = false
 }: Readonly<{
   label: string;
   loading: boolean;
+  disabled?: boolean;
   onPress(): void;
 }>) {
   return (
     <Pressable
       accessibilityRole="button"
-      disabled={loading}
+      disabled={loading || disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.submit,
         pressed && styles.submitPressed,
-        loading && styles.submitDisabled
+        (loading || disabled) && styles.submitDisabled
       ]}
     >
       {loading ? <ActivityIndicator color="#ffffff" /> : null}
@@ -88,10 +91,11 @@ export function ForgotPasswordScreen({ client }: ForgotPasswordScreenProps) {
   const [message, setMessage] = useState<string | null>(null);
 
   const submit = async () => {
+    if (!validEmail(email) || submitting) return;
     setMessage(null);
     setSubmitting(true);
     try {
-      await client.request(email);
+      await client.request(email.trim());
       setMessage(
         'Se houver uma conta para este e-mail, enviaremos um link de recuperação.'
       );
@@ -117,14 +121,14 @@ export function ForgotPasswordScreen({ client }: ForgotPasswordScreenProps) {
           autoCapitalize="none"
           autoComplete="email"
           keyboardType="email-address"
-          onChangeText={setEmail}
+          maxLength={320} onChangeText={setEmail}
           style={styles.input}
           value={email}
         />
       </View>
       {message ? <Text accessibilityRole="alert" style={styles.feedback}>{message}</Text> : null}
       <SubmitButton
-        label="Enviar link de recuperação"
+        label="Enviar link de recuperação" disabled={!validEmail(email)}
         loading={submitting}
         onPress={() => void submit()}
       />
@@ -197,6 +201,7 @@ function ResetPasswordFlow({
   }, [client, oobCode, validParameters, verificationAttempt]);
 
   const submit = async () => {
+    if (submitting || !validCode) return;
     setError(null);
     if (!password || !confirmation) {
       setError('Informe e confirme a nova senha.');
@@ -308,7 +313,7 @@ function ResetPasswordFlow({
       </View>
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       <SubmitButton
-        label="Redefinir senha"
+        label="Redefinir senha" disabled={!validCode || !password || password !== confirmation}
         loading={submitting}
         onPress={() => void submit()}
       />

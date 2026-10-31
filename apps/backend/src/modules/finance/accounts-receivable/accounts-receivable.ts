@@ -9,6 +9,7 @@ export type AccountReceivable = {
   id: string;
   userId: string;
   categoryId: string;
+  financialAccountId?: string;
   costCenterId?: string | null;
   description: string;
   amount: string;
@@ -23,6 +24,7 @@ export type AccountReceivable = {
 
 export type CreateAccountReceivableInput = {
   categoryId: string;
+  financialAccountId?: string;
   costCenterId?: string;
   description: string;
   amount: string;
@@ -34,6 +36,7 @@ export type CreateAccountReceivableInput = {
 export type UpdateAccountReceivableInput = {
   id: string;
   categoryId?: string;
+  financialAccountId?: string;
   costCenterId?: string;
   description?: string;
   amount?: string;
@@ -58,6 +61,7 @@ export type AccountReceivableRepository = {
     data: {
       userId: string;
       categoryId: string;
+      financialAccountId?: string;
       costCenterId?: string | null;
       description: string;
       amount: string;
@@ -71,6 +75,7 @@ export type AccountReceivableRepository = {
     where: { id: string };
     data: {
       categoryId?: string;
+      financialAccountId?: string;
       costCenterId?: string | null;
       description?: string;
       amount?: string;
@@ -85,6 +90,7 @@ export type AccountReceivableRepository = {
     data: {
       userId: string;
       categoryId: string;
+      financialAccountId?: string;
       costCenterId?: string | null;
       description: string;
       amount: string;
@@ -138,7 +144,7 @@ export async function createAccountReceivable(
     throw accountReceivableError('Description must contain between 1 and 120 characters.', 'BAD_USER_INPUT');
   }
 
-  if (!input.amount || isNaN(Number(input.amount)) || Number(input.amount) <= 0) {
+  if (!/^\d{1,10}(\.\d{1,2})?$/.test(input.amount) || Number(input.amount) <= 0) {
     throw accountReceivableError('Amount must be a positive number.', 'BAD_USER_INPUT');
   }
 
@@ -159,6 +165,7 @@ export async function createAccountReceivable(
     data: {
       userId,
       categoryId: input.categoryId,
+      ...(input.financialAccountId ? { financialAccountId: input.financialAccountId } : {}),
       costCenterId: input.costCenterId || null,
       description,
       amount: input.amount,
@@ -197,7 +204,7 @@ export async function updateAccountReceivable(
   }
 
   if (input.amount !== undefined) {
-    if (isNaN(Number(input.amount)) || Number(input.amount) <= 0) {
+    if (!/^\d{1,10}(\.\d{1,2})?$/.test(input.amount) || Number(input.amount) <= 0) {
       throw accountReceivableError('Amount must be a positive number.', 'BAD_USER_INPUT');
     }
     data.amount = input.amount;
@@ -242,6 +249,7 @@ export async function updateAccountReceivable(
   if (input.categoryId !== undefined) {
     data.categoryId = input.categoryId;
   }
+  if (input.financialAccountId !== undefined) data.financialAccountId = input.financialAccountId;
 
   if (input.costCenterId !== undefined) {
     data.costCenterId = input.costCenterId || null;
@@ -287,6 +295,7 @@ export async function markAccountReceivableReceived(
       data: {
         userId,
         categoryId: existing.categoryId,
+        ...(existing.financialAccountId ? { financialAccountId: existing.financialAccountId } : {}),
         costCenterId: existing.costCenterId ?? null,
         description: `[Recebido] ${existing.description}`,
         amount: existing.amount,

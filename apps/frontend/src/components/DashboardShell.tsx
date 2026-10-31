@@ -1,3 +1,6 @@
+import { CardPurchaseModal } from './CardPurchaseForm';
+import { Banking } from './Banking';
+import { FINANCIAL_ACCOUNTS_QUERY, FinancialAccountSelector, type FinancialAccountItem } from './FinancialAccountSelector';
 import { gql } from '@apollo/client';
 import { useApolloClient, useMutation, useQuery } from '@apollo/client/react';
 import { useRouter } from 'expo-router';
@@ -55,8 +58,8 @@ import { ProgressBar } from './ui/ProgressBar';
 export type { NavigationId } from '../navigation/modules';
 
 const DASHBOARD_SUMMARY_QUERY = gql`
-  query DashboardSummary {
-    dashboardSummary {
+  query DashboardSummary($financialAccountIds: [ID!]) {
+    dashboardSummary(financialAccountIds: $financialAccountIds) {
       totalIncome
       totalExpense
       netBalance
@@ -65,28 +68,28 @@ const DASHBOARD_SUMMARY_QUERY = gql`
       month
       year
     }
-    myAccountsPayable(status: PENDING) {
+    myAccountsPayable(status: PENDING, financialAccountIds: $financialAccountIds) {
       id
       description
       amount
       dueDate
       status
     }
-    myAccountsReceivable(status: PENDING) {
+    myAccountsReceivable(status: PENDING, financialAccountIds: $financialAccountIds) {
       id
       description
       amount
       dueDate
       status
     }
-    overdueAccountsPayable: myAccountsPayable(status: OVERDUE) {
+    overdueAccountsPayable: myAccountsPayable(status: OVERDUE, financialAccountIds: $financialAccountIds) {
       id
       description
       amount
       dueDate
       status
     }
-    overdueAccountsReceivable: myAccountsReceivable(status: OVERDUE) {
+    overdueAccountsReceivable: myAccountsReceivable(status: OVERDUE, financialAccountIds: $financialAccountIds) {
       id
       description
       amount
@@ -211,27 +214,32 @@ export function DashboardShell(): React.JSX.Element {
   const [syncAgendaError, setSyncAgendaError] = useState(false);
   const [isEyeOpen, setIsEyeOpen] = useState(true);
   const [quickActionModalOpen, setQuickActionModalOpen] = useState(false);
+  const [isCardPurchaseOpen, setIsCardPurchaseOpen] = useState(false);
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [settlingId, setSettlingId] = useState<string | null>(null);
+  const [financialAccountIds, setFinancialAccountIds] = useState<string[]>([]);
+  const { data: financialAccountsData, refetch: refetchFinancialAccounts } = useQuery<{ myFinancialAccounts: FinancialAccountItem[] }>(FINANCIAL_ACCOUNTS_QUERY);
 
   const [syncAgendaNotifications] = useMutation(SYNC_AGENDA_NOTIFICATIONS);
   const [markPayablePaid] = useMutation(MARK_ACCOUNT_PAYABLE_PAID, {
-    refetchQueries: ['DashboardSummary']
+    refetchQueries: ['FinancialAccounts', 'DashboardSummary']
   });
   const [markReceivableReceived] = useMutation(MARK_ACCOUNT_RECEIVABLE_RECEIVED, {
-    refetchQueries: ['DashboardSummary']
+    refetchQueries: ['FinancialAccounts', 'DashboardSummary']
   });
 
   const { data: summaryData, loading: loadingSummary, refetch: refetchSummary } =
     useQuery<DashboardSummaryData>(DASHBOARD_SUMMARY_QUERY, {
+      variables: { financialAccountIds: financialAccountIds.length ? financialAccountIds : undefined },
       fetchPolicy: 'cache-and-network'
     });
 
   useEffect(() => {
     if (activeSectionId === 'dashboard') {
       refetchSummary?.();
+      void refetchFinancialAccounts?.();
     }
-  }, [activeSectionId, refetchSummary]);
+  }, [activeSectionId, refetchSummary, refetchFinancialAccounts]);
 
   const syncNotifications = useCallback(async () => {
     setSyncAgendaError(false);
@@ -312,8 +320,9 @@ export function DashboardShell(): React.JSX.Element {
   const activeLabel =
     allNavigationItems.find((item) => item.id === activeSectionId)?.label ?? 'Dashboard';
 
-  const goToQuickAction = (action: 'a_pagar' | 'a_receber' | 'transacao' | 'categoria' | 'meta') => {
-    if (action === 'transacao') setIsTransactionModalOpen(true);
+  const goToQuickAction = (action: 'a_pagar' | 'a_receber' | 'transacao' | 'categoria' | 'meta' | 'despesa_cartao') => {
+    if (action === 'despesa_cartao') setIsCardPurchaseOpen(true);
+    else if (action === 'transacao') setIsTransactionModalOpen(true);
     else if (action === 'categoria') setActiveSectionId('financeiro');
     else if (action === 'meta') setActiveSectionId('metas');
     else setActiveSectionId(action);
@@ -333,6 +342,10 @@ export function DashboardShell(): React.JSX.Element {
     <>
       {/* Header */}
       <View style={styles.header}>
+      <FinancialAccountSelector multiple value={financialAccountIds} onChange={setFinancialAccountIds} />
+      {financialAccountsData?.myFinancialAccounts && <Text style={{ color: theme.textPrimary }}>
+        Saldo das contas: {showValue(financialAccountsData.myFinancialAccounts.filter(a => !financialAccountIds.length || financialAccountIds.includes(a.id)).reduce((total, a) => total + Number(a.balance), 0).toFixed(2))}
+      </Text>}
         <View style={styles.headerRow}>
           <View style={styles.headerCopy}>
             <Text style={[styles.eyebrow, { color: theme.income }]}>
@@ -388,7 +401,7 @@ export function DashboardShell(): React.JSX.Element {
         {/* 1. Saldo — gradient hero card */}
         <Card style={[styles.kpiCard, styles.heroCard]} variant="gradient">
           <View style={styles.kpiHeaderRow}>
-            <Text style={[styles.kpiLabel, styles.heroLabel]}>Saldo previsto</Text>
+            <Text style={[styles.kpiLabel, styles.heroLabel]}>Resultado do período</Text>
             <View style={styles.heroIconWrap}>
               <WalletCards color="#FFFFFF" size={16} />
             </View>
@@ -677,9 +690,9 @@ export function DashboardShell(): React.JSX.Element {
       </View>
 
       {/* Charts */}
-      <CashFlowChart preferredCurrency={preferredCurrency} />
-      <CategoryAnalysis preferredCurrency={preferredCurrency} />
-      <PeriodComparison preferredCurrency={preferredCurrency} />
+      <CashFlowChart financialAccountIds={financialAccountIds} preferredCurrency={preferredCurrency} />
+      <CategoryAnalysis financialAccountIds={financialAccountIds} preferredCurrency={preferredCurrency} />
+      <PeriodComparison financialAccountIds={financialAccountIds} preferredCurrency={preferredCurrency} />
     </>
   );
 
@@ -699,6 +712,9 @@ export function DashboardShell(): React.JSX.Element {
         return <AccountsReceivable />;
       case 'recorrencias':
         return <RecurringTransactions />;
+      case 'financial_accounts': return <Banking key="accounts" section="accounts" />;
+      case 'credit_cards': return <Banking key="cards" section="cards" />;
+      case 'transfers': return <Banking key="transfers" section="transfers" />;
       case 'contas':
         return <CostCenters />;
       case 'agenda':
@@ -847,6 +863,8 @@ export function DashboardShell(): React.JSX.Element {
         }}
         visible={quickActionModalOpen}
       />
+
+      {isCardPurchaseOpen && <CardPurchaseModal onClose={() => setIsCardPurchaseOpen(false)} onRegisterCard={() => { setIsCardPurchaseOpen(false); setActiveSectionId('credit_cards'); }} onCreateCategory={() => { setIsCardPurchaseOpen(false); setActiveSectionId('financeiro'); }} />}
 
       <TransactionModal
         onClose={() => setIsTransactionModalOpen(false)}

@@ -6,6 +6,7 @@ import { getPrismaClient } from '../../../core/database/database.js';
 export type CategoryAnalysisType = 'EXPENSE' | 'INCOME';
 
 export type CategoryAnalysisInput = {
+  financialAccountIds?: string[];
   type?: CategoryAnalysisType;
   month?: number;
   year?: number;
@@ -48,8 +49,7 @@ export type CategoryAnalysisRepository = {
     endDate: Date;
   }): Promise<CategoryTransactionRecord[]>;
 };
-
-export function categoryAnalysisRepository(): CategoryAnalysisRepository {
+export function categoryAnalysisRepository(financialAccountIds?: string[]): CategoryAnalysisRepository {
   const prisma = getPrismaClient();
 
   return {
@@ -58,6 +58,7 @@ export function categoryAnalysisRepository(): CategoryAnalysisRepository {
         const rows = await prisma.income.findMany({
           where: {
             userId,
+          ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}),
             deletedAt: null,
             occurredAt: {
               gte: startDate,
@@ -88,6 +89,7 @@ export function categoryAnalysisRepository(): CategoryAnalysisRepository {
       const rows = await prisma.expense.findMany({
         where: {
           userId,
+          ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}),
           deletedAt: null,
           occurredAt: {
             gte: startDate,

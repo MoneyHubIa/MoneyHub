@@ -30,7 +30,7 @@ describe('Layout Components', () => {
       expect(screen.getByText('MoneyHub')).toBeOnTheScreen();
       expect(screen.getByRole('button', { name: 'Dashboard' })).toBeOnTheScreen();
       expect(screen.getByRole('button', { name: 'Transações' })).toBeOnTheScreen();
-      expect(screen.getByRole('button', { name: 'Contas' })).toBeOnTheScreen();
+      expect(screen.getByRole('button', { name: 'Contas a pagar/receber' })).toBeOnTheScreen();
       expect(screen.getByRole('button', { name: 'Categorias' })).toBeOnTheScreen();
       expect(screen.getByRole('button', { name: 'Metas' })).toBeOnTheScreen();
       expect(screen.getByRole('button', { name: 'MoneyHub IA' })).toBeOnTheScreen();
@@ -54,7 +54,7 @@ describe('Layout Components', () => {
         { wrapper }
       );
 
-      const contasPill = screen.getByRole('button', { name: 'Pílula Contas' });
+      const contasPill = screen.getByRole('button', { name: 'Pílula Contas a pagar/receber' });
       expect(contasPill).toBeOnTheScreen();
       await fireEvent.press(contasPill);
       expect(onSelectMock).toHaveBeenCalledWith('a_pagar');

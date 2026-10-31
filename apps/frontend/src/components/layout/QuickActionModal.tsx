@@ -1,4 +1,5 @@
 import {
+  CreditCard,
   CalendarClock,
   HandCoins,
   Tag,
@@ -17,7 +18,7 @@ import { ThemedModal } from '../ui/ThemedModal';
 export interface QuickActionModalProps {
   visible: boolean;
   onClose: () => void;
-  onSelectAction: (action: 'a_pagar' | 'a_receber' | 'transacao' | 'categoria') => void;
+  onSelectAction: (action: 'a_pagar' | 'a_receber' | 'transacao' | 'categoria' | 'despesa_cartao') => void;
 }
 
 export function QuickActionModal({
@@ -27,12 +28,13 @@ export function QuickActionModal({
 }: QuickActionModalProps): React.JSX.Element {
   const { theme } = useTheme();
 
-  const handleSelect = (action: 'a_pagar' | 'a_receber' | 'transacao' | 'categoria') => {
+  const handleSelect = (action: 'a_pagar' | 'a_receber' | 'transacao' | 'categoria' | 'despesa_cartao') => {
     onClose();
     onSelectAction(action);
   };
 
   const actionItems = [
+    { id: 'despesa_cartao' as const, title: 'Despesa Cartão', subtitle: 'Registrar compra à vista ou parcelada no cartão', icon: CreditCard, color: theme.expense, bg: theme.expenseBadge },
     {
       id: 'a_pagar' as const,
       title: 'Nova Conta a Pagar',

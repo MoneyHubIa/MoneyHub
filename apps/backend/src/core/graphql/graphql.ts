@@ -1,3 +1,4 @@
+import { bankingTypeDefs, bankingResolvers } from '../../modules/finance/banking/banking-graphql.js';
 import { financialGoalsTypeDefs, financialGoalsResolvers } from '../../modules/finance/financial-goals/financial-goals-graphql.js';
 import { GraphQLError } from 'graphql';
 import type { Prisma } from '../../generated/prisma/client.js';
@@ -271,14 +272,14 @@ function expenseRepository(): ExpenseRepository {
     update: async ({ where, data }) => mapExpense(await prisma.expense.update({ where, data }))
   };
 }
-
-function dashboardSummaryRepository(): DashboardSummaryRepository {
+function dashboardSummaryRepository(financialAccountIds?: string[]): DashboardSummaryRepository {
   const prisma = getPrismaClient();
   return {
     getIncomeSummary: async ({ userId, startDate, endDate }) => {
       const result = await prisma.income.aggregate({
         where: {
           userId,
+          ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}),
           deletedAt: null,
           occurredAt: { gte: startDate, lte: endDate }
         },
@@ -294,6 +295,7 @@ function dashboardSummaryRepository(): DashboardSummaryRepository {
       const result = await prisma.expense.aggregate({
         where: {
           userId,
+          ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}),
           deletedAt: null,
           occurredAt: { gte: startDate, lte: endDate }
         },
@@ -308,7 +310,7 @@ function dashboardSummaryRepository(): DashboardSummaryRepository {
   };
 }
 
-function accountPayableRepository(): AccountPayableRepository {
+function accountPayableRepository(financialAccountIds?: string[]): AccountPayableRepository {
   const prisma = getPrismaClient();
   const mapAccountPayable = (item: PrismaAccountPayable): AccountPayable => ({
     ...item,
@@ -321,30 +323,17 @@ function accountPayableRepository(): AccountPayableRepository {
     reminderOffsetDays: item.reminderOffsetDays as ReminderOffsetDays | null
   } as unknown as AccountPayable);
   return {
-    findMany: async ({ where }) => (await prisma.accountPayable.findMany({ where, orderBy: { dueDate: 'asc' } })).map(mapAccountPayable),
+    findMany: async ({ where }) => (await prisma.accountPayable.findMany({ where: { ...where, ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}) }, orderBy: { dueDate: 'asc' } })).map(mapAccountPayable),
     findUnique: async ({ where }) => {
       const item = await prisma.accountPayable.findUnique({ where });
       return item ? mapAccountPayable(item) : null;
     },
     create: async ({ data }) => mapAccountPayable(await prisma.accountPayable.create({ data })),
-    update: async ({ where, data }) => mapAccountPayable(await prisma.accountPayable.update({ where, data })),
-    createExpenseFromPayable: async ({ data }) => {
-      await prisma.expense.create({
-        data: {
-          userId: data.userId,
-          categoryId: data.categoryId,
-          costCenterId: data.costCenterId ?? null,
-          description: data.description,
-          amount: data.amount,
-          occurredAt: data.occurredAt,
-          notes: data.notes ?? null
-        }
-      });
-    }
+    update: async ({ where, data }) => mapAccountPayable(await prisma.accountPayable.update({ where, data }))
   };
 }
 
-function accountReceivableRepository(): AccountReceivableRepository {
+function accountReceivableRepository(financialAccountIds?: string[]): AccountReceivableRepository {
   const prisma = getPrismaClient();
   const mapAccountReceivable = (item: PrismaAccountReceivable): AccountReceivable => ({
     ...item,
@@ -357,26 +346,13 @@ function accountReceivableRepository(): AccountReceivableRepository {
     reminderOffsetDays: item.reminderOffsetDays as ReminderOffsetDays | null
   } as unknown as AccountReceivable);
   return {
-    findMany: async ({ where }) => (await prisma.accountReceivable.findMany({ where, orderBy: { dueDate: 'asc' } })).map(mapAccountReceivable),
+    findMany: async ({ where }) => (await prisma.accountReceivable.findMany({ where: { ...where, ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}) }, orderBy: { dueDate: 'asc' } })).map(mapAccountReceivable),
     findUnique: async ({ where }) => {
       const item = await prisma.accountReceivable.findUnique({ where });
       return item ? mapAccountReceivable(item) : null;
     },
     create: async ({ data }) => mapAccountReceivable(await prisma.accountReceivable.create({ data })),
-    update: async ({ where, data }) => mapAccountReceivable(await prisma.accountReceivable.update({ where, data })),
-    createIncomeFromReceivable: async ({ data }) => {
-      await prisma.income.create({
-        data: {
-          userId: data.userId,
-          categoryId: data.categoryId,
-          costCenterId: data.costCenterId ?? null,
-          description: data.description,
-          amount: data.amount,
-          occurredAt: data.occurredAt,
-          notes: data.notes ?? null
-        }
-      });
-    }
+    update: async ({ where, data }) => mapAccountReceivable(await prisma.accountReceivable.update({ where, data }))
   };
 }
 
@@ -404,6 +380,7 @@ function recurringTransactionRepository(): RecurringTransactionRepository {
           userId: data.userId,
           type: data.type,
           categoryId: data.categoryId,
+          ...(data.financialAccountId ? { financialAccountId: data.financialAccountId } : {}),
           costCenterId: data.costCenterId ?? null,
           description: data.description,
           amount: data.amount,
@@ -418,6 +395,7 @@ function recurringTransactionRepository(): RecurringTransactionRepository {
       const updateData: Prisma.RecurringTransactionUncheckedUpdateInput = {};
       if (data.type !== undefined) updateData.type = data.type;
       if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
+      if (data.financialAccountId !== undefined) updateData.financialAccountId = data.financialAccountId;
       if (data.costCenterId !== undefined) updateData.costCenterId = data.costCenterId;
       if (data.description !== undefined) updateData.description = data.description;
       if (data.amount !== undefined) updateData.amount = data.amount;
@@ -440,6 +418,7 @@ function recurringTransactionRepository(): RecurringTransactionRepository {
         data: {
           userId: data.userId,
           categoryId: data.categoryId,
+          ...(data.financialAccountId ? { financialAccountId: data.financialAccountId } : {}),
           costCenterId: data.costCenterId ?? null,
           description: data.description,
           amount: data.amount,
@@ -453,6 +432,7 @@ function recurringTransactionRepository(): RecurringTransactionRepository {
         data: {
           userId: data.userId,
           categoryId: data.categoryId,
+          ...(data.financialAccountId ? { financialAccountId: data.financialAccountId } : {}),
           costCenterId: data.costCenterId ?? null,
           description: data.description,
           amount: data.amount,
@@ -618,6 +598,7 @@ function agendaNotificationsRepository(): AgendaNotificationsRepository {
 
 export const typeDefs = `#graphql
   ${financialGoalsTypeDefs}
+  ${bankingTypeDefs}
   type Health {
     status: String!
     service: String!
@@ -690,6 +671,7 @@ export const typeDefs = `#graphql
   type Income {
     id: ID!
     categoryId: ID!
+    financialAccountId: ID
     costCenterId: ID
     description: String!
     amount: String!
@@ -701,6 +683,7 @@ export const typeDefs = `#graphql
 
   input CreateIncomeInput {
     categoryId: ID!
+    financialAccountId: ID
     costCenterId: ID
     description: String!
     amount: String!
@@ -711,6 +694,7 @@ export const typeDefs = `#graphql
   input UpdateIncomeInput {
     id: ID!
     categoryId: ID
+    financialAccountId: ID
     costCenterId: ID
     description: String
     amount: String
@@ -721,6 +705,7 @@ export const typeDefs = `#graphql
   type Expense {
     id: ID!
     categoryId: ID!
+    financialAccountId: ID
     costCenterId: ID
     description: String!
     amount: String!
@@ -732,6 +717,7 @@ export const typeDefs = `#graphql
 
   input CreateExpenseInput {
     categoryId: ID!
+    financialAccountId: ID
     costCenterId: ID
     description: String!
     amount: String!
@@ -742,6 +728,7 @@ export const typeDefs = `#graphql
   input UpdateExpenseInput {
     id: ID!
     categoryId: ID
+    financialAccountId: ID
     costCenterId: ID
     description: String
     amount: String
@@ -791,6 +778,7 @@ export const typeDefs = `#graphql
   }
 
   input CashFlowInput {
+    financialAccountIds: [ID!]
     granularity: CashFlowGranularity
     year: Int
     month: Int
@@ -824,6 +812,7 @@ export const typeDefs = `#graphql
   }
 
   input CategoryAnalysisInput {
+    financialAccountIds: [ID!]
     type: CategoryAnalysisType
     month: Int
     year: Int
@@ -848,6 +837,7 @@ export const typeDefs = `#graphql
   }
 
   input PeriodComparisonInput {
+    financialAccountIds: [ID!]
     baseMonth: Int
     baseYear: Int
     comparisonMonth: Int
@@ -953,9 +943,13 @@ export const typeDefs = `#graphql
   }
 
   type AccountPayable {
+    seriesId: ID
+    installmentNumber: Int
+    installmentTotal: Int
     id: ID!
     userId: ID!
     categoryId: ID!
+    financialAccountId: ID
     costCenterId: ID
     description: String!
     amount: String!
@@ -969,6 +963,7 @@ export const typeDefs = `#graphql
 
   input CreateAccountPayableInput {
     categoryId: ID!
+    financialAccountId: ID
     costCenterId: ID
     description: String!
     amount: String!
@@ -980,6 +975,7 @@ export const typeDefs = `#graphql
   input UpdateAccountPayableInput {
     id: ID!
     categoryId: ID
+    financialAccountId: ID
     costCenterId: ID
     description: String
     amount: String
@@ -997,9 +993,13 @@ export const typeDefs = `#graphql
   }
 
   type AccountReceivable {
+    seriesId: ID
+    installmentNumber: Int
+    installmentTotal: Int
     id: ID!
     userId: ID!
     categoryId: ID!
+    financialAccountId: ID
     costCenterId: ID
     description: String!
     amount: String!
@@ -1013,6 +1013,7 @@ export const typeDefs = `#graphql
 
   input CreateAccountReceivableInput {
     categoryId: ID!
+    financialAccountId: ID
     costCenterId: ID
     description: String!
     amount: String!
@@ -1024,6 +1025,7 @@ export const typeDefs = `#graphql
   input UpdateAccountReceivableInput {
     id: ID!
     categoryId: ID
+    financialAccountId: ID
     costCenterId: ID
     description: String
     amount: String
@@ -1049,6 +1051,7 @@ export const typeDefs = `#graphql
     userId: ID!
     type: RecurringType!
     categoryId: ID!
+    financialAccountId: ID
     costCenterId: ID
     description: String!
     amount: String!
@@ -1062,6 +1065,7 @@ export const typeDefs = `#graphql
   input CreateRecurringTransactionInput {
     type: RecurringType!
     categoryId: ID!
+    financialAccountId: ID
     costCenterId: ID
     description: String!
     amount: String!
@@ -1074,6 +1078,7 @@ export const typeDefs = `#graphql
     id: ID!
     type: RecurringType
     categoryId: ID
+    financialAccountId: ID
     costCenterId: ID
     description: String
     amount: String
@@ -1166,12 +1171,12 @@ export const typeDefs = `#graphql
     myCostCenters: [CostCenter!]!
     myIncomes: [Income!]!
     myExpenses: [Expense!]!
-    myAccountsPayable(status: AccountPayableStatus): [AccountPayable!]!
-    myAccountsReceivable(status: AccountReceivableStatus): [AccountReceivable!]!
+    myAccountsPayable(status: AccountPayableStatus, financialAccountIds: [ID!]): [AccountPayable!]!
+    myAccountsReceivable(status: AccountReceivableStatus, financialAccountIds: [ID!]): [AccountReceivable!]!
     myRecurringTransactions: [RecurringTransaction!]!
     myAgenda(input: AgendaRangeInput!): [AgendaItem!]!
     myNotifications: [Notification!]!
-    dashboardSummary(month: Int, year: Int): DashboardSummary!
+    dashboardSummary(month: Int, year: Int, financialAccountIds: [ID!]): DashboardSummary!
     cashFlow(input: CashFlowInput): CashFlowResult!
     categoryAnalysis(input: CategoryAnalysisInput): CategoryAnalysisResult!
     periodComparison(input: PeriodComparisonInput): PeriodComparisonResult!
@@ -1218,6 +1223,7 @@ export const typeDefs = `#graphql
 export const resolvers = {
   Query: {
     ...financialGoalsResolvers.Query,
+    ...bankingResolvers.Query,
     health: () => ({
       status: 'ok',
       service: 'moneyhub-backend',
@@ -1252,17 +1258,17 @@ export const resolvers = {
     },
     myAccountsPayable: (
       _parent: unknown,
-      args: { status?: AccountPayableStatus },
+      args: { status?: AccountPayableStatus; financialAccountIds?: string[] },
       context: GraphQLContext
     ) => {
-      return listMyAccountsPayable(context, args.status, accountPayableRepository());
+      return listMyAccountsPayable(context, args.status, accountPayableRepository(args.financialAccountIds));
     },
     myAccountsReceivable: (
       _parent: unknown,
-      args: { status?: AccountReceivableStatus },
+      args: { status?: AccountReceivableStatus; financialAccountIds?: string[] },
       context: GraphQLContext
     ) => {
-      return listMyAccountsReceivable(context, args.status, accountReceivableRepository());
+      return listMyAccountsReceivable(context, args.status, accountReceivableRepository(args.financialAccountIds));
     },
     myRecurringTransactions: (
       _parent: unknown,
@@ -1286,28 +1292,28 @@ export const resolvers = {
       args: { month?: number; year?: number },
       context: GraphQLContext
     ) => {
-      return getDashboardSummary(context, args, dashboardSummaryRepository());
+      return getDashboardSummary(context, args, dashboardSummaryRepository((args as { financialAccountIds?: string[] }).financialAccountIds));
     },
     cashFlow: (
       _parent: unknown,
       args: { input?: CashFlowInput },
       context: GraphQLContext
     ) => {
-      return getCashFlow(context, args.input, cashFlowRepository());
+      return getCashFlow(context, args.input, cashFlowRepository(args.input?.financialAccountIds));
     },
     categoryAnalysis: (
       _parent: unknown,
       args: { input?: CategoryAnalysisInput },
       context: GraphQLContext
     ) => {
-      return getCategoryAnalysis(context, args.input, categoryAnalysisRepository());
+      return getCategoryAnalysis(context, args.input, categoryAnalysisRepository(args.input?.financialAccountIds));
     },
     periodComparison: (
       _parent: unknown,
       args: { input?: PeriodComparisonInput },
       context: GraphQLContext
     ) => {
-      return getPeriodComparison(context, args.input, periodComparisonRepository());
+      return getPeriodComparison(context, args.input, periodComparisonRepository(args.input?.financialAccountIds));
     },
     aiFinancialContext: (
       _parent: unknown,
@@ -1319,6 +1325,7 @@ export const resolvers = {
   },
   Mutation: {
     ...financialGoalsResolvers.Mutation,
+    ...bankingResolvers.Mutation,
     bootstrapProfile: async (
       _parent: unknown,
       args: { input: BootstrapProfileInput },
@@ -1614,6 +1621,10 @@ export const resolvers = {
       return markAllNotificationsRead(context, agendaNotificationsRepository());
     }
   },
+  CreditCard: bankingResolvers.CreditCard,
+  CardPurchase: bankingResolvers.CardPurchase,
+  CreditCardPayment: bankingResolvers.CreditCardPayment,
+  Transfer: bankingResolvers.Transfer,
   FinancialGoal: financialGoalsResolvers.FinancialGoal,
   FinancialGoalMovement: financialGoalsResolvers.FinancialGoalMovement,
   CalendarEvent: {

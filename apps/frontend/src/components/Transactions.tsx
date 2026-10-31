@@ -131,12 +131,12 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
   const { data, loading, refetch } = useQuery<TransactionsQueryData>(MY_TRANSACTIONS_QUERY);
 
   const [deleteIncome] = useMutation(DELETE_INCOME, {
-    refetchQueries: ['DashboardSummary', 'MyTransactions'],
+    refetchQueries: ['FinancialAccounts', 'DashboardSummary', 'MyTransactions'],
     onCompleted: () => refetch()
   });
 
   const [deleteExpense] = useMutation(DELETE_EXPENSE, {
-    refetchQueries: ['DashboardSummary', 'MyTransactions'],
+    refetchQueries: ['FinancialAccounts', 'DashboardSummary', 'MyTransactions'],
     onCompleted: () => refetch()
   });
 
