@@ -151,6 +151,7 @@ describe('MoneyHub dashboard shell', () => {
     expect(screen.getByText('R$ 5.000,00')).toBeOnTheScreen();
     expect(screen.getByText('Despesas do mes')).toBeOnTheScreen();
     expect(screen.getByText('R$ 1.800,00')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Alertas de Vencimento')).toHaveTextContent('Tudo em dia', { exact: false });
   });
 
   test('opens floating IA assistant when clicking Consultar IA', async () => {
@@ -234,7 +235,7 @@ describe('MoneyHub dashboard shell', () => {
     };
     await render(<DashboardShell />, { wrapper: Wrapper });
     expect(screen.getByText('Hoje')).toBeOnTheScreen();
-    expect(screen.getByText('1 conta')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Alertas de Vencimento')).toHaveTextContent('1 conta', { exact: false });
 
     await fireEvent.press(screen.getByRole('button', { name: 'Ocultar valores' }));
 
@@ -243,6 +244,7 @@ describe('MoneyHub dashboard shell', () => {
     expect(screen.getByLabelText('Metas no dashboard')).not.toHaveTextContent('R$ 250,00', { exact: false });
     expect(screen.getByLabelText('Metas no dashboard')).toHaveTextContent('R$ ••••••', { exact: false });
     expect(screen.getByText('Saldo Projetado: R$ ••••••')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Alertas de Vencimento')).toHaveTextContent('1 conta', { exact: false });
 
     await fireEvent.press(screen.getByRole('button', { name: 'Mostrar valores' }));
     expect(screen.getByText('R$ 3.200,00')).toBeOnTheScreen();
@@ -283,6 +285,8 @@ describe('MoneyHub dashboard shell', () => {
     expect(screen.getByText(/0 entradas/)).toBeOnTheScreen();
     expect(screen.getByText(/0 saídas/)).toBeOnTheScreen();
     expect(screen.getByText('Nenhuma conta pendente. Tudo em dia!')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Alertas de Vencimento')).toHaveTextContent('Vencimentos indisponíveis', { exact: false });
+    expect(screen.getByLabelText('Alertas de Vencimento')).not.toHaveTextContent('Tudo em dia', { exact: false });
   });
 
   test('keeps cached summary visible while refreshing', async () => {
@@ -299,12 +303,15 @@ describe('MoneyHub dashboard shell', () => {
     mockSummaryLoading = true;
     const { rerender } = await render(<DashboardShell />, { wrapper: Wrapper });
     expect(screen.queryByText('R$ 3.200,00')).toBeNull();
+    expect(screen.getByLabelText('Alertas de Vencimento')).toHaveTextContent('Carregando vencimentos…', { exact: false });
+    expect(screen.getByLabelText('Alertas de Vencimento')).not.toHaveTextContent('Tudo em dia', { exact: false });
 
     mockSummaryUnavailable = false;
     mockSummaryLoading = false;
     await rerender(<DashboardShell />);
 
     expect(screen.getByText('R$ 3.200,00')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Alertas de Vencimento')).toHaveTextContent('Tudo em dia', { exact: false });
   });
 
   test('clears cached data and signs out before returning to login', async () => {

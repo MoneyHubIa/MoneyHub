@@ -1,5 +1,5 @@
 import { Check, ChevronDown, ChevronUp } from 'lucide-react-native';
-import React, { useId, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 
@@ -8,32 +8,53 @@ export interface SelectOption {
   label: string;
 }
 
-interface SelectProps {
+interface SelectCommonProps {
   label: string;
-  value: string;
   options: SelectOption[];
-  onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
   compact?: boolean;
 }
 
-export function Select({ label, value, options, onChange, placeholder = 'Selecione uma opção', disabled = false, compact = false }: SelectProps) {
+type SelectProps = SelectCommonProps & (
+  | { multiple: true; value: string[]; onChange: (value: string[]) => void; allLabel?: string }
+  | { multiple?: false; value: string; onChange: (value: string) => void }
+);
+
+export function Select(props: SelectProps) {
+  const { label, options, placeholder = 'Selecione uma opção', disabled = false, compact = false } = props;
   const { theme } = useTheme();
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
   const valueId = useId();
-  const selected = options.find(option => option.value === value);
+  const selected = options.filter(option => props.multiple
+    ? props.value.includes(option.value)
+    : option.value === props.value);
+  const displayValue = selected.length > 1
+    ? `${selected.length} selecionadas`
+    : selected[0]?.label ?? (props.multiple ? props.allLabel : undefined) ?? placeholder;
+  const displayOptions = props.multiple && props.allLabel
+    ? [{ value: '', label: props.allLabel }, ...options]
+    : options;
   const unavailable = disabled || options.length === 0;
   const expanded = open && !unavailable;
   const Chevron = expanded ? ChevronUp : ChevronDown;
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !expanded) return;
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', dismiss);
+    return () => document.removeEventListener('keydown', dismiss);
+  }, [expanded]);
 
   return <View style={styles.container}>
     <Text style={[styles.label, { color: theme.textSecondary }]}>{label}</Text>
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityValue={{ text: selected?.label ?? placeholder }}
+      accessibilityValue={{ text: displayValue }}
       accessibilityState={{ expanded, disabled: unavailable }}
       aria-expanded={expanded}
       aria-describedby={valueId}
@@ -47,7 +68,7 @@ export function Select({ label, value, options, onChange, placeholder = 'Selecio
         opacity: unavailable ? 0.5 : pressed ? 0.75 : 1
       }]}
     >
-      <Text nativeID={valueId} style={[styles.text, compact && styles.compactText, { color: selected ? theme.textPrimary : theme.textSecondary }]}>{selected?.label ?? placeholder}</Text>
+      <Text nativeID={valueId} style={[styles.text, compact && styles.compactText, { color: selected.length || (props.multiple && props.allLabel) ? theme.textPrimary : theme.textSecondary }]}>{displayValue}</Text>
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <Chevron color={theme.textSecondary} size={compact ? 14 : 18} />
       </View>
@@ -58,15 +79,27 @@ export function Select({ label, value, options, onChange, placeholder = 'Selecio
       keyboardShouldPersistTaps="handled"
       style={[styles.options, { backgroundColor: theme.bgElevated, borderColor: theme.borderElevated }]}
     >
-      {options.map(option => {
-        const isSelected = option.value === value;
+      {displayOptions.map(option => {
+        const isAll = Boolean(props.multiple && props.allLabel && option.value === '');
+        const isSelected = props.multiple
+          ? isAll ? props.value.length === 0 : props.value.includes(option.value)
+          : option.value === props.value;
         return <Pressable
           key={option.value}
           accessibilityRole="button"
           accessibilityLabel={option.label}
           accessibilityState={{ selected: isSelected }}
           aria-selected={isSelected}
-          onPress={() => { setOpen(false); onChange(option.value); }}
+          onPress={() => {
+            if (props.multiple) {
+              props.onChange(isAll ? [] : isSelected
+                ? props.value.filter(value => value !== option.value)
+                : [...props.value, option.value]);
+            } else {
+              setOpen(false);
+              props.onChange(option.value);
+            }
+          }}
           style={({ pressed }) => [styles.option, { backgroundColor: isSelected ? theme.incomeBadge : theme.bgElevated, opacity: pressed ? 0.75 : 1 }]}
         >
           <Text style={[styles.text, { color: theme.textPrimary }]}>{option.label}</Text>

@@ -8,11 +8,13 @@ import { useRouter } from 'expo-router';
 import {
   ArrowDownRight,
   ArrowUpRight,
+  AlertTriangle,
   Bot,
   CheckCircle2,
   Clock,
   Eye,
   EyeOff,
+  Landmark,
   LogOut,
   Plus,
   Sparkles,
@@ -288,6 +290,12 @@ export function DashboardShell(): React.JSX.Element {
 
   const currency = toSupportedCurrency(summaryData?.myProfile?.preferredCurrency);
   const preferredCurrency = summaryData?.myProfile?.preferredCurrency ?? 'BRL';
+  const selectedFinancialAccounts = financialAccountsData?.myFinancialAccounts?.filter(
+    account => !financialAccountIds.length || financialAccountIds.includes(account.id)
+  ) ?? [];
+  const accountsBalance = selectedFinancialAccounts.reduce(
+    (total, account) => total + Number(account.balance), 0
+  ).toFixed(2);
   const payables = useMemo(() => [
     ...(summaryData?.myAccountsPayable ?? []),
     ...(summaryData?.overdueAccountsPayable ?? [])
@@ -307,6 +315,13 @@ export function DashboardShell(): React.JSX.Element {
     (p) => daysUntil(p.dueDate, todayIso) <= ALERT_WINDOW_DAYS
   ).length;
   const overdueCount = payables.filter((p) => daysUntil(p.dueDate, todayIso) < 0).length;
+  const hasAlertData = Boolean(summaryData?.dashboardSummary);
+  const alertColor = !hasAlertData
+    ? theme.textSecondary
+    : overdueCount > 0 ? theme.expense : alertCount > 0 ? theme.warning : theme.income;
+  const alertBackground = !hasAlertData
+    ? theme.bgSurface
+    : overdueCount > 0 ? theme.expenseBadge : alertCount > 0 ? theme.warningBadge : theme.incomeBadge;
 
   const upcoming = useMemo<UpcomingItem[]>(() => {
     const merged: UpcomingItem[] = [
@@ -343,61 +358,89 @@ export function DashboardShell(): React.JSX.Element {
     <>
       {/* Header */}
       <View style={styles.header}>
-      <FinancialAccountSelector multiple value={financialAccountIds} onChange={setFinancialAccountIds} />
-      {financialAccountsData?.myFinancialAccounts && <Text style={{ color: theme.textPrimary }}>
-        Saldo das contas: {showValue(financialAccountsData.myFinancialAccounts.filter(a => !financialAccountIds.length || financialAccountIds.includes(a.id)).reduce((total, a) => total + Number(a.balance), 0).toFixed(2))}
-      </Text>}
-        <View style={styles.headerRow}>
-          <View style={styles.headerCopy}>
-            <Text style={[styles.eyebrow, { color: theme.income }]}>
-              Controle financeiro inteligente
-            </Text>
-            <Text accessibilityRole="header" style={[styles.title, { color: theme.textPrimary }]}>
-              Dashboard financeiro
-            </Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Acompanhe saldo, receitas, despesas, metas e proximos compromissos.
-            </Text>
-          </View>
-
-          <View style={styles.headerActions}>
-            <Pressable
-              accessibilityLabel="Novo lançamento"
-              accessibilityRole="button"
-              onPress={() => setQuickActionModalOpen(true)}
-              style={({ pressed }) => [
-                styles.primaryCtaButton,
-                { backgroundColor: theme.brandAI, opacity: pressed ? 0.85 : 1 }
-              ]}
-            >
-              <Plus color="#FFFFFF" size={16} strokeWidth={2.5} />
-              <Text style={styles.primaryCtaText}>Novo lançamento</Text>
-            </Pressable>
-
-            <Pressable
-              accessibilityLabel={isEyeOpen ? 'Ocultar valores' : 'Mostrar valores'}
-              accessibilityRole="button"
-              onPress={() => setIsEyeOpen((prev) => !prev)}
-              style={({ pressed }) => [
-                styles.iconButton,
-                {
-                  backgroundColor: theme.bgSurface,
-                  borderColor: theme.border,
-                  opacity: pressed ? 0.75 : 1
-                }
-              ]}
-            >
-              {isEyeOpen ? (
-                <Eye color={theme.textSecondary} size={18} />
-              ) : (
-                <EyeOff color={theme.income} size={18} />
-              )}
-            </Pressable>
-          </View>
+        <View style={styles.headerCopy}>
+          <Text style={[styles.eyebrow, { color: theme.income }]}>
+            Controle financeiro inteligente
+          </Text>
+          <Text accessibilityRole="header" style={[styles.title, { color: theme.textPrimary }]}>
+            Dashboard financeiro
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            Acompanhe saldo, receitas, despesas, metas e proximos compromissos.
+          </Text>
         </View>
+        <Card
+          style={[
+            styles.accountsBalancePanel,
+            { borderColor: theme.borderElevated, borderLeftColor: theme.income }
+          ]}
+          variant="surface"
+        >
+          <View style={[styles.accountsBalanceHeader, !isDesktop && styles.accountsBalanceHeaderMobile]}>
+            <View style={styles.accountsBalanceIdentity}>
+              <View
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                style={[styles.accountsBalanceIcon, { backgroundColor: theme.incomeBadge }]}
+              >
+                <Landmark color={theme.income} size={24} />
+              </View>
+              <View style={styles.accountsBalanceCopy}>
+                <Text style={[styles.accountsBalanceLabel, { color: theme.textPrimary }]}>
+                  Saldo das contas
+                </Text>
+                {financialAccountsData?.myFinancialAccounts && <Text style={[styles.accountsBalanceCaption, { color: theme.textSecondary }]}>
+                  {selectedFinancialAccounts.length} {selectedFinancialAccounts.length === 1 ? 'conta' : 'contas'}{' '}
+                  {financialAccountIds.length
+                    ? selectedFinancialAccounts.length === 1 ? 'selecionada' : 'selecionadas'
+                    : 'no total'}
+                </Text>}
+              </View>
+            </View>
+            <View style={styles.accountsBalanceValueRow}>
+              <Text
+                style={[
+                  styles.accountsBalanceValue,
+                  !isDesktop && styles.accountsBalanceValueMobile,
+                  { color: theme.textPrimary }
+                ]}
+              >
+                {financialAccountsData?.myFinancialAccounts
+                  ? showValue(accountsBalance)
+                  : isEyeOpen ? '—' : HIDDEN_VALUE}
+              </Text>
+              <Pressable
+                accessibilityLabel={isEyeOpen ? 'Ocultar valores' : 'Mostrar valores'}
+                accessibilityRole="button"
+                onPress={() => setIsEyeOpen((prev) => !prev)}
+                style={({ pressed }) => [
+                  styles.iconButton,
+                  styles.accountsBalanceVisibility,
+                  {
+                    backgroundColor: theme.bgSurface,
+                    borderColor: theme.border,
+                    opacity: pressed ? 0.75 : 1
+                  }
+                ]}
+              >
+                {isEyeOpen ? (
+                  <Eye color={theme.textSecondary} size={18} />
+                ) : (
+                  <EyeOff color={theme.income} size={18} />
+                )}
+              </Pressable>
+            </View>
+          </View>
+          <View style={[
+            styles.accountsBalanceFilters,
+            { borderTopColor: theme.border }
+          ]}>
+            <FinancialAccountSelector multiple value={financialAccountIds} onChange={setFinancialAccountIds} />
+          </View>
+        </Card>
       </View>
 
-      {/* 4 KPIs */}
+      {/* Financial summary */}
       <View accessibilityLabel="Resumo financeiro" style={styles.kpiGrid}>
         {/* 1. Saldo — gradient hero card */}
         <Card style={[styles.kpiCard, styles.heroCard]} variant="gradient">
@@ -423,69 +466,83 @@ export function DashboardShell(): React.JSX.Element {
           </View>
         </Card>
 
-        {/* 2. Receitas */}
-        <Card style={styles.kpiCard} variant="surface">
-          <View style={styles.kpiHeaderRow}>
-            <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>Receitas do mes</Text>
-            <View style={[styles.kpiIconWrap, { backgroundColor: theme.incomeBadge }]}>
-              <ArrowUpRight color={theme.income} size={16} />
+        <View style={styles.monthlyKpiRow}>
+          {/* 2. Receitas */}
+          <Card style={[styles.kpiCard, styles.monthlyKpiCard, !isDesktop && styles.monthlyKpiCardMobile]} variant="surface">
+            <View style={styles.kpiHeaderRow}>
+              <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>Receitas do mes</Text>
+              <View style={[styles.kpiIconWrap, { backgroundColor: theme.incomeBadge }]}>
+                <ArrowUpRight color={theme.income} size={16} />
+              </View>
             </View>
-          </View>
-          {loadingSummary && !summaryData?.dashboardSummary ? (
-            <ActivityIndicator color={theme.income} size="small" />
-          ) : (
-            <Text style={[styles.kpiValue, { color: theme.income }]}>
-              {showValue(summaryData?.dashboardSummary?.totalIncome)}
+            {loadingSummary && !summaryData?.dashboardSummary ? (
+              <ActivityIndicator color={theme.income} size="small" />
+            ) : (
+              <Text style={[styles.kpiValue, !isDesktop && styles.monthlyKpiValueMobile, { color: theme.income }]}>
+                {showValue(summaryData?.dashboardSummary?.totalIncome)}
+              </Text>
+            )}
+            <Text style={[styles.kpiSub, { color: theme.textMuted }]}>
+              {summaryData?.dashboardSummary?.incomeCount ?? 0} entradas ·{' '}
+              {isEyeOpen ? formatCurrency(totalReceivablePending.toString(), currency) : HIDDEN_VALUE} a
+              receber
             </Text>
-          )}
-          <Text style={[styles.kpiSub, { color: theme.textMuted }]}>
-            {summaryData?.dashboardSummary?.incomeCount ?? 0} entradas ·{' '}
-            {isEyeOpen ? formatCurrency(totalReceivablePending.toString(), currency) : HIDDEN_VALUE} a
-            receber
-          </Text>
-        </Card>
+          </Card>
 
-        {/* 3. Despesas */}
-        <Card style={styles.kpiCard} variant="surface">
-          <View style={styles.kpiHeaderRow}>
-            <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>Despesas do mes</Text>
-            <View style={[styles.kpiIconWrap, { backgroundColor: theme.expenseBadge }]}>
-              <ArrowDownRight color={theme.expense} size={16} />
+          {/* 3. Despesas */}
+          <Card style={[styles.kpiCard, styles.monthlyKpiCard, !isDesktop && styles.monthlyKpiCardMobile]} variant="surface">
+            <View style={styles.kpiHeaderRow}>
+              <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>Despesas do mes</Text>
+              <View style={[styles.kpiIconWrap, { backgroundColor: theme.expenseBadge }]}>
+                <ArrowDownRight color={theme.expense} size={16} />
+              </View>
             </View>
-          </View>
-          {loadingSummary && !summaryData?.dashboardSummary ? (
-            <ActivityIndicator color={theme.expense} size="small" />
-          ) : (
-            <Text style={[styles.kpiValue, { color: theme.expense }]}>
-              {showValue(summaryData?.dashboardSummary?.totalExpense)}
+            {loadingSummary && !summaryData?.dashboardSummary ? (
+              <ActivityIndicator color={theme.expense} size="small" />
+            ) : (
+              <Text style={[styles.kpiValue, !isDesktop && styles.monthlyKpiValueMobile, { color: theme.expense }]}>
+                {showValue(summaryData?.dashboardSummary?.totalExpense)}
+              </Text>
+            )}
+            <Text style={[styles.kpiSub, { color: theme.textMuted }]}>
+              {summaryData?.dashboardSummary?.expenseCount ?? 0} saídas ·{' '}
+              {isEyeOpen ? formatCurrency(totalPayablePending.toString(), currency) : HIDDEN_VALUE} a
+              pagar
             </Text>
-          )}
-          <Text style={[styles.kpiSub, { color: theme.textMuted }]}>
-            {summaryData?.dashboardSummary?.expenseCount ?? 0} saídas ·{' '}
-            {isEyeOpen ? formatCurrency(totalPayablePending.toString(), currency) : HIDDEN_VALUE} a
-            pagar
-          </Text>
-        </Card>
+          </Card>
+        </View>
 
-        {/* 4. Alertas */}
-        <Card style={styles.kpiCard} variant="surface">
-          <View style={styles.kpiHeaderRow}>
-            <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>
+        <View
+          accessibilityLabel="Alertas de Vencimento"
+          style={[
+            styles.dueAlert,
+            { backgroundColor: alertBackground, borderColor: alertColor }
+          ]}
+        >
+          <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            {!hasAlertData ? (
+              <Clock color={alertColor} size={18} />
+            ) : alertCount > 0 ? (
+              <AlertTriangle color={alertColor} size={18} />
+            ) : (
+              <CheckCircle2 color={alertColor} size={18} />
+            )}
+          </View>
+          <View style={styles.dueAlertCopy}>
+            <Text style={[styles.dueAlertTitle, { color: theme.textPrimary }]}>
               Alertas de Vencimento
             </Text>
-            <View style={[styles.kpiIconWrap, { backgroundColor: theme.warningBadge }]}>
-              <Clock color={theme.warning} size={16} />
-            </View>
+            <Text style={[styles.dueAlertText, { color: theme.textPrimary }]}>
+              {!hasAlertData
+                ? loadingSummary ? 'Carregando vencimentos…' : 'Vencimentos indisponíveis'
+                : alertCount === 0
+                  ? 'Tudo em dia'
+                  : `${alertCount} ${alertCount === 1 ? 'conta' : 'contas'} · ${overdueCount > 0
+                    ? `${overdueCount} vencida${overdueCount === 1 ? '' : 's'} · próximos ${ALERT_WINDOW_DAYS} dias`
+                    : `Vencendo nos próximos ${ALERT_WINDOW_DAYS} dias`}`}
+            </Text>
           </View>
-          <Text style={[styles.kpiValue, { color: theme.warning }]}>
-            {alertCount} {alertCount === 1 ? 'conta' : 'contas'}
-          </Text>
-          <Text style={[styles.kpiSub, { color: theme.textMuted }]}>
-            {overdueCount > 0
-              ? `${overdueCount} vencida${overdueCount === 1 ? '' : 's'} · próximos ${ALERT_WINDOW_DAYS} dias`
-              : `Vencendo nos próximos ${ALERT_WINDOW_DAYS} dias`}
-          </Text>
-        </Card>
+        </View>
       </View>
 
       {/* AI Banner */}
@@ -876,6 +933,75 @@ export function DashboardShell(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
+  accountsBalancePanel: {
+    borderLeftWidth: 4,
+    gap: 18,
+    padding: 20
+  },
+  accountsBalanceHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    justifyContent: 'space-between'
+  },
+  accountsBalanceHeaderMobile: {
+    alignItems: 'stretch',
+    flexDirection: 'column',
+    gap: 14
+  },
+  accountsBalanceIdentity: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexShrink: 1,
+    gap: 12,
+    minWidth: 0
+  },
+  accountsBalanceIcon: {
+    alignItems: 'center',
+    borderRadius: 12,
+    height: 48,
+    justifyContent: 'center',
+    width: 48
+  },
+  accountsBalanceCopy: {
+    flexShrink: 1,
+    gap: 4
+  },
+  accountsBalanceLabel: {
+    fontSize: 16,
+    fontWeight: '700'
+  },
+  accountsBalanceCaption: {
+    fontSize: 13
+  },
+  accountsBalanceValue: {
+    flexShrink: 1,
+    fontSize: 36,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '800',
+    letterSpacing: -1
+  },
+  accountsBalanceValueMobile: {
+    fontSize: 30
+  },
+  accountsBalanceValueRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexShrink: 1,
+    gap: 12,
+    minWidth: 0,
+    maxWidth: '100%'
+  },
+  accountsBalanceVisibility: {
+    flexShrink: 0,
+    height: 48,
+    width: 48
+  },
+  accountsBalanceFilters: {
+    borderTopWidth: 1,
+    paddingTop: 16
+  },
   aiAvatar: {
     alignItems: 'center',
     borderRadius: 12,
@@ -975,22 +1101,11 @@ const styles = StyleSheet.create({
     gap: 16
   },
   header: {
-    gap: 8
-  },
-  headerActions: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8
+    gap: 16
   },
   headerCopy: {
-    flex: 1,
-    gap: 6
-  },
-  headerRow: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: 12,
-    justifyContent: 'space-between'
+    gap: 6,
+    minWidth: 0
   },
   heroCard: {
     borderWidth: 0,
@@ -1036,31 +1151,71 @@ const styles = StyleSheet.create({
     gap: 8
   },
   kpiCard: {
-    flexBasis: 220,
-    flexGrow: 1,
     gap: 6,
     minHeight: 124,
     padding: 18
   },
   kpiGrid: {
+    gap: 14
+  },
+  monthlyKpiRow: {
+    flexDirection: 'row',
+    gap: 14
+  },
+  monthlyKpiCard: {
+    flex: 1,
+    minWidth: 0
+  },
+  monthlyKpiCardMobile: {
+    padding: 12
+  },
+  monthlyKpiValueMobile: {
+    fontSize: 20
+  },
+  dueAlert: {
+    alignItems: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10
+  },
+  dueAlertCopy: {
+    alignItems: 'center',
+    flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 14
+    columnGap: 10,
+    rowGap: 4,
+    minWidth: 0
+  },
+  dueAlertTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    flexShrink: 1
+  },
+  dueAlertText: {
+    fontSize: 13,
+    flexShrink: 1
   },
   kpiHeaderRow: {
     alignItems: 'center',
     flexDirection: 'row',
+    gap: 6,
     justifyContent: 'space-between'
   },
   kpiIconWrap: {
     alignItems: 'center',
     borderRadius: 8,
     height: 30,
+    flexShrink: 0,
     justifyContent: 'center',
     width: 30
   },
   kpiLabel: {
     fontSize: 13,
+    flexShrink: 1,
     fontWeight: '600'
   },
   kpiSub: {
@@ -1111,20 +1266,6 @@ const styles = StyleSheet.create({
   primaryActionText: {
     color: '#ffffff',
     fontSize: 14,
-    fontWeight: '700'
-  },
-  primaryCtaButton: {
-    alignItems: 'center',
-    borderRadius: 8,
-    flexDirection: 'row',
-    gap: 6,
-    height: 40,
-    justifyContent: 'center',
-    paddingHorizontal: 14
-  },
-  primaryCtaText: {
-    color: '#FFFFFF',
-    fontSize: 13,
     fontWeight: '700'
   },
   quickListAmount: {

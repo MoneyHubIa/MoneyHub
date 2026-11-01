@@ -189,12 +189,23 @@ test('multiple account selection supports specific accounts and all', async () =
     return <FinancialAccountSelector multiple value={ids} onChange={value => { setIds(value); changed(value); }} />;
   }
   await render(<ThemeProvider><Filter /></ThemeProvider>);
+  const selector = screen.getByRole('button', { name: 'Filtrar contas' });
+  expect(selector).toHaveProp('accessibilityValue', { text: 'Todas' });
+  expect(screen.queryByRole('button', { name: 'Investimentos' })).toBeNull();
+  await fireEvent.press(selector);
   await fireEvent.press(screen.getByRole('button', { name: 'Investimentos' }));
   expect(changed).toHaveBeenLastCalledWith(['invest']);
+  expect(selector).toHaveProp('accessibilityValue', { text: 'Investimentos' });
   await fireEvent.press(screen.getByRole('button', { name: 'Conta Corrente' }));
   expect(changed).toHaveBeenLastCalledWith(['invest', 'current']);
+  expect(selector).toHaveProp('accessibilityValue', { text: '2 selecionadas' });
+  await fireEvent.press(screen.getByRole('button', { name: 'Investimentos' }));
+  expect(changed).toHaveBeenLastCalledWith(['current']);
   await fireEvent.press(screen.getByRole('button', { name: 'Todas' }));
   expect(changed).toHaveBeenLastCalledWith([]);
+  expect(selector).toHaveProp('accessibilityValue', { text: 'Todas' });
+  await fireEvent.press(selector);
+  expect(screen.queryByRole('button', { name: 'Investimentos' })).toBeNull();
 });
 
 test('single account selection shows the default and reveals other accounts on demand', async () => {
