@@ -7,6 +7,8 @@ import { expressMiddleware } from '@as-integrations/express4';
 import cors from 'cors';
 import express, { type Express, type Request, type RequestHandler } from 'express';
 import { rateLimit } from 'express-rate-limit';
+// Keep a runtime import so Vercel includes Helmet in the function bundle.
+import 'helmet';
 import type { HelmetOptions } from 'helmet';
 import { z } from 'zod';
 import {
