@@ -1,9 +1,8 @@
 import {
   CreditCard,
+  ArrowLeftRight,
   CalendarClock,
-  HandCoins,
-  Tag,
-  WalletCards
+  HandCoins
 } from 'lucide-react-native';
 import React from 'react';
 import {
@@ -15,10 +14,12 @@ import {
 import { useTheme } from '../../theme/ThemeContext';
 import { ThemedModal } from '../ui/ThemedModal';
 
+export type QuickAction = 'a_pagar' | 'a_receber' | 'despesa_cartao' | 'transferencia';
+
 export interface QuickActionModalProps {
   visible: boolean;
   onClose: () => void;
-  onSelectAction: (action: 'a_pagar' | 'a_receber' | 'transacao' | 'categoria' | 'despesa_cartao') => void;
+  onSelectAction: (action: QuickAction) => void;
 }
 
 export function QuickActionModal({
@@ -28,7 +29,7 @@ export function QuickActionModal({
 }: QuickActionModalProps): React.JSX.Element {
   const { theme } = useTheme();
 
-  const handleSelect = (action: 'a_pagar' | 'a_receber' | 'transacao' | 'categoria' | 'despesa_cartao') => {
+  const handleSelect = (action: QuickAction) => {
     onClose();
     onSelectAction(action);
   };
@@ -37,7 +38,7 @@ export function QuickActionModal({
     { id: 'despesa_cartao' as const, title: 'Despesa Cartão', subtitle: 'Registrar compra à vista ou parcelada no cartão', icon: CreditCard, color: theme.expense, bg: theme.expenseBadge },
     {
       id: 'a_pagar' as const,
-      title: 'Nova Conta a Pagar',
+      title: 'Conta a Pagar',
       subtitle: 'Despesa futura ou boleto para agendar',
       icon: CalendarClock,
       color: theme.expense,
@@ -45,27 +46,19 @@ export function QuickActionModal({
     },
     {
       id: 'a_receber' as const,
-      title: 'Nova Conta a Receber',
+      title: 'Conta a Receber',
       subtitle: 'Receita prevista ou entrada a confirmar',
       icon: HandCoins,
       color: theme.income,
       bg: theme.incomeBadge
     },
     {
-      id: 'transacao' as const,
-      title: 'Nova Transação',
-      subtitle: 'Lançamento imediato de entrada ou saída',
-      icon: WalletCards,
+      id: 'transferencia' as const,
+      title: 'Transferência',
+      subtitle: 'Transferir ou agendar valores entre contas',
+      icon: ArrowLeftRight,
       color: theme.info,
       bg: theme.infoBadge
-    },
-    {
-      id: 'categoria' as const,
-      title: 'Nova Categoria',
-      subtitle: 'Criar categoria personalizada com cor e ícone',
-      icon: Tag,
-      color: theme.warning,
-      bg: theme.warningBadge
     }
   ];
 
@@ -77,7 +70,7 @@ export function QuickActionModal({
       title="Novo Lançamento Rápido"
       visible={visible}
     >
-      <View style={styles.list}>
+      <View testID="quick-action-options" style={styles.list}>
         {actionItems.map((item) => {
           const Icon = item.icon;
           return (

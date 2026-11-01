@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Transactions } from '../src/components/Transactions';
 
 import type { PropsWithChildren } from 'react';
@@ -79,71 +79,22 @@ describe('Transactions Component', () => {
   test('renders header and transactions list', async () => {
     await render(<Transactions />, { wrapper: Wrapper });
 
-    expect(screen.getByRole('header', { name: 'Transações' })).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Extrato' })).toBeOnTheScreen();
     expect(screen.getByText('Salário')).toBeOnTheScreen();
     expect(screen.getByText('+ R$ 5.000,00')).toBeOnTheScreen();
     expect(screen.getByText('Mercado')).toBeOnTheScreen();
     expect(screen.getByText('- R$ 450,00')).toBeOnTheScreen();
   });
 
-  test('creates a new expense when form is filled', async () => {
-    mockCreateExpense.mockResolvedValue({ data: { createExpense: { id: 'exp-2' } } });
-
+  test('keeps creation outside the statement', async () => {
     await render(<Transactions />, { wrapper: Wrapper });
-    await fireEvent.press(screen.getByRole('button', { name: 'Nova Transação' }));
-
-    await fireEvent.changeText(screen.getByPlaceholderText('Ex: Supermercado'), 'Aluguel');
-    await fireEvent.changeText(screen.getByPlaceholderText('Ex: 150.00'), '1800');
-    await fireEvent.press(screen.getByRole('button', { name: 'Alimentação' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
-
-    await waitFor(() => {
-      expect(mockCreateExpense).toHaveBeenCalledWith(
-        expect.objectContaining({
-          variables: {
-            input: expect.objectContaining({
-              description: 'Aluguel',
-              amount: '1800.00',
-              categoryId: 'cat-2'
-            })
-          }
-        })
-      );
-    });
+    expect(screen.queryByRole('button', { name: 'Nova Transa\u00e7\u00e3o' })).toBeNull();
   });
 
-  test('validates required transaction fields', async () => {
+  test('deletes both statement entry types', async () => {
     await render(<Transactions />, { wrapper: Wrapper });
-    await fireEvent.press(screen.getByRole('button', { name: 'Nova Transação' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
-    expect(screen.getByRole('button', { name: 'Adicionar transação' })).toBeDisabled();
-
-    await fireEvent.changeText(screen.getByLabelText('Descrição da transação'), 'Teste');
-    await fireEvent.changeText(screen.getByLabelText('Valor da transação'), 'inválido');
-    await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
-    expect(screen.getByRole('button', { name: 'Adicionar transação' })).toBeDisabled();
-
-    await fireEvent.changeText(screen.getByLabelText('Valor da transação'), '10');
-    await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
-    expect(screen.getByRole('button', { name: 'Adicionar transação' })).toBeDisabled();
-  });
-
-  test('creates income and deletes both transaction types', async () => {
-    mockCreateIncome.mockResolvedValue({ data: { createIncome: { id: 'inc-2' } } });
-    await render(<Transactions />, { wrapper: Wrapper });
-    await fireEvent.press(screen.getByRole('button', { name: 'Nova Transação' }));
-
-    await fireEvent.press(screen.getByRole('button', { name: 'Receita' }));
-    await fireEvent.changeText(screen.getByLabelText('Descrição da transação'), 'Projeto');
-    await fireEvent.changeText(screen.getByLabelText('Valor da transação'), '900');
-    await fireEvent.press(screen.getByRole('button', { name: 'Trabalho' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Adicionar transação' }));
-    expect(mockCreateIncome).toHaveBeenCalledWith(expect.objectContaining({
-      variables: { input: expect.objectContaining({ description: 'Projeto', amount: '900.00' }) }
-    }));
-
-    await fireEvent.press(screen.getByRole('button', { name: 'Excluir transação Salário' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Excluir transação Mercado' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Excluir lançamento Salário' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Excluir lançamento Mercado' }));
     expect(mockDeleteIncome).toHaveBeenCalledWith({ variables: { id: 'inc-1' } });
     expect(mockDeleteExpense).toHaveBeenCalledWith({ variables: { id: 'exp-1' } });
   });
@@ -151,8 +102,6 @@ describe('Transactions Component', () => {
   test('renders loading and empty states with safe defaults', async () => {
     mockTransactionsQueryOverride = { data: undefined, loading: true, refetch: mockRefetch };
     const view = await render(<Transactions />, { wrapper: Wrapper });
-    await fireEvent.press(screen.getByRole('button', { name: 'Nova Transação' }));
-    expect(screen.getByText('Crie categorias primeiro.')).toBeOnTheScreen();
 
     mockTransactionsQueryOverride = {
       data: { myIncomes: [], myExpenses: [], myCategories: [], myProfile: null },
@@ -160,7 +109,7 @@ describe('Transactions Component', () => {
       refetch: mockRefetch
     };
     await view.rerender(<Transactions />);
-    expect(screen.getByText('Nenhuma transação encontrada.')).toBeOnTheScreen();
+    expect(screen.getByText('Nenhum lançamento encontrado.')).toBeOnTheScreen();
   });
 
   test('paginates 10 transactions per page with navigation and resets page on search', async () => {
@@ -261,7 +210,7 @@ describe('Transactions Component', () => {
     expect(screen.getByText('Página 3 de 3')).toBeOnTheScreen();
 
     if (change === 'delete') {
-      await fireEvent.press(screen.getByRole('button', { name: 'Excluir transação Venda 0' }));
+      await fireEvent.press(screen.getByRole('button', { name: 'Excluir lançamento Venda 0' }));
       expect(mockDeleteIncome).toHaveBeenCalledWith({ variables: { id: 'inc-0' } });
       mockTransactionsQueryOverride.data = { myIncomes: incomes.slice(1), myExpenses: [], myCategories: [] };
     }

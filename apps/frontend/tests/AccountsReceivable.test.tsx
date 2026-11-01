@@ -123,6 +123,7 @@ describe('AccountsReceivable component', () => {
     await render(<AccountsReceivable />, { wrapper: Wrapper });
 
     await fireEvent.press(screen.getByRole('button', { name: 'Nova Conta a Receber' }));
+    await fireEvent.press(screen.getByRole('switch', { name: 'Já efetivada' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Agendar Conta a Receber' }));
 
     expect(screen.getByRole('button', { name: 'Agendar Conta a Receber' })).toBeDisabled();
@@ -132,14 +133,14 @@ describe('AccountsReceivable component', () => {
     await render(<AccountsReceivable />, { wrapper: Wrapper });
 
     await fireEvent.press(screen.getByRole('button', { name: 'Nova Conta a Receber' }));
+    await fireEvent.press(screen.getByRole('switch', { name: 'Já efetivada' }));
     await fireEvent.changeText(
       screen.getByLabelText('Descrição da conta a receber'),
       'Projeto Freelance'
     );
     await fireEvent.changeText(screen.getByLabelText('Valor da conta a receber'), '1500');
-    const categoryTags = screen.getAllByText('Serviços Prestados');
-    expect(categoryTags[0]).toBeDefined();
-    await fireEvent.press(categoryTags[0]!);
+    await fireEvent.press(screen.getByRole('button', { name: 'Categoria' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Serviços Prestados' }));
     await fireEvent.press(screen.getByRole('button', { name: label }));
 
     await fireEvent.press(screen.getByRole('button', { name: 'Agendar Conta a Receber' }));

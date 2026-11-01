@@ -1,4 +1,5 @@
-import { Button, ToggleButton } from './ui';
+import { CREATE_INCOME, CREATE_EXPENSE } from '../services/financial-mutations';
+import { Button, Select, ToggleButton } from './ui';
 import { validSchedule, scheduleInput } from './CommitmentSchedule';
 import { decimal, validText } from '../utils/validation';
 import { ValidatedInput as TextInput } from './ui/ValidatedInput';
@@ -253,21 +254,26 @@ export const reminderOptions: Array<{ label: string; value: number | null }> = [
 ];
 
 export type AccountsTab = 'PAYABLE' | 'RECEIVABLE';
+const newAccountSchedule = () => ({ ...defaultSchedule(), effective: true });
 
 export interface AccountsManagerProps {
   initialTab?: AccountsTab | undefined;
   initialModalOpen?: boolean | undefined;
+  modalOnly?: boolean;
+  onClose?: () => void;
 }
 
 export function AccountsManager({
   initialTab = 'PAYABLE',
-  initialModalOpen = false
+  initialModalOpen = false,
+  modalOnly = false,
+  onClose
 }: AccountsManagerProps): React.JSX.Element {
   const { theme } = useTheme();
   const { isDesktop } = useResponsive();
   const [activeTab, setActiveTab] = useState<AccountsTab>(initialTab);
   const isPayable = activeTab === 'PAYABLE';
-  const [isModalOpen, setIsModalOpen] = useState(initialModalOpen);
+  const [isModalOpen, setIsModalOpen] = useState(initialModalOpen || modalOnly);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'SETTLED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -286,17 +292,20 @@ export function AccountsManager({
   const [financialAccountIds, setFinancialAccountIds] = useState<string[]>([]);
   const [seriesEdit, setSeriesEdit] = useState<{ id: string; number: number } | null>(null);
   const [futureScope, setFutureScope] = useState(false);
-  const [updateSeries] = useMutation(gql`mutation UpdateCommitmentSeries($input:UpdateCommitmentSeriesInput!) { updateCommitmentSeries(input:$input) }`, { refetchQueries: ['FinancialAccounts', 'DashboardSummary'], onCompleted: () => { setIsModalOpen(false); if (isPayable) void refetchPayables(); else void refetchReceivables(); }, onError: e => setErrorMessage(e.message) });
-  const [cancelSeries] = useMutation(gql`mutation CancelFinancialSeries($id:ID!, $fromNumber:Int!) { cancelFinancialSeries(id:$id,fromNumber:$fromNumber) }`, { refetchQueries: ['FinancialAccounts', 'DashboardSummary'], onCompleted: () => { setIsModalOpen(false); if (isPayable) void refetchPayables(); else void refetchReceivables(); }, onError: e => setErrorMessage(e.message) });
+  const [updateSeries] = useMutation(gql`mutation UpdateCommitmentSeries($input:UpdateCommitmentSeriesInput!) { updateCommitmentSeries(input:$input) }`, { refetchQueries: ['FinancialAccounts', 'DashboardSummary'], onCompleted: () => { closeModal(); if (isPayable) void refetchPayables(); else void refetchReceivables(); }, onError: e => setErrorMessage(e.message) });
+  const [cancelSeries] = useMutation(gql`mutation CancelFinancialSeries($id:ID!, $fromNumber:Int!) { cancelFinancialSeries(id:$id,fromNumber:$fromNumber) }`, { refetchQueries: ['FinancialAccounts', 'DashboardSummary'], onCompleted: () => { closeModal(); if (isPayable) void refetchPayables(); else void refetchReceivables(); }, onError: e => setErrorMessage(e.message) });
   const seriesOperation = useRef<string | null>(null);
-  const [schedule, setSchedule] = useState(defaultSchedule);
-  const [createSeries, { loading: creatingSeries }] = useMutation(gql`mutation CreateCommitmentSeries($input: CommitmentSeriesInput!) { createCommitmentSeries(input:$input) }`, { refetchQueries: ['FinancialAccounts', 'DashboardSummary'], onCompleted: () => { setIsModalOpen(false); if (isPayable) void refetchPayables(); else void refetchReceivables(); }, onError: error => setErrorMessage(error.message) });
+  const [schedule, setSchedule] = useState(newAccountSchedule);
+  const [createSeries, { loading: creatingSeries }] = useMutation(gql`mutation CreateCommitmentSeries($input: CommitmentSeriesInput!) { createCommitmentSeries(input:$input) }`, { refetchQueries: ['FinancialAccounts', 'DashboardSummary'], onCompleted: () => { closeModal(); if (isPayable) void refetchPayables(); else void refetchReceivables(); }, onError: error => setErrorMessage(error.message) });
   const [costCenterId, setCostCenterId] = useState('');
   const [reminderOffsetDays, setReminderOffsetDays] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [settling, setSettling] = useState(false);
   const settlingRef = useRef(false);
+
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
 
   // Queries
   const { data: payablesData, loading: loadingPayables, refetch: refetchPayables } = useQuery<{
@@ -319,12 +328,20 @@ export function AccountsManager({
   const didSyncSeries = useRef(false);
   const [syncSeries] = useMutation(gql`mutation SyncFinancialSeries { syncFinancialSeries }`);
   useEffect(() => {
-    if (didSyncSeries.current) return;
+    if (modalOnly || didSyncSeries.current) return;
     didSyncSeries.current = true;
     void Promise.resolve(syncSeries()).then(() => {
       if (isPayable) void refetchPayables(); else void refetchReceivables();
     }).catch(() => undefined);
-  }, [syncSeries, isPayable, refetchPayables, refetchReceivables]);
+  }, [syncSeries, isPayable, refetchPayables, refetchReceivables, modalOnly]);
+
+  const directMutationOptions = {
+    refetchQueries: ['FinancialAccounts', 'DashboardSummary', 'MyTransactions', 'CashFlow', 'PeriodComparison', 'CategoryAnalysis'],
+    onCompleted: () => closeModal(),
+    onError: (error: Error) => setErrorMessage(error.message)
+  };
+  const [createIncome, { loading: creatingIncome }] = useMutation(CREATE_INCOME, directMutationOptions);
+  const [createExpense, { loading: creatingExpense }] = useMutation(CREATE_EXPENSE, directMutationOptions);
 
   // Mutations - Payables
   const [createPayable, { loading: creatingPayable }] = useMutation(CREATE_ACCOUNT_PAYABLE, {
@@ -394,6 +411,16 @@ export function AccountsManager({
       : receivablesData?.myProfile?.preferredCurrency) ?? 'BRL';
   const currency: SupportedCurrency =
     currencyString === 'USD' || currencyString === 'EUR' ? currencyString : 'BRL';
+  const previousCurrency = useRef<SupportedCurrency>('BRL');
+  useEffect(() => {
+    const previous = previousCurrency.current;
+    if (previous === currency) return;
+    setDueDate((value) => {
+      const iso = parseRegionalDateToISO(value, previous);
+      return iso ? formatISOToRegionalDate(iso, currency) : value;
+    });
+    previousCurrency.current = currency;
+  }, [currency]);
 
   const allCategories = (isPayable ? payablesData?.myCategories : receivablesData?.myCategories) ?? [];
   const categories = useMemo(() => {
@@ -456,11 +483,11 @@ export function AccountsManager({
     const d = String(now.getDate()).padStart(2, '0');
     const m = String(now.getMonth() + 1).padStart(2, '0');
     const y = now.getFullYear();
-    setDueDate(`${d}/${m}/${y}`);
+    setDueDate(formatISOToRegionalDate(`${y}-${m}-${d}`, currency));
     setCategoryId(categories[0]?.id ?? '');
     setCostCenterId('');
     setFinancialAccountIds([]);
-    setSchedule(defaultSchedule());
+    setSchedule(newAccountSchedule());
     setSeriesEdit(null); setFutureScope(false); seriesOperation.current = null;
     setReminderOffsetDays(null);
     setErrorMessage(null);
@@ -499,111 +526,135 @@ export function AccountsManager({
     setIsModalOpen(false);
     setEditingId(null);
     setErrorMessage(null);
+    onClose?.();
   };
+
+  const directEntry = !editingId && schedule.mode === 'ONCE' && schedule.effective;
+  const submitLabel = editingId
+    ? isPayable ? 'Atualizar Conta a Pagar' : 'Atualizar Conta a Receber'
+    : directEntry ? isPayable ? 'Registrar pagamento' : 'Registrar recebimento'
+    : isPayable ? 'Agendar Conta a Pagar' : 'Agendar Conta a Receber';
 
   const formValid = validText(description, 120) && !!decimal(amount) && !!categoryId && !!parseRegionalDateToISO(dueDate, currency) && (editingId ? true : validSchedule(schedule));
   const handleSubmit = async () => {
-    if (!formValid) return;
-    if (!validText(description, 120)) {
-      setErrorMessage('Informe uma descrição.');
-      return;
-    }
-    if (!decimal(amount)) {
-      setErrorMessage('Informe um valor numérico positivo.');
-      return;
-    }
-    if (!categoryId) {
-      setErrorMessage('Selecione uma categoria.');
-      return;
-    }
-
-    const isoDueDate = parseRegionalDateToISO(dueDate, currency);
-    if (!isoDueDate) {
-      setErrorMessage('Informe uma data de vencimento válida.');
-      return;
-    }
-
-    setErrorMessage(null);
-    const dueDateISO = new Date(isoDueDate).toISOString();
-    if (editingId && seriesEdit && futureScope) {
-      await updateSeries({ variables: { input: { id: seriesEdit.id, fromNumber: seriesEdit.number, reminderOffsetDays, financialAccountId: financialAccountIds[0], categoryId, costCenterId: costCenterId || undefined, description: description.trim(), amount: decimal(amount)!, dueDate: isoDueDate } } });
-      return;
-    }
-    if (!editingId && (schedule.mode !== 'ONCE' || schedule.effective || schedule.overrides?.length)) {
-      await createSeries({ variables: { input: {
-        operationId: seriesOperation.current ?? (seriesOperation.current = randomUUID()),
-        financialAccountId: financialAccountIds[0] || undefined,
-        categoryId, costCenterId: costCenterId || undefined, reminderOffsetDays,
-        description: description.trim(), amount: decimal(amount)!, dueDate: isoDueDate,
-        type: isPayable ? 'EXPENSE' : 'INCOME',
-        schedule: scheduleInput(schedule),
-        ...(schedule.effective ? { effectiveDate: schedule.effectiveDate } : {}), overrides: schedule.overrides
-      } } });
-      return;
-    }
-
-    if (isPayable) {
-      if (editingId) {
-        await updatePayable({
-          variables: {
-            input: {
-              id: editingId,
-              description: description.trim(),
-              amount: decimal(amount)!,
-              dueDate: dueDateISO,
-              categoryId,
-              financialAccountId: financialAccountIds[0],
-              costCenterId: costCenterId || undefined,
-              reminderOffsetDays: reminderOffsetDays ?? null
-            }
-          }
-        });
-      } else {
-        await createPayable({
-          variables: {
-            input: {
-              description: description.trim(),
-              amount: decimal(amount)!,
-              dueDate: dueDateISO,
-              categoryId,
-              financialAccountId: financialAccountIds[0],
-              costCenterId: costCenterId || undefined,
-              reminderOffsetDays: reminderOffsetDays ?? null
-            }
-          }
-        });
+    if (!formValid || savingRef.current || isSubmitting) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      if (!validText(description, 120)) {
+        setErrorMessage('Informe uma descrição.');
+        return;
       }
-    } else {
-      if (editingId) {
-        await updateReceivable({
-          variables: {
-            input: {
-              id: editingId,
-              description: description.trim(),
-              amount: decimal(amount)!,
-              dueDate: dueDateISO,
-              categoryId,
-              financialAccountId: financialAccountIds[0],
-              costCenterId: costCenterId || undefined,
-              reminderOffsetDays: reminderOffsetDays ?? null
-            }
-          }
-        });
-      } else {
-        await createReceivable({
-          variables: {
-            input: {
-              description: description.trim(),
-              amount: decimal(amount)!,
-              dueDate: dueDateISO,
-              categoryId,
-              financialAccountId: financialAccountIds[0],
-              costCenterId: costCenterId || undefined,
-              reminderOffsetDays: reminderOffsetDays ?? null
-            }
-          }
-        });
+      if (!decimal(amount)) {
+        setErrorMessage('Informe um valor numérico positivo.');
+        return;
       }
+      if (!categoryId) {
+        setErrorMessage('Selecione uma categoria.');
+        return;
+      }
+
+      const isoDueDate = parseRegionalDateToISO(dueDate, currency);
+      if (!isoDueDate) {
+        setErrorMessage('Informe uma data de vencimento válida.');
+        return;
+      }
+
+      setErrorMessage(null);
+      const dueDateISO = new Date(isoDueDate).toISOString();
+      if (editingId && seriesEdit && futureScope) {
+        await updateSeries({ variables: { input: { id: seriesEdit.id, fromNumber: seriesEdit.number, reminderOffsetDays, financialAccountId: financialAccountIds[0], categoryId, costCenterId: costCenterId || undefined, description: description.trim(), amount: decimal(amount)!, dueDate: isoDueDate } } });
+        return;
+      }
+      if (directEntry) {
+        const create = isPayable ? createExpense : createIncome;
+        await create({ variables: { input: {
+          description: description.trim(), amount: decimal(amount)!, occurredAt: dueDateISO,
+          categoryId, financialAccountId: financialAccountIds[0] || undefined, costCenterId: costCenterId || undefined
+        } } });
+        return;
+      }
+      if (!editingId && schedule.mode !== 'ONCE') {
+        await createSeries({ variables: { input: {
+          operationId: seriesOperation.current ?? (seriesOperation.current = randomUUID()),
+          financialAccountId: financialAccountIds[0] || undefined,
+          categoryId, costCenterId: costCenterId || undefined, reminderOffsetDays,
+          description: description.trim(), amount: decimal(amount)!, dueDate: isoDueDate,
+          type: isPayable ? 'EXPENSE' : 'INCOME',
+          schedule: scheduleInput(schedule),
+          ...(schedule.effective ? { effectiveDate: schedule.effectiveDate } : {}), overrides: schedule.overrides
+        } } });
+        return;
+      }
+
+      if (isPayable) {
+        if (editingId) {
+          await updatePayable({
+            variables: {
+              input: {
+                id: editingId,
+                description: description.trim(),
+                amount: decimal(amount)!,
+                dueDate: dueDateISO,
+                categoryId,
+                financialAccountId: financialAccountIds[0],
+                costCenterId: costCenterId || undefined,
+                reminderOffsetDays: reminderOffsetDays ?? null
+              }
+            }
+          });
+        } else {
+          await createPayable({
+            variables: {
+              input: {
+                description: description.trim(),
+                amount: decimal(amount)!,
+                dueDate: dueDateISO,
+                categoryId,
+                financialAccountId: financialAccountIds[0],
+                costCenterId: costCenterId || undefined,
+                reminderOffsetDays: reminderOffsetDays ?? null
+              }
+            }
+          });
+        }
+      } else {
+        if (editingId) {
+          await updateReceivable({
+            variables: {
+              input: {
+                id: editingId,
+                description: description.trim(),
+                amount: decimal(amount)!,
+                dueDate: dueDateISO,
+                categoryId,
+                financialAccountId: financialAccountIds[0],
+                costCenterId: costCenterId || undefined,
+                reminderOffsetDays: reminderOffsetDays ?? null
+              }
+            }
+          });
+        } else {
+          await createReceivable({
+            variables: {
+              input: {
+                description: description.trim(),
+                amount: decimal(amount)!,
+                dueDate: dueDateISO,
+                categoryId,
+                financialAccountId: financialAccountIds[0],
+                costCenterId: costCenterId || undefined,
+                reminderOffsetDays: reminderOffsetDays ?? null
+              }
+            }
+          });
+        }
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Não foi possível salvar o lançamento.');
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
 
@@ -641,10 +692,11 @@ export function AccountsManager({
   };
 
   const markingSettled = settling || markingPayablePaid || markingReceivableReceived;
-  const isSubmitting = isPayable ? creatingPayable || updatingPayable : creatingReceivable || updatingReceivable;
+  const isSubmitting = saving || creatingIncome || creatingExpense || creatingSeries || (isPayable ? creatingPayable || updatingPayable : creatingReceivable || updatingReceivable);
 
   return (
-    <View style={styles.container}>
+    <View style={modalOnly ? undefined : styles.container}>
+      {!modalOnly && <>
       {actionError && (
         <View style={[styles.errorBox, { backgroundColor: theme.expenseBadge }]}>
           <Text accessibilityRole="alert" accessibilityLiveRegion="assertive" style={[styles.errorText, { color: theme.expense }]}>{actionError}</Text>
@@ -1157,13 +1209,17 @@ export function AccountsManager({
         </View>
       )}
 
+      </>}
+
       {/* Floating Modal for Creation / Editing */}
       <ThemedModal
         maxWidth={520}
         onClose={closeModal}
+        dismissDisabled={isSubmitting}
         subtitle={
           editingId
             ? 'Altere os dados da conta abaixo.'
+            : directEntry ? 'Este lançamento efetivado aparecerá no Extrato.'
             : `Preencha os dados para programar uma nova conta a ${isPayable ? 'pagar' : 'receber'}.`
         }
         title={
@@ -1207,7 +1263,7 @@ export function AccountsManager({
 
           {/* Amount and Due Date */}
           <View style={styles.formRow}>
-            <View style={[styles.formGroup, { flex: 1 }]}>
+            <View style={[styles.formGroup, styles.amountField]}>
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Valor ({currency})</Text>
               <TextInput
                 accessibilityLabel={isPayable ? 'Valor da conta a pagar' : 'Valor da conta a receber'}
@@ -1217,6 +1273,7 @@ export function AccountsManager({
                 placeholderTextColor={theme.textMuted}
                 style={[
                   styles.textInput,
+                  styles.amountInput,
                   {
                     backgroundColor: theme.bgElevated,
                     borderColor: theme.borderElevated,
@@ -1227,10 +1284,10 @@ export function AccountsManager({
               />
             </View>
 
-            <View style={[styles.formGroup, { flex: 1.2 }]}>
+            <View style={[styles.formGroup, styles.dateField]}>
               <DatePickerInput
                 currency={currency}
-                label="Vencimento"
+                label={directEntry ? "Data do lançamento" : "Vencimento"}
                 onChangeText={setDueDate}
                 value={dueDate}
               />
@@ -1238,80 +1295,31 @@ export function AccountsManager({
           </View>
 
           {/* Categories */}
-          <View style={styles.formGroup}>
-            <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Categoria</Text>
-            <View style={styles.chipsRow}>
-              {categories.map((c) => {
-                const isSelected = categoryId === c.id;
-                return (
-                  <Pressable
-                    key={c.id}
-                    accessibilityRole="button"
-                    onPress={() => setCategoryId(c.id)}
-                    style={[
-                      styles.selectableChip,
-                      {
-                        backgroundColor: isSelected ? `${c.color}35` : theme.bgElevated,
-                        borderColor: isSelected ? c.color : theme.borderElevated
-                      }
-                    ]}
-                  >
-                    <View style={[styles.catDot, { backgroundColor: c.color }]} />
-                    <Text
-                      style={[
-                        styles.chipLabel,
-                        { color: isSelected ? c.color : theme.textSecondary, fontWeight: isSelected ? '700' : '500' }
-                      ]}
-                    >
-                      {c.name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
+          <Select
+            label="Categoria"
+            value={categoryId}
+            onChange={setCategoryId}
+            options={categories.map(category => ({ value: category.id, label: category.name }))}
+            placeholder={categories.length ? 'Selecione uma categoria' : 'Nenhuma categoria disponível'}
+          />
           {editingId && seriesEdit && <View>
             <ToggleButton label="Aplicar a esta e próximas pendentes" accessibilityLabel="Aplicar a esta e proximas pendentes" value={futureScope} onChange={setFutureScope} activeText="Esta e proximas pendentes" inactiveText="Somente esta parcela" />
             <Button title="Cancelar esta e proximas pendentes" variant="danger" disabled={isSubmitting} onPress={() => void cancelSeries({ variables: { id: seriesEdit.id, fromNumber: seriesEdit.number } })} style={{ minHeight: 48 }} />
           </View>}
-          {!editingId && <CommitmentSchedule value={schedule} onChange={setSchedule} amount={amount} dueDate={parseRegionalDateToISO(dueDate, currency) ?? ''} />}
+          {!editingId && <CommitmentSchedule value={schedule} singleEntry onChange={(next) => setSchedule(next.mode === schedule.mode ? next : { ...next, effective: next.mode === 'ONCE', effectiveDate: defaultSchedule().effectiveDate, overrides: [] })} amount={amount} dueDate={parseRegionalDateToISO(dueDate, currency) ?? ''} />}
           <FinancialAccountSelector value={financialAccountIds} onChange={setFinancialAccountIds} />
 
           {/* Cost Centers */}
           {costCenters.length > 0 && (
-            <View style={styles.formGroup}>
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Centro de Custo</Text>
-              <View style={styles.chipsRow}>
-                {costCenters.map((cc) => {
-                  const isSelected = costCenterId === cc.id;
-                  return (
-                    <Pressable
-                      key={cc.id}
-                      accessibilityRole="button"
-                      onPress={() => setCostCenterId(isSelected ? '' : cc.id)}
-                      style={[
-                        styles.selectableChip,
-                        {
-                          backgroundColor: isSelected ? theme.brandAIBadge : theme.bgElevated,
-                          borderColor: isSelected ? theme.brandAI : theme.borderElevated
-                        }
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.chipLabel,
-                          { color: isSelected ? theme.brandAI : theme.textSecondary, fontWeight: isSelected ? '700' : '500' }
-                        ]}
-                      >
-                        {cc.name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
+            <Select
+              label="Centro de Custo"
+              value={costCenterId}
+              onChange={setCostCenterId}
+              options={[{ value: '', label: 'Nenhum' }, ...costCenters.map(cc => ({ value: cc.id, label: cc.name }))]}
+            />
           )}
 
+          {!directEntry && <>
           {/* Reminder Offset */}
           <View style={styles.formGroup}>
             <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Lembrete de Vencimento</Text>
@@ -1346,26 +1354,22 @@ export function AccountsManager({
             </View>
           </View>
 
+          </>}
+
           {/* Modal Actions */}
+
           <View style={styles.modalActions}>
             <Pressable
               accessibilityRole="button"
               onPress={closeModal}
+              disabled={isSubmitting}
               style={[styles.cancelButton, { borderColor: theme.borderElevated }]}
             >
               <Text style={[styles.cancelButtonText, { color: theme.textSecondary }]}>Cancelar</Text>
             </Pressable>
 
             <Pressable
-              accessibilityLabel={
-                editingId
-                  ? isPayable
-                    ? 'Atualizar Conta a Pagar'
-                    : 'Atualizar Conta a Receber'
-                  : isPayable
-                  ? 'Agendar Conta a Pagar'
-                  : 'Agendar Conta a Receber'
-              }
+              accessibilityLabel={submitLabel}
               accessibilityRole="button"
               disabled={isSubmitting || creatingSeries || !formValid}
               onPress={() => void handleSubmit()}
@@ -1381,13 +1385,7 @@ export function AccountsManager({
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
                 <Text style={styles.submitButtonText}>
-                  {editingId
-                    ? isPayable
-                      ? 'Atualizar Conta a Pagar'
-                      : 'Atualizar Conta a Receber'
-                    : isPayable
-                    ? 'Agendar Conta a Pagar'
-                    : 'Agendar Conta a Receber'}
+                  {submitLabel}
                 </Text>
               )}
             </Pressable>
@@ -1425,12 +1423,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600'
   },
-  catDot: {
-    borderRadius: 4,
-    height: 8,
-    width: 8
-  },
   catPill: {
+    maxWidth: '100%',
     alignItems: 'center',
     borderRadius: 6,
     borderWidth: 1,
@@ -1495,6 +1489,7 @@ const styles = StyleSheet.create({
     fontSize: 13
   },
   filterChips: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: 6
   },
@@ -1509,13 +1504,28 @@ const styles = StyleSheet.create({
     gap: 4
   },
   formRow: {
+    alignItems: 'flex-end',
+    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: 12
+  },
+  amountField: {
+    width: 96,
+    maxWidth: '100%'
+  },
+  amountInput: {
+    minHeight: 44
+  },
+  dateField: {
+    flex: 1,
+    minWidth: 160
   },
   header: {
     gap: 14
   },
   headerTextWrap: {
+    minWidth: 0,
+    flexShrink: 1,
     flex: 1,
     gap: 4
   },
@@ -1567,6 +1577,7 @@ const styles = StyleSheet.create({
     width: '100%'
   },
   mobileTopRow: {
+    flexWrap: 'wrap',
     alignItems: 'flex-start',
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1574,6 +1585,9 @@ const styles = StyleSheet.create({
     width: '100%'
   },
   mobileTitleGroup: {
+    flexBasis: 160,
+    minWidth: 0,
+    flexShrink: 1,
     alignItems: 'center',
     flex: 1,
     flexDirection: 'row',
@@ -1602,6 +1616,7 @@ const styles = StyleSheet.create({
     gap: 6
   },
   itemCat: {
+    flexShrink: 1,
     fontSize: 11,
     fontWeight: '700'
   },
@@ -1672,6 +1687,7 @@ const styles = StyleSheet.create({
     gap: 10
   },
   modalActions: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: 10,
     marginTop: 8

@@ -55,7 +55,6 @@ export function AppHeader({
       <View style={styles.titleArea}>
         <Text
           accessibilityRole="header"
-          numberOfLines={1}
           style={[
             styles.title,
             { color: theme.textPrimary },
@@ -172,6 +171,8 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3
   },
   titleArea: {
+    minWidth: 0,
+    flexShrink: 1,
     flex: 1,
     marginRight: 12
   }

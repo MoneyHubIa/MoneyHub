@@ -83,6 +83,8 @@ const styles = StyleSheet.create({
     marginRight: 1
   },
   text: {
+    minWidth: 0,
+    flexShrink: 1,
     fontSize: 12,
     fontWeight: '600'
   }

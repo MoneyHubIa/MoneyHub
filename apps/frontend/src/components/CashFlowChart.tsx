@@ -111,7 +111,7 @@ export function CashFlowChart({ financialAccountIds, preferredCurrency = 'BRL' }
           <View style={[styles.iconBadge, { backgroundColor: theme.incomeBadge }]}>
             <BarChart3 color={theme.income} size={20} />
           </View>
-          <View>
+          <View style={styles.titleCopy}>
             <Text accessibilityRole="header" style={[styles.title, { color: theme.textPrimary }]}>
               Fluxo de Caixa
             </Text>
@@ -180,6 +180,7 @@ export function CashFlowChart({ financialAccountIds, preferredCurrency = 'BRL' }
 
       {/* Totals Summary Ribbon */}
       <View
+        testID="cash-flow-summary"
         style={[
           styles.ribbon,
           {
@@ -188,7 +189,7 @@ export function CashFlowChart({ financialAccountIds, preferredCurrency = 'BRL' }
           }
         ]}
       >
-        <View style={styles.ribbonItem}>
+        <View testID="cash-flow-total-income" style={[styles.ribbonItem, { borderColor: theme.borderElevated, backgroundColor: theme.bgSurface }]}>
           <View style={styles.ribbonLabelGroup}>
             <ArrowUpRight color={theme.income} size={16} />
             <Text style={[styles.ribbonLabel, { color: theme.textSecondary }]}>Total Entradas</Text>
@@ -198,9 +199,7 @@ export function CashFlowChart({ financialAccountIds, preferredCurrency = 'BRL' }
           </Text>
         </View>
 
-        <View style={[styles.ribbonDivider, { backgroundColor: theme.borderElevated }]} />
-
-        <View style={styles.ribbonItem}>
+        <View testID="cash-flow-total-expense" style={[styles.ribbonItem, { borderColor: theme.borderElevated, backgroundColor: theme.bgSurface }]}>
           <View style={styles.ribbonLabelGroup}>
             <ArrowDownRight color={theme.expense} size={16} />
             <Text style={[styles.ribbonLabel, { color: theme.textSecondary }]}>Total Saídas</Text>
@@ -210,9 +209,7 @@ export function CashFlowChart({ financialAccountIds, preferredCurrency = 'BRL' }
           </Text>
         </View>
 
-        <View style={[styles.ribbonDivider, { backgroundColor: theme.borderElevated }]} />
-
-        <View style={styles.ribbonItem}>
+        <View testID="cash-flow-net-balance" style={[styles.ribbonItem, { borderColor: theme.borderElevated, backgroundColor: theme.bgSurface }]}>
           <View style={styles.ribbonLabelGroup}>
             <Scale color={theme.income} size={16} />
             <Text style={[styles.ribbonLabel, { color: theme.textSecondary }]}>Saldo do Período</Text>
@@ -231,6 +228,7 @@ export function CashFlowChart({ financialAccountIds, preferredCurrency = 'BRL' }
       {/* Active Point Detail Preview */}
       {activePoint ? (
         <View
+          testID="cash-flow-point-details"
           style={[
             styles.detailBox,
             {
@@ -303,6 +301,7 @@ export function CashFlowChart({ financialAccountIds, preferredCurrency = 'BRL' }
         </View>
       ) : (
         <ScrollView
+          style={styles.chartScroll}
           contentContainerStyle={styles.chartScrollContent}
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -389,6 +388,7 @@ export function CashFlowChart({ financialAccountIds, preferredCurrency = 'BRL' }
 }
 
 const styles = StyleSheet.create({
+  titleCopy: { flex: 1, minWidth: 0 },
   bar: {
     borderRadius: 3,
     width: 10
@@ -421,11 +421,15 @@ const styles = StyleSheet.create({
   centerBox: {
     alignItems: 'center',
     gap: 8,
-    height: 180,
+    minHeight: 180,
     justifyContent: 'center'
   },
   chartScrollContent: {
     paddingVertical: 10
+  },
+  chartScroll: {
+    flexGrow: 0,
+    flexShrink: 0
   },
   chartTrack: {
     alignItems: 'flex-end',
@@ -470,6 +474,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between'
   },
   headerTitleGroup: {
+    maxWidth: '100%',
+    flexShrink: 1,
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12
@@ -482,6 +488,7 @@ const styles = StyleSheet.create({
     width: 38
   },
   legend: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: 16,
     justifyContent: 'center',
@@ -504,6 +511,7 @@ const styles = StyleSheet.create({
     fontSize: 13
   },
   pill: {
+    maxWidth: '100%',
     borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 4
@@ -527,24 +535,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-around',
-    paddingVertical: 12
-  },
-  ribbonDivider: {
-    height: '100%',
-    width: 1
+    gap: 12,
+    padding: 12
   },
   ribbonItem: {
     alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexBasis: 160,
+    flexGrow: 1,
+    minWidth: 0,
+    maxWidth: '100%',
     gap: 4,
-    minWidth: 110,
-    paddingHorizontal: 8
+    padding: 12
   },
   ribbonLabel: {
+    flexShrink: 1,
     fontSize: 11,
     fontWeight: '500'
   },
   ribbonLabelGroup: {
+    maxWidth: '100%',
     alignItems: 'center',
     flexDirection: 'row',
     gap: 4
@@ -578,6 +589,8 @@ const styles = StyleSheet.create({
     elevation: 1
   },
   toggleGroup: {
+    maxWidth: '100%',
+    flexWrap: 'wrap',
     borderRadius: 8,
     flexDirection: 'row',
     padding: 3

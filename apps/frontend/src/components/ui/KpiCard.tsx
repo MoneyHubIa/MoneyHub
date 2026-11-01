@@ -185,10 +185,14 @@ const styles = StyleSheet.create({
     fontWeight: '500'
   },
   title: {
+    minWidth: 0,
+    flexShrink: 1,
     fontSize: 13,
     fontWeight: '600'
   },
   titleRow: {
+    minWidth: 0,
+    flexShrink: 1,
     alignItems: 'center',
     flexDirection: 'row',
     gap: 8

@@ -327,6 +327,7 @@ export function FinancialCategories(): React.JSX.Element {
         <View style={styles.formGroup}>
           <Text style={[styles.label, { color: theme.textSecondary }]}>Ícone Representativo</Text>
           <ScrollView
+            testID="category-icon-options"
             contentContainerStyle={styles.iconSelector}
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -527,6 +528,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   actionButtonText: {
+    minWidth: 0,
+    flexShrink: 1,
     fontSize: 12,
     fontWeight: '600'
   },
@@ -539,12 +542,15 @@ const styles = StyleSheet.create({
     fontSize: 13
   },
   cardHeader: {
+    flexWrap: 'wrap',
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 4
   },
   cardTitle: {
+    minWidth: 0,
+    flexShrink: 1,
     fontSize: 17,
     fontWeight: '700'
   },
@@ -628,6 +634,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5
   },
   filterRow: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: 8
   },
@@ -638,10 +645,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8
   },
   filterTabText: {
+    minWidth: 0,
+    flexShrink: 1,
     fontSize: 13,
     fontWeight: '600'
   },
   formActions: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: 10,
     marginTop: 6
@@ -670,6 +680,7 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   iconSelector: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: 8,
     paddingVertical: 4
@@ -688,16 +699,19 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   typeOption: {
+    minWidth: 72,
     borderRadius: 8,
     borderWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 8
   },
   typeOptionText: {
+    flexShrink: 1,
     fontSize: 13,
     fontWeight: '600'
   },
   typeSelector: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: 8
   }

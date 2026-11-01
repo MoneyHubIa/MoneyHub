@@ -10,6 +10,12 @@ import {
 import { allNavigationItems, NavigationId } from '../../navigation/modules';
 import { useTheme } from '../../theme/ThemeContext';
 
+const firstModuleIds: NavigationId[] = ['dashboard', 'transacoes', 'credit_cards'];
+const mobileNavigationItems = [
+  ...allNavigationItems.filter((item) => firstModuleIds.includes(item.id)),
+  ...allNavigationItems.filter((item) => !firstModuleIds.includes(item.id))
+];
+
 export interface QuickPillsProps {
   activeSection: NavigationId;
   onSelectSection: (id: NavigationId) => void;
@@ -37,7 +43,7 @@ export function QuickPills({
         style
       ]}
     >
-      {allNavigationItems.map((item) => {
+      {mobileNavigationItems.map((item) => {
         const Icon = item.icon;
         const isActive = activeSection === item.id;
         const isAI = item.id === 'ai';
@@ -100,6 +106,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: 'row',
     gap: 6,
+    flexShrink: 0,
     minHeight: 36,
     paddingHorizontal: 14,
     paddingVertical: 6

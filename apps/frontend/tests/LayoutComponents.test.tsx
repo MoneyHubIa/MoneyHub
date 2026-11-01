@@ -29,8 +29,9 @@ describe('Layout Components', () => {
 
       expect(screen.getByText('MoneyHub')).toBeOnTheScreen();
       expect(screen.getByRole('button', { name: 'Dashboard' })).toBeOnTheScreen();
-      expect(screen.getByRole('button', { name: 'Transações' })).toBeOnTheScreen();
-      expect(screen.getByRole('button', { name: 'Contas a pagar/receber' })).toBeOnTheScreen();
+      expect(screen.getByRole('button', { name: 'Extrato' })).toBeOnTheScreen();
+      expect(screen.getByRole('button', { name: 'Contas a Pagar' })).toBeOnTheScreen();
+      expect(screen.getByRole('button', { name: 'Contas a Receber' })).toBeOnTheScreen();
       expect(screen.getByRole('button', { name: 'Categorias' })).toBeOnTheScreen();
       expect(screen.getByRole('button', { name: 'Metas' })).toBeOnTheScreen();
       expect(screen.getByRole('button', { name: 'MoneyHub IA' })).toBeOnTheScreen();
@@ -40,11 +41,13 @@ describe('Layout Components', () => {
 
       await fireEvent.press(screen.getByRole('button', { name: 'Categorias' }));
       expect(onSelectMock).toHaveBeenCalledWith('financeiro');
+      await fireEvent.press(screen.getByRole('button', { name: 'Contas a Receber' }));
+      expect(onSelectMock).toHaveBeenLastCalledWith('a_receber');
     });
   });
 
   describe('QuickPills', () => {
-    it('renders horizontal scrollable pills and selects section', async () => {
+    it('renders horizontal navigation with dashboard, transactions and credit cards first', async () => {
       const onSelectMock = jest.fn();
       await render(
         <QuickPills
@@ -54,10 +57,17 @@ describe('Layout Components', () => {
         { wrapper }
       );
 
-      const contasPill = screen.getByRole('button', { name: 'Pílula Contas a pagar/receber' });
+      const contasPill = screen.getByRole('button', { name: 'Pílula Contas a Pagar' });
+      expect(screen.getAllByRole('button').slice(0, 3).map((button) => button.props.accessibilityLabel)).toEqual([
+        'Pílula Dashboard',
+        'Pílula Extrato',
+        'Pílula Cartões de crédito'
+      ]);
       expect(contasPill).toBeOnTheScreen();
       await fireEvent.press(contasPill);
       expect(onSelectMock).toHaveBeenCalledWith('a_pagar');
+      await fireEvent.press(screen.getByRole('button', { name: 'Pílula Contas a Receber' }));
+      expect(onSelectMock).toHaveBeenLastCalledWith('a_receber');
     });
   });
 
@@ -121,12 +131,17 @@ describe('Layout Components', () => {
         { wrapper }
       );
 
-      expect(screen.getByText('Nova Conta a Pagar')).toBeOnTheScreen();
-      expect(screen.getByText('Nova Conta a Receber')).toBeOnTheScreen();
-      expect(screen.getByText('Nova Categoria')).toBeOnTheScreen();
+      expect(screen.getByText('Conta a Pagar')).toBeOnTheScreen();
+      expect(screen.getByText('Conta a Receber')).toBeOnTheScreen();
+      expect(screen.getByText('Transferência')).toBeOnTheScreen();
+      expect(screen.queryByText('Transação')).toBeNull();
+      expect(screen.queryByText('Nova Categoria')).toBeNull();
+      expect(screen.getAllByRole('button').filter((button) => button.props.accessibilityLabel?.startsWith('Criar '))).toHaveLength(4);
 
-      await fireEvent.press(screen.getByRole('button', { name: 'Criar Nova Conta a Pagar' }));
+      await fireEvent.press(screen.getByRole('button', { name: 'Criar Conta a Pagar' }));
       expect(onActionMock).toHaveBeenCalledWith('a_pagar');
+      await fireEvent.press(screen.getByRole('button', { name: 'Criar Transferência' }));
+      expect(onActionMock).toHaveBeenLastCalledWith('transferencia');
     });
   });
 });
