@@ -30,3 +30,4 @@ apps/backend/credentials
 playwright-report/
 test-results/
 e2e/.firebase/
+logs/

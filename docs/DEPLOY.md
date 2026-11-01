@@ -36,6 +36,41 @@ O postinstall backend gera Prisma; não execute migrations no startup da funçã
 - Credenciais de Admin devem ser segredos, nunca valores públicos do app.
 - Mudanças de ambiente exigem nova publicação.
 
+### Firebase público no build Vercel
+
+No projeto frontend, cadastre `APP_URL` e as variáveis `EXPO_PUBLIC_FIREBASE_*`
+de produção como **Config**, sem a opção **Secret** (antes chamada **Sensitive**).
+Esses valores são públicos e ficam incorporados no JavaScript pelo Expo.
+Use os valores do aplicativo Web em **Firebase Console > Project settings >
+Your apps > SDK setup and configuration**, do mesmo projeto usado pelo backend:
+
+- `EXPO_PUBLIC_FIREBASE_API_KEY`
+- `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
+- `EXPO_PUBLIC_FIREBASE_APP_ID`
+- `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`, quando configurado.
+- `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`, quando configurado.
+- `EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID`, quando configurado.
+
+Não configure `EXPO_PUBLIC_FIREBASE_AUTH_EMULATOR_URL` em produção.
+Mantenha credenciais Admin, tokens e senhas do backend como segredos.
+
+O workflow Release executa `vercel pull` e depois `vercel build --prod` no
+runner. Valores Secret/Sensitive podem ser baixados como `[SENSITIVE]`;
+o Expo incorpora esse texto no bundle, causando HTTP 400 no login, inclusive
+`accounts:signInWithPassword?key=%5BSENSITIVE%5D`. O build rejeita esse placeholder
+em `APP_URL` e nas variáveis Firebase, identificando somente o nome da variável.
+
+Para corrigir um deployment existente:
+
+1. Abra **Vercel > money-hub-frontend > Settings > Environment Variables**.
+2. Reconfigure as variáveis públicas acima no ambiente **Production** como
+   **Config**, preenchendo os valores reais do aplicativo Web Firebase.
+3. Gere um novo build e publique pelo fluxo de [Release](RELEASE.md). Promover
+   novamente o bundle antigo não atualiza os valores incorporados.
+4. Recarregue o site e confirme que a chamada de login não contém `[SENSITIVE]`.
+   Teste o login com uma conta de produção controlada.
+
 Os nomes, exposição e carregamento das variáveis ficam em [@setup](SETUP.md).
 Os rewrites encaminham /graphql e /auth/password-recovery, incluindo subrotas,
 ao BACKEND_URL. O catch-all serve a SPA, inclusive /reset-password.

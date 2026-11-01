@@ -64,6 +64,10 @@ O workflow executa o CLI na raiz de cada cópia do monorepo; o Root Directory
 salvo no projeto seleciona a aplicação correta.
 
 Configure as variáveis **Production** descritas em [Deploy](DEPLOY.md).
+No frontend, use o tipo **Config** para `APP_URL` e `EXPO_PUBLIC_FIREBASE_*`:
+o build local no runner não recebe valores **Secret/Sensitive** da Vercel e
+pode incorporar `[SENSITIVE]` no JavaScript. Veja o
+[procedimento de configuração e correção](DEPLOY.md#firebase-público-no-build-vercel).
 `APP_URL` do backend deve apontar para o domínio estável do frontend.
 `BACKEND_URL` do frontend deve apontar para o domínio estável do backend,
 e não para uma URL temporária de outro build. O `DATABASE_URL` do backend
