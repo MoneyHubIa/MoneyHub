@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0](https://github.com/MoneyHubIa/MoneyHub/compare/v0.4.2...v0.5.0) (2026-11-01)
+
+### Features
+
+* add public MoneyHub presentation and pricing pages ([a15e44f](https://github.com/MoneyHubIa/MoneyHub/commit/a15e44fe60bfff5a65457caf705b3494c0f2199b))
+
+### Bug Fixes
+
+* load Expo types in clean checkouts ([e8694a6](https://github.com/MoneyHubIa/MoneyHub/commit/e8694a68eebea6be812effa89c4e36bba68c5272))
+* prevent native press handlers on public web links ([3ae3bab](https://github.com/MoneyHubIa/MoneyHub/commit/3ae3bab1bed87c53f8a9af9fdd1caf83fb382179))
+
 ## [0.4.2](https://github.com/MoneyHubIa/MoneyHub/compare/v0.4.1...v0.4.2) (2026-11-01)
 
 ## [0.4.1](https://github.com/MoneyHubIa/MoneyHub/compare/v0.4.0...v0.4.1) (2026-11-01)
