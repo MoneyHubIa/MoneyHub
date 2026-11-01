@@ -22,6 +22,7 @@ import {
   Text,
   View
 } from 'react-native';
+import { useResponsive } from '../theme/useResponsive';
 import { useTheme } from '../theme/ThemeContext';
 import { formatCurrency } from '../utils/formatters';
 
@@ -112,6 +113,9 @@ export function PeriodComparison({
   baseYear
 }: PeriodComparisonProps): React.JSX.Element {
   const { theme } = useTheme();
+  const { isMobile } = useResponsive();
+  const [selectorsWidth, setSelectorsWidth] = useState(0);
+  const stackSelectors = isMobile || selectorsWidth < 640;
   const now = new Date();
   const initialBaseMonth = baseMonth ?? (now.getUTCMonth() + 1);
   const initialBaseYear = baseYear ?? now.getUTCFullYear();
@@ -205,6 +209,43 @@ export function PeriodComparison({
     );
   };
 
+  const renderMonths = (period: 'base' | 'comparison') => {
+    const isBase = period === 'base';
+    const selectedMonth = isBase ? bMonth : cMonth;
+    const selectMonth = isBase ? setBMonth : setCMonth;
+    const activeColor = isBase ? theme.income : theme.brandAI;
+    const pills = MONTH_NAMES_SHORT.map((name, index) => {
+      const month = index + 1;
+      const selected = selectedMonth === month;
+      return (
+        <Pressable
+          accessibilityLabel={`Selecionar m\u00eas ${isBase ? 'base' : 'comparado'} ${name}`}
+          accessibilityRole="button"
+          accessibilityState={{ selected }}
+          key={name}
+          onPress={() => selectMonth(month)}
+          style={[
+            styles.monthPill,
+            { backgroundColor: selected ? activeColor : theme.bgSurface,
+              borderColor: selected ? activeColor : theme.borderElevated }
+          ]}
+        >
+          <Text style={[
+            styles.monthPillText,
+            { color: selected ? '#ffffff' : theme.textSecondary },
+            selected && styles.monthPillTextActive
+          ]}>{name}</Text>
+        </Pressable>
+      );
+    });
+    return stackSelectors ? (
+      <View style={styles.monthsGrid}>{pills}</View>
+    ) : (
+      <ScrollView style={styles.monthsScroll} contentContainerStyle={styles.monthsTrack}
+        horizontal showsHorizontalScrollIndicator={false}>{pills}</ScrollView>
+    );
+  };
+
   return (
     <View
       style={[
@@ -220,7 +261,7 @@ export function PeriodComparison({
           <View style={[styles.iconBadge, { backgroundColor: theme.incomeBadge }]}>
             <GitCompare color={theme.income} size={20} />
           </View>
-          <View>
+          <View style={styles.titleCopy}>
             <Text accessibilityRole="header" style={[styles.title, { color: theme.textPrimary }]}>
               Comparativo de Períodos Personalizado
             </Text>
@@ -234,11 +275,7 @@ export function PeriodComparison({
       {/* Preset Quick Actions */}
       <View style={styles.presetsRow}>
         <Text style={[styles.presetsLabel, { color: theme.textSecondary }]}>Atalhos rápidos:</Text>
-        <ScrollView
-          contentContainerStyle={styles.presetsScroll}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-        >
+        <View style={styles.presetsScroll}>
           <Pressable
             accessibilityLabel="Atalho Mês Anterior"
             accessibilityRole="button"
@@ -274,13 +311,16 @@ export function PeriodComparison({
               Trimestre Passado (3M atrás)
             </Text>
           </Pressable>
-        </ScrollView>
+        </View>
       </View>
 
       {/* Dual Custom Period Selector Panel */}
       <View
+        testID="period-selectors"
+        onLayout={(event) => setSelectorsWidth(event.nativeEvent.layout.width)}
         style={[
           styles.selectorsCard,
+          stackSelectors && styles.selectorsCardMobile,
           {
             backgroundColor: theme.bgElevated,
             borderColor: theme.borderElevated
@@ -288,7 +328,7 @@ export function PeriodComparison({
         ]}
       >
         {/* Base Period Box */}
-        <View style={styles.selectorColumn}>
+        <View testID="period-base-selector" style={[styles.selectorColumn, stackSelectors && styles.selectorColumnMobile]}>
           <View style={styles.selectorHeader}>
             <View style={[styles.dotIndicator, { backgroundColor: theme.income }]} />
             <Text style={[styles.selectorHeading, { color: theme.textPrimary }]}>
@@ -296,7 +336,7 @@ export function PeriodComparison({
             </Text>
           </View>
 
-          <View style={styles.pickerControls}>
+          <View style={[styles.pickerControls, stackSelectors && styles.pickerControlsMobile]}>
             {/* Year Stepper */}
             <View
               style={[
@@ -327,41 +367,7 @@ export function PeriodComparison({
             </View>
 
             {/* Months Pills */}
-            <ScrollView
-              contentContainerStyle={styles.monthsTrack}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-            >
-              {MONTH_NAMES_SHORT.map((mName, idx) => {
-                const monthNum = idx + 1;
-                const isSelected = bMonth === monthNum;
-                return (
-                  <Pressable
-                    accessibilityLabel={`Selecionar mês base ${mName}`}
-                    accessibilityRole="button"
-                    key={`base-${mName}`}
-                    onPress={() => setBMonth(monthNum)}
-                    style={[
-                      styles.monthPill,
-                      {
-                        backgroundColor: isSelected ? theme.income : theme.bgSurface,
-                        borderColor: isSelected ? theme.income : theme.borderElevated
-                      }
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.monthPillText,
-                        { color: isSelected ? '#ffffff' : theme.textSecondary },
-                        isSelected && styles.monthPillTextActive
-                      ]}
-                    >
-                      {mName}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+            {renderMonths('base')}
           </View>
         </View>
 
@@ -370,7 +376,7 @@ export function PeriodComparison({
         </View>
 
         {/* Comparison Period Box */}
-        <View style={styles.selectorColumn}>
+        <View testID="period-comparison-selector" style={[styles.selectorColumn, stackSelectors && styles.selectorColumnMobile]}>
           <View style={styles.selectorHeader}>
             <View style={[styles.dotIndicator, { backgroundColor: theme.brandAI }]} />
             <Text style={[styles.selectorHeading, { color: theme.textPrimary }]}>
@@ -378,7 +384,7 @@ export function PeriodComparison({
             </Text>
           </View>
 
-          <View style={styles.pickerControls}>
+          <View style={[styles.pickerControls, stackSelectors && styles.pickerControlsMobile]}>
             {/* Year Stepper */}
             <View
               style={[
@@ -409,41 +415,7 @@ export function PeriodComparison({
             </View>
 
             {/* Months Pills */}
-            <ScrollView
-              contentContainerStyle={styles.monthsTrack}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-            >
-              {MONTH_NAMES_SHORT.map((mName, idx) => {
-                const monthNum = idx + 1;
-                const isSelected = cMonth === monthNum;
-                return (
-                  <Pressable
-                    accessibilityLabel={`Selecionar mês comparado ${mName}`}
-                    accessibilityRole="button"
-                    key={`comp-${mName}`}
-                    onPress={() => setCMonth(monthNum)}
-                    style={[
-                      styles.monthPill,
-                      {
-                        backgroundColor: isSelected ? theme.brandAI : theme.bgSurface,
-                        borderColor: isSelected ? theme.brandAI : theme.borderElevated
-                      }
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.monthPillText,
-                        { color: isSelected ? '#ffffff' : theme.textSecondary },
-                        isSelected && styles.monthPillTextActive
-                      ]}
-                    >
-                      {mName}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+            {renderMonths('comparison')}
           </View>
         </View>
       </View>
@@ -470,11 +442,12 @@ export function PeriodComparison({
           </Pressable>
         </View>
       ) : comparison ? (
-        <View style={styles.cardsGrid}>
+        <View testID="period-comparison-results" style={styles.cardsGrid}>
           {/* Card 1: Receitas */}
           <View
             style={[
               styles.card,
+              isMobile && styles.cardMobile,
               {
                 backgroundColor: theme.bgElevated,
                 borderColor: theme.borderElevated
@@ -490,7 +463,7 @@ export function PeriodComparison({
               </Text>
             </View>
 
-            <View style={styles.cardValuesRow}>
+            <View style={[styles.cardValuesRow, isMobile && styles.cardValuesRowMobile]}>
               <View>
                 <Text style={[styles.periodTag, { color: theme.textSecondary }]}>{base?.label}</Text>
                 <Text style={[styles.mainValue, { color: theme.income }]}>
@@ -515,6 +488,7 @@ export function PeriodComparison({
           <View
             style={[
               styles.card,
+              isMobile && styles.cardMobile,
               {
                 backgroundColor: theme.bgElevated,
                 borderColor: theme.borderElevated
@@ -530,7 +504,7 @@ export function PeriodComparison({
               </Text>
             </View>
 
-            <View style={styles.cardValuesRow}>
+            <View style={[styles.cardValuesRow, isMobile && styles.cardValuesRowMobile]}>
               <View>
                 <Text style={[styles.periodTag, { color: theme.textSecondary }]}>{base?.label}</Text>
                 <Text style={[styles.mainValue, { color: theme.expense }]}>
@@ -555,6 +529,7 @@ export function PeriodComparison({
           <View
             style={[
               styles.card,
+              isMobile && styles.cardMobile,
               {
                 backgroundColor: theme.bgElevated,
                 borderColor: theme.borderElevated
@@ -570,7 +545,7 @@ export function PeriodComparison({
               </Text>
             </View>
 
-            <View style={styles.cardValuesRow}>
+            <View style={[styles.cardValuesRow, isMobile && styles.cardValuesRowMobile]}>
               <View>
                 <Text style={[styles.periodTag, { color: theme.textSecondary }]}>{base?.label}</Text>
                 <Text
@@ -603,6 +578,7 @@ export function PeriodComparison({
           <View
             style={[
               styles.card,
+              isMobile && styles.cardMobile,
               {
                 backgroundColor: theme.bgElevated,
                 borderColor: theme.borderElevated
@@ -618,7 +594,7 @@ export function PeriodComparison({
               </Text>
             </View>
 
-            <View style={styles.cardValuesRow}>
+            <View style={[styles.cardValuesRow, isMobile && styles.cardValuesRowMobile]}>
               <View>
                 <Text style={[styles.periodTag, { color: theme.textSecondary }]}>{base?.label}</Text>
                 <Text style={[styles.mainValue, { color: theme.brandAI }]}>
@@ -672,6 +648,12 @@ export function PeriodComparison({
 }
 
 const styles = StyleSheet.create({
+  titleCopy: { flex: 1, minWidth: 0 },
+  selectorsCardMobile: { flexDirection: 'column', flexWrap: 'nowrap' },
+  selectorColumnMobile: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', width: '100%' },
+  pickerControlsMobile: { alignItems: 'stretch', flexDirection: 'column' },
+  cardMobile: { flexBasis: '100%', minWidth: 0 },
+  cardValuesRowMobile: { alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 },
   card: {
     borderRadius: 10,
     borderWidth: 1,
@@ -693,6 +675,7 @@ const styles = StyleSheet.create({
     width: 32
   },
   cardTitle: {
+    flexShrink: 1,
     fontSize: 14,
     fontWeight: '600'
   },
@@ -709,7 +692,7 @@ const styles = StyleSheet.create({
   centerBox: {
     alignItems: 'center',
     gap: 8,
-    height: 140,
+    minHeight: 140,
     justifyContent: 'center'
   },
   compValue: {
@@ -724,6 +707,8 @@ const styles = StyleSheet.create({
     width: '100%'
   },
   deltaBadge: {
+    maxWidth: '100%',
+    flexShrink: 1,
     alignItems: 'center',
     alignSelf: 'flex-start',
     borderRadius: 6,
@@ -733,6 +718,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3
   },
   deltaText: {
+    flexShrink: 1,
     fontSize: 11,
     fontWeight: '700'
   },
@@ -778,6 +764,8 @@ const styles = StyleSheet.create({
   monthPillTextActive: {
     fontWeight: '700'
   },
+  monthsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  monthsScroll: { flexGrow: 0, flexShrink: 1, minWidth: 0 },
   monthsTrack: {
     flexDirection: 'row',
     gap: 4,
@@ -793,6 +781,9 @@ const styles = StyleSheet.create({
     gap: 8
   },
   presetChip: {
+    minHeight: 44,
+    maxWidth: '100%',
+    flexShrink: 1,
     alignItems: 'center',
     borderRadius: 9999,
     flexDirection: 'row',
@@ -801,6 +792,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5
   },
   presetChipText: {
+    flexShrink: 1,
     fontSize: 12,
     fontWeight: '500'
   },
@@ -815,6 +807,8 @@ const styles = StyleSheet.create({
     gap: 8
   },
   presetsScroll: {
+    flexWrap: 'wrap',
+    width: '100%',
     flexDirection: 'row',
     gap: 6
   },
@@ -829,9 +823,12 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   selectorColumn: {
-    flex: 1,
-    gap: 10,
-    minWidth: 260
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 260,
+    minWidth: 0,
+    maxWidth: '100%',
+    gap: 10
   },
   selectorHeader: {
     alignItems: 'center',
@@ -839,6 +836,7 @@ const styles = StyleSheet.create({
     gap: 6
   },
   selectorHeading: {
+    flexShrink: 1,
     fontSize: 13,
     fontWeight: '600'
   },
@@ -848,7 +846,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 16,
-    justifyContent: 'space-between',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
     padding: 14
   },
   stepBtn: {
@@ -870,6 +869,8 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   titleGroup: {
+    maxWidth: '100%',
+    flexShrink: 1,
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12

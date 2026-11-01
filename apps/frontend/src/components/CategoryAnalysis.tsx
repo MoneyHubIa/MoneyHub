@@ -108,7 +108,7 @@ export function CategoryAnalysis({
           <View style={[styles.iconBadge, { backgroundColor: theme.incomeBadge }]}>
             <PieChart color={theme.income} size={20} />
           </View>
-          <View>
+          <View style={styles.titleCopy}>
             <Text accessibilityRole="header" style={[styles.title, { color: theme.textPrimary }]}>
               Análise por Categoria
             </Text>
@@ -313,7 +313,10 @@ export function CategoryAnalysis({
 }
 
 const styles = StyleSheet.create({
+  titleCopy: { flex: 1, minWidth: 0 },
   card: {
+    flexWrap: 'wrap',
+    gap: 12,
     alignItems: 'center',
     borderRadius: 8,
     borderWidth: 1,
@@ -327,12 +330,16 @@ const styles = StyleSheet.create({
     gap: 2
   },
   cardLeft: {
+    flexBasis: 180,
+    minWidth: 0,
+    maxWidth: '100%',
     alignItems: 'center',
     flex: 1,
     flexDirection: 'row',
     gap: 10
   },
   cardRight: {
+    maxWidth: '100%',
     alignItems: 'flex-end',
     gap: 4
   },
@@ -341,6 +348,8 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   categoryName: {
+    minWidth: 0,
+    flexShrink: 1,
     fontSize: 14,
     fontWeight: '600'
   },
@@ -439,6 +448,8 @@ const styles = StyleSheet.create({
     fontSize: 13
   },
   summaryBar: {
+    flexWrap: 'wrap',
+    gap: 8,
     alignItems: 'center',
     borderRadius: 8,
     borderWidth: 1,
@@ -448,6 +459,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10
   },
   summaryLabel: {
+    minWidth: 0,
+    flexShrink: 1,
     fontSize: 13,
     fontWeight: '500'
   },
@@ -460,6 +473,8 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   titleGroup: {
+    maxWidth: '100%',
+    flexShrink: 1,
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12
@@ -479,6 +494,8 @@ const styles = StyleSheet.create({
     elevation: 1
   },
   toggleGroup: {
+    maxWidth: '100%',
+    flexWrap: 'wrap',
     borderRadius: 8,
     flexDirection: 'row',
     padding: 3

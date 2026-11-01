@@ -1,4 +1,5 @@
 import { CardPurchaseModal } from './CardPurchaseForm';
+import { TransferModal } from './TransferForm';
 import { Banking } from './Banking';
 import { FINANCIAL_ACCOUNTS_QUERY, FinancialAccountSelector, type FinancialAccountItem } from './FinancialAccountSelector';
 import { gql } from '@apollo/client';
@@ -31,6 +32,7 @@ import { useAuth } from '../providers/AuthProvider';
 import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../theme/useResponsive';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import { AccountsManager, type AccountsTab } from './AccountsManager';
 import { AccountsPayable } from './AccountsPayable';
 import { AccountsReceivable } from './AccountsReceivable';
 import { Agenda } from './Agenda';
@@ -42,7 +44,7 @@ import { FinancialCategories } from './FinancialCategories';
 import { FinancialGoals } from './FinancialGoals';
 import { AppHeader } from './layout/AppHeader';
 import { BottomNavBar } from './layout/BottomNavBar';
-import { QuickActionModal } from './layout/QuickActionModal';
+import { QuickActionModal, type QuickAction } from './layout/QuickActionModal';
 import { QuickPills } from './layout/QuickPills';
 import { Sidebar } from './layout/Sidebar';
 import { NotificationCenter } from './NotificationCenter';
@@ -50,7 +52,6 @@ import { PeriodComparison } from './PeriodComparison';
 import { ProfileSettings } from './ProfileSettings';
 import { RecurringTransactions } from './RecurringTransactions';
 import { Transactions } from './Transactions';
-import { TransactionModal } from './TransactionModal';
 import { Badge } from './ui/Badge';
 import { Card } from './ui/Card';
 import { ProgressBar } from './ui/ProgressBar';
@@ -215,7 +216,8 @@ export function DashboardShell(): React.JSX.Element {
   const [isEyeOpen, setIsEyeOpen] = useState(true);
   const [quickActionModalOpen, setQuickActionModalOpen] = useState(false);
   const [isCardPurchaseOpen, setIsCardPurchaseOpen] = useState(false);
-  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
+  const [quickAccountTab, setQuickAccountTab] = useState<AccountsTab | null>(null);
   const [settlingId, setSettlingId] = useState<string | null>(null);
   const [financialAccountIds, setFinancialAccountIds] = useState<string[]>([]);
   const { data: financialAccountsData, refetch: refetchFinancialAccounts } = useQuery<{ myFinancialAccounts: FinancialAccountItem[] }>(FINANCIAL_ACCOUNTS_QUERY);
@@ -320,12 +322,11 @@ export function DashboardShell(): React.JSX.Element {
   const activeLabel =
     allNavigationItems.find((item) => item.id === activeSectionId)?.label ?? 'Dashboard';
 
-  const goToQuickAction = (action: 'a_pagar' | 'a_receber' | 'transacao' | 'categoria' | 'meta' | 'despesa_cartao') => {
+  const goToQuickAction = (action: QuickAction | 'meta') => {
     if (action === 'despesa_cartao') setIsCardPurchaseOpen(true);
-    else if (action === 'transacao') setIsTransactionModalOpen(true);
-    else if (action === 'categoria') setActiveSectionId('financeiro');
+    else if (action === 'transferencia') setIsTransferOpen(true);
     else if (action === 'meta') setActiveSectionId('metas');
-    else setActiveSectionId(action);
+    else setQuickAccountTab(action === 'a_pagar' ? 'PAYABLE' : 'RECEIVABLE');
   };
 
   const notificationCenter = (
@@ -361,16 +362,16 @@ export function DashboardShell(): React.JSX.Element {
 
           <View style={styles.headerActions}>
             <Pressable
-              accessibilityLabel="Nova Transação"
+              accessibilityLabel="Novo lançamento"
               accessibilityRole="button"
-              onPress={() => setIsTransactionModalOpen(true)}
+              onPress={() => setQuickActionModalOpen(true)}
               style={({ pressed }) => [
                 styles.primaryCtaButton,
                 { backgroundColor: theme.brandAI, opacity: pressed ? 0.85 : 1 }
               ]}
             >
               <Plus color="#FFFFFF" size={16} strokeWidth={2.5} />
-              <Text style={styles.primaryCtaText}>Nova Transação</Text>
+              <Text style={styles.primaryCtaText}>Novo lançamento</Text>
             </Pressable>
 
             <Pressable
@@ -865,13 +866,11 @@ export function DashboardShell(): React.JSX.Element {
       />
 
       {isCardPurchaseOpen && <CardPurchaseModal onClose={() => setIsCardPurchaseOpen(false)} onRegisterCard={() => { setIsCardPurchaseOpen(false); setActiveSectionId('credit_cards'); }} onCreateCategory={() => { setIsCardPurchaseOpen(false); setActiveSectionId('financeiro'); }} />}
+      {isTransferOpen && <TransferModal onClose={() => setIsTransferOpen(false)} />}
 
-      <TransactionModal
-        onClose={() => setIsTransactionModalOpen(false)}
-        onSuccess={() => void refetchSummary?.()}
-        preferredCurrency={currency}
-        visible={isTransactionModalOpen}
-      />
+      {quickAccountTab && <AccountsManager key={quickAccountTab} initialTab={quickAccountTab} modalOnly onClose={() => setQuickAccountTab(null)} />}
+
+
     </View>
   );
 }
@@ -949,10 +948,14 @@ const styles = StyleSheet.create({
   gridCard: {
     flexBasis: 340,
     flexGrow: 1,
+    minWidth: 0,
+    maxWidth: '100%',
     gap: 12,
     padding: 18
   },
   gridCardHeader: {
+    gap: 8,
+    flexWrap: 'wrap',
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between'
@@ -1181,6 +1184,9 @@ const styles = StyleSheet.create({
   },
   upcomingCopy: {
     flex: 1,
+    flexBasis: 100,
+    minWidth: 0,
+    maxWidth: '100%',
     gap: 4
   },
   upcomingIcon: {
@@ -1191,6 +1197,7 @@ const styles = StyleSheet.create({
     width: 36
   },
   upcomingMeta: {
+    flexWrap: 'wrap',
     alignItems: 'center',
     flexDirection: 'row',
     gap: 8
@@ -1202,6 +1209,7 @@ const styles = StyleSheet.create({
   upcomingRow: {
     alignItems: 'center',
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
     paddingVertical: 10
   }

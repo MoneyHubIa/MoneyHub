@@ -1,6 +1,7 @@
 import { decimal, validText } from '../utils/validation';
 import { ValidatedInput as TextInput } from './ui/ValidatedInput';
 import { FinancialAccountSelector } from './FinancialAccountSelector';
+import { Select } from './ui';
 import { gql } from '@apollo/client';
 import { useMutation, useQuery } from '@apollo/client/react';
 import {
@@ -277,7 +278,7 @@ export function RecurringTransactions() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
-        <View>
+        <View style={{ flexShrink: 1, minWidth: 0 }}>
           <Text style={styles.preTitle}>Planejamento</Text>
           <Text accessibilityRole="header" style={styles.title}>
             Transações Recorrentes
@@ -456,7 +457,7 @@ export function RecurringTransactions() {
               Nenhuma categoria encontrada para este tipo. Cadastre uma categoria na aba Categorias.
             </Text>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagSelector}>
+            <ScrollView testID="recurrence-category-options" horizontal showsHorizontalScrollIndicator={false} style={styles.tagSelector}>
               {filteredCategories.map((c) => (
                 <Pressable
                   key={c.id}
@@ -484,30 +485,12 @@ export function RecurringTransactions() {
         <FinancialAccountSelector value={financialAccountIds} onChange={setFinancialAccountIds} />
 
         {costCenters.length > 0 && (
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Centro de Custo (Opcional)</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagSelector}>
-              <Pressable
-                onPress={() => setCostCenterId('')}
-                style={[styles.tagOption, costCenterId === '' && styles.tagOptionSelectedGeneric]}
-              >
-                <Text style={[styles.tagOptionText, costCenterId === '' && styles.typeOptionTextActive]}>
-                  Nenhum
-                </Text>
-              </Pressable>
-              {costCenters.map((cc) => (
-                <Pressable
-                  key={cc.id}
-                  onPress={() => setCostCenterId(cc.id)}
-                  style={[styles.tagOption, costCenterId === cc.id && styles.tagOptionSelectedGeneric]}
-                >
-                  <Text style={[styles.tagOptionText, costCenterId === cc.id && styles.typeOptionTextActive]}>
-                    {cc.name}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
+          <Select
+            label="Centro de Custo (Opcional)"
+            value={costCenterId}
+            onChange={setCostCenterId}
+            options={[{ value: '', label: 'Nenhum' }, ...costCenters.map(cc => ({ value: cc.id, label: cc.name }))]}
+          />
         )}
 
         {!formValid && <Text style={{ color: theme.textSecondary }}>Preencha descrição, valor positivo, categoria e data de início válida.</Text>}
@@ -568,7 +551,7 @@ export function RecurringTransactions() {
                         <TrendingUp color={theme.income} size={16} />
                       )}
                     </View>
-                    <View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
                       <Text style={styles.itemDescription}>{item.description}</Text>
                       <View style={styles.itemMetaRow}>
                         <View
@@ -623,6 +606,7 @@ const getThemedStyles = (theme: ColorTokens) =>
       padding: 24
     },
     header: {
+      flexWrap: 'wrap',
       alignItems: 'center',
       flexDirection: 'row',
       justifyContent: 'space-between'
@@ -656,15 +640,20 @@ const getThemedStyles = (theme: ColorTokens) =>
       paddingVertical: 10
     },
     syncButtonText: {
+      minWidth: 0,
+      flexShrink: 1,
       color: theme.income,
       fontSize: 13,
       fontWeight: '600'
     },
     kpiRow: {
+      flexWrap: 'wrap',
       flexDirection: 'row',
       gap: 16
     },
     kpiCard: {
+      flexBasis: 160,
+      minWidth: 0,
       backgroundColor: theme.bgSurface,
       borderColor: theme.border,
       borderRadius: 12,
@@ -756,6 +745,8 @@ const getThemedStyles = (theme: ColorTokens) =>
       borderColor: theme.income
     },
     typeOptionText: {
+      minWidth: 0,
+      flexShrink: 1,
       color: theme.textSecondary,
       fontSize: 13,
       fontWeight: '600'
@@ -764,10 +755,12 @@ const getThemedStyles = (theme: ColorTokens) =>
       color: '#ffffff'
     },
     inputRow: {
+      flexWrap: 'wrap',
       flexDirection: 'row',
       gap: 16
     },
     inputGroup: {
+      minWidth: 100,
       gap: 6
     },
     label: {
@@ -786,10 +779,12 @@ const getThemedStyles = (theme: ColorTokens) =>
       paddingHorizontal: 12
     },
     frequencyRow: {
+      flexWrap: 'wrap',
       flexDirection: 'row',
       gap: 6
     },
     frequencyButton: {
+      minWidth: 72,
       alignItems: 'center',
       backgroundColor: theme.bgElevated,
       borderColor: theme.borderElevated,
@@ -804,6 +799,7 @@ const getThemedStyles = (theme: ColorTokens) =>
       borderColor: theme.income
     },
     frequencyButtonText: {
+      flexShrink: 1,
       color: theme.textSecondary,
       fontSize: 13,
       fontWeight: '600'
@@ -812,6 +808,7 @@ const getThemedStyles = (theme: ColorTokens) =>
       color: '#ffffff'
     },
     tagSelector: {
+      flexWrap: 'wrap',
       flexDirection: 'row',
       paddingVertical: 2
     },
@@ -848,6 +845,8 @@ const getThemedStyles = (theme: ColorTokens) =>
       paddingVertical: 12
     },
     submitButtonText: {
+      minWidth: 0,
+      flexShrink: 1,
       color: '#ffffff',
       fontSize: 14,
       fontWeight: '700'
@@ -875,6 +874,8 @@ const getThemedStyles = (theme: ColorTokens) =>
       gap: 10
     },
     itemRow: {
+      flexWrap: 'wrap',
+      gap: 12,
       alignItems: 'center',
       backgroundColor: theme.bgElevated,
       borderColor: theme.borderElevated,
@@ -885,6 +886,10 @@ const getThemedStyles = (theme: ColorTokens) =>
       padding: 12
     },
     itemLeft: {
+      flexBasis: 220,
+      flexGrow: 1,
+      minWidth: 0,
+      maxWidth: '100%',
       alignItems: 'center',
       flexDirection: 'row',
       gap: 12
@@ -902,6 +907,7 @@ const getThemedStyles = (theme: ColorTokens) =>
       fontWeight: '700'
     },
     itemMetaRow: {
+      flexWrap: 'wrap',
       alignItems: 'center',
       flexDirection: 'row',
       gap: 6,
@@ -913,6 +919,8 @@ const getThemedStyles = (theme: ColorTokens) =>
       width: 8
     },
     itemCategory: {
+      maxWidth: '100%',
+      flexShrink: 1,
       color: theme.textSecondary,
       fontSize: 12,
       fontWeight: '500'
@@ -931,11 +939,14 @@ const getThemedStyles = (theme: ColorTokens) =>
       fontSize: 12
     },
     itemRight: {
+      maxWidth: '100%',
+      flexWrap: 'wrap',
       alignItems: 'center',
       flexDirection: 'row',
       gap: 12
     },
     itemAmount: {
+      flexShrink: 1,
       fontSize: 14,
       fontWeight: '700'
     },

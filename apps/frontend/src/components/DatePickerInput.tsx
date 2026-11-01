@@ -23,6 +23,7 @@ export type DatePickerInputProps = {
   onChangeText: (text: string) => void;
   currency?: SupportedCurrency;
   accessibilityLabel?: string;
+  disabled?: boolean;
 };
 
 export function DatePickerInput({
@@ -30,7 +31,8 @@ export function DatePickerInput({
   value,
   onChangeText,
   currency = 'BRL',
-  accessibilityLabel
+  accessibilityLabel,
+  disabled = false
 }: DatePickerInputProps) {
   const { tokens } = useTheme();
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -161,6 +163,7 @@ export function DatePickerInput({
         ]}
       >
         <TextInput maxLength={10}
+          editable={!disabled}
           accessibilityLabel={accessibilityLabel || label}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -171,6 +174,8 @@ export function DatePickerInput({
         <Pressable
           accessibilityLabel="Abrir calendário"
           accessibilityRole="button"
+          accessibilityState={{ disabled }}
+          disabled={disabled}
           onPress={() => {
             const iso = parseRegionalDateToISO(value, currency);
             if (iso) {
@@ -328,6 +333,7 @@ const styles = StyleSheet.create({
   input: {
     color: '#0f172a',
     flex: 1,
+    minWidth: 0,
     fontSize: 14,
     minHeight: 42,
     paddingHorizontal: 12

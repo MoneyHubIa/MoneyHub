@@ -23,16 +23,23 @@ beforeEach(() => {
 });
 const props = () => ({ onClose: jest.fn(), onRegisterCard: jest.fn(), onCreateCategory: jest.fn() });
 async function fill() {
+  await fireEvent.press(screen.getByRole('button', { name: 'Cartão' }));
+  expect(screen.queryByRole('button', { name: 'Arquivado • Visa' })).toBeNull();
   await fireEvent.press(screen.getByRole('button', { name: 'Principal • Visa' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Categoria' }));
+  expect(screen.queryByRole('button', { name: 'Salário' })).toBeNull();
   await fireEvent.press(screen.getByRole('button', { name: 'Alimentação' }));
   await fireEvent.changeText(screen.getByLabelText('Descrição da compra'), 'Mercado');
   await fireEvent.changeText(screen.getByLabelText('Valor total da compra'), '100,50');
-  await fireEvent.changeText(screen.getByLabelText('Data da compra (YYYY-MM-DD)'), '2026-10-31');
+  await fireEvent.changeText(screen.getByLabelText('Data da compra'), '31/10/2026');
+  await fireEvent.press(screen.getByRole('button', { name: 'Parcelamento' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Parcelar' }));
 }
 test('sends a card purchase with normalized amount, never an immediate expense', async () => {
   const handlers = props();
   await render(<ThemeProvider><CardPurchaseModal {...handlers} /></ThemeProvider>);
   expect(screen.getByRole('button', { name: 'Salvar' })).toBeDisabled();
+  expect(screen.queryByLabelText('Total de parcelas')).toBeNull();
   expect(screen.queryByRole('button', { name: 'Arquivado • Visa' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Salário' })).toBeNull();
   await fill();
@@ -58,12 +65,34 @@ test('preserves data and operation identity on retry, and changes identity for a
 test('rejects impossible dates and inconsistent installment ranges before sending', async () => {
   await render(<ThemeProvider><CardPurchaseModal {...props()} /></ThemeProvider>);
   await fill();
-  for (const [label, value] of [['Data da compra (YYYY-MM-DD)', '2026-02-30'], ['Parcela inicial', '2'], ['Total de parcelas', '1201']]) {
+  for (const [label, value, restored] of [['Data da compra', '30/02/2026', '31/10/2026'], ['Parcela inicial', '2', '1'], ['Total de parcelas', '1201', '1']]) {
     await fireEvent.changeText(screen.getByLabelText(label!), value!);
     await fireEvent.press(screen.getByRole('button', { name: 'Salvar' }));
     expect(screen.getByRole('button', { name: 'Salvar' })).toBeDisabled();
+    await fireEvent.changeText(screen.getByLabelText(label!), restored!);
   }
   expect(mockMutate).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: 'Salvar' })).toBeEnabled();
+});
+
+test('adjusts installments with arrows and returns to a one-time purchase', async () => {
+  await render(<ThemeProvider><CardPurchaseModal {...props()} /></ThemeProvider>);
+  await fill();
+  expect(screen.getByRole('button', { name: 'Cartão' })).toHaveProp('accessibilityValue', { text: 'Principal • Visa' });
+  expect(screen.getByRole('button', { name: 'Categoria' })).toHaveProp('accessibilityValue', { text: 'Alimentação' });
+  expect(screen.getByRole('button', { name: 'Diminuir parcela inicial' })).toBeDisabled();
+  await fireEvent.press(screen.getByRole('button', { name: 'Aumentar parcela inicial' }));
+  expect(screen.getByLabelText('Parcela inicial')).toHaveDisplayValue('2');
+  expect(screen.getByRole('button', { name: 'Salvar' })).toBeDisabled();
+  await fireEvent.press(screen.getByRole('button', { name: 'Aumentar total de parcelas' }));
+  expect(screen.getByRole('button', { name: 'Salvar' })).toBeEnabled();
+  await fireEvent.press(screen.getByRole('button', { name: 'Diminuir total de parcelas' }));
+  expect(screen.getByRole('button', { name: 'Salvar' })).toBeDisabled();
+  await fireEvent.press(screen.getByRole('button', { name: 'Parcelamento' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Não recorrente' }));
+  expect(screen.queryByLabelText('Parcela inicial')).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: 'Salvar' }));
+  expect(mockMutate).toHaveBeenCalledWith(expect.objectContaining({ variables: { input: expect.objectContaining({ first: 1, total: 1, purchasedOn: '2026-10-31' }) } }));
 });
 test('blocks dismissal and double submissions while saving', async () => {
   let finish!: () => void;
@@ -72,6 +101,12 @@ test('blocks dismissal and double submissions while saving', async () => {
   await render(<ThemeProvider><CardPurchaseModal {...handlers} /></ThemeProvider>);
   await fill();
   await fireEvent.press(screen.getByRole('button', { name: 'Salvar' }));
+  for (const label of ['Cartão', 'Categoria', 'Parcelamento', 'Aumentar total de parcelas']) {
+    expect(screen.getByRole('button', { name: label })).toBeDisabled();
+  }
+  expect(screen.getByLabelText('Data da compra')).toHaveProp('editable', false);
+  expect(screen.getByLabelText('Parcela inicial')).toHaveProp('editable', false);
+  expect(screen.getByRole('button', { name: 'Abrir calendário' })).toBeDisabled();
   await fireEvent.press(screen.getByRole('button', { name: 'Salvar' }));
   await fireEvent.press(screen.getByRole('button', { name: 'Cancelar' }));
   await fireEvent.press(screen.getByRole('button', { name: 'Fechar modal' }));

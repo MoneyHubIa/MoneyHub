@@ -2,10 +2,12 @@ import { gql } from '@apollo/client';
 import { useApolloClient, useQuery } from '@apollo/client/react';
 import { randomUUID } from 'expo-crypto';
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { decimal, integer, isoDate, validText } from '../utils/validation';
-import { Button, ChoiceButton, ThemedModal } from './ui';
+import { decimal, integer, validText } from '../utils/validation';
+import { formatISOToRegionalDate, parseRegionalDateToISO } from '../utils/formatters';
+import { DatePickerInput } from './DatePickerInput';
+import { Button, NumberStepper, Select, ThemedModal } from './ui';
 import { ValidatedInput } from './ui/ValidatedInput';
 
 export const CARD_PURCHASE_CONTEXT = gql`query CardPurchaseContext {
@@ -28,18 +30,20 @@ export function CardPurchaseForm({ cards, categories, cardId, onSelectCard, onSu
 }) {
   const { theme } = useTheme();
   const client = useApolloClient();
-  const [form, setForm] = useState({ description: '', amount: '', purchasedOn: today(), first: '1', total: '1', categoryId: '' });
+  const [form, setForm] = useState({ description: '', amount: '', purchasedOn: formatISOToRegionalDate(today()), first: '1', total: '1', categoryId: '' });
+  const [installments, setInstallments] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const inFlight = useRef(false);
   const operation = useRef<{ key: string; id: string } | null>(null);
   const activeCards = cards.filter(card => !card.archived);
   const eligibleCategories = categories.filter(category => category.type === 'EXPENSE' || category.type === 'BOTH');
-  const valid = activeCards.some(card => card.id === cardId) && eligibleCategories.some(category => category.id === form.categoryId) && validText(form.description, 120) && !!decimal(form.amount) && isoDate(form.purchasedOn) && integer(form.first) && integer(form.total) && Number(form.first) <= Number(form.total);
+  const purchasedOn = parseRegionalDateToISO(form.purchasedOn);
+  const valid = activeCards.some(card => card.id === cardId) && eligibleCategories.some(category => category.id === form.categoryId) && validText(form.description, 120) && !!decimal(form.amount) && !!purchasedOn && (!installments || (integer(form.first) && integer(form.total) && Number(form.first) <= Number(form.total)));
 
   async function save() {
     if (!valid || inFlight.current) return;
-    const input = { cardId, categoryId: form.categoryId, description: form.description.trim(), amount: decimal(form.amount)!, purchasedOn: form.purchasedOn, first: Number(form.first), total: Number(form.total) };
+    const input = { cardId, categoryId: form.categoryId, description: form.description.trim(), amount: decimal(form.amount)!, purchasedOn: purchasedOn!, first: installments ? Number(form.first) : 1, total: installments ? Number(form.total) : 1 };
     const key = JSON.stringify(input);
     if (operation.current?.key !== key) operation.current = { key, id: randomUUID() };
     inFlight.current = true; setBusy(true); onBusyChange(true); setMessage('');
@@ -47,33 +51,52 @@ export function CardPurchaseForm({ cards, categories, cardId, onSelectCard, onSu
       await client.mutate({ mutation: PURCHASE, variables: { input: { ...input, operationId: operation.current.id } } });
       await client.refetchQueries({ include: 'active' });
       operation.current = null;
-      setForm({ description: '', amount: '', purchasedOn: today(), first: '1', total: '1', categoryId: '' });
+      setForm({ description: '', amount: '', purchasedOn: formatISOToRegionalDate(today()), first: '1', total: '1', categoryId: '' });
+      setInstallments(false);
       onSuccess();
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Não foi possível registrar a compra. Tente novamente.'); }
     finally { inFlight.current = false; setBusy(false); onBusyChange(false); }
   }
 
-  const field = (name: 'description' | 'amount' | 'purchasedOn' | 'first' | 'total', label: string) => <View style={{ gap: 6 }}>
-    <Text style={{ color: theme.textSecondary }}>{label}</Text>
-    <ValidatedInput accessibilityLabel={label} value={form[name]} editable={!busy} moneyDigits={name === 'amount' ? 10 : undefined} integerOnly={name === 'first' || name === 'total'} maxLength={name === 'description' ? 120 : name === 'purchasedOn' ? 10 : undefined} onChangeText={value => setForm(previous => ({ ...previous, [name]: value }))} style={{ backgroundColor: theme.bgElevated, color: theme.textPrimary, borderColor: theme.borderElevated, borderWidth: 1, borderRadius: 8, minHeight: 48, padding: 12 }} />
+  const field = (name: 'description' | 'amount', label: string) => <View style={styles.field}>
+    <Text style={[styles.label, { color: theme.textSecondary }]}>{name === 'amount' ? 'Valor total' : label}</Text>
+    <ValidatedInput accessibilityLabel={label} value={form[name]} editable={!busy} moneyDigits={name === 'amount' ? 10 : undefined} maxLength={name === 'description' ? 120 : undefined} onChangeText={value => setForm(previous => ({ ...previous, [name]: value }))} style={[styles.input, { backgroundColor: theme.bgElevated, color: theme.textPrimary, borderColor: theme.borderElevated }]} />
   </View>;
   return <View style={{ gap: 16 }}>
-    <Text style={{ color: theme.textSecondary }}>Cartão</Text>
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{activeCards.map(card => <ChoiceButton key={card.id} title={`${card.name} • ${card.brand}`} selected={cardId === card.id} disabled={busy} onPress={() => onSelectCard(card.id)} />)}</View>
+    <Select label="Cartão" value={cardId} onChange={onSelectCard} disabled={busy} options={activeCards.map(card => ({ value: card.id, label: `${card.name} • ${card.brand}` }))} placeholder={activeCards.length ? 'Selecione um cartão' : 'Nenhum cartão disponível'} />
     {!activeCards.length && <><Text style={{ color: theme.textSecondary }}>Cadastre um cartão ativo para registrar a despesa.</Text>{onRegisterCard && <Button title="Cadastrar cartão" variant="secondary" onPress={onRegisterCard} />}</>}
     {field('description', 'Descrição da compra')}
-    {field('amount', 'Valor total da compra')}
-    {field('purchasedOn', 'Data da compra (YYYY-MM-DD)')}
-    {field('first', 'Parcela inicial')}
-    {field('total', 'Total de parcelas')}
-    <Text style={{ color: theme.textSecondary }}>Categoria</Text>
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{eligibleCategories.map(category => <ChoiceButton key={category.id} title={category.name} selected={form.categoryId === category.id} disabled={busy} onPress={() => setForm(previous => ({ ...previous, categoryId: category.id }))} />)}</View>
+    <View style={styles.amountDateRow}>
+      <View style={styles.amountField}>{field('amount', 'Valor total da compra')}</View>
+      <View style={styles.dateField}>
+        <DatePickerInput label="Data da compra" disabled={busy} value={form.purchasedOn} onChangeText={purchasedOn => setForm(previous => ({ ...previous, purchasedOn }))} />
+      </View>
+    </View>
+    <Select label="Categoria" value={form.categoryId} disabled={busy} onChange={categoryId => setForm(previous => ({ ...previous, categoryId }))} options={eligibleCategories.map(category => ({ value: category.id, label: category.name }))} placeholder={eligibleCategories.length ? 'Selecione uma categoria' : 'Nenhuma categoria disponível'} />
     {!eligibleCategories.length && <><Text style={{ color: theme.textSecondary }}>Cadastre uma categoria de despesa para continuar.</Text>{onCreateCategory && <Button title="Criar categoria" variant="secondary" onPress={onCreateCategory} />}</>}
+    <Select label="Parcelamento" value={installments ? 'INSTALLMENTS' : 'ONCE'} disabled={busy} onChange={mode => setInstallments(mode === 'INSTALLMENTS')} options={[
+      { value: 'ONCE', label: 'Não recorrente' },
+      { value: 'INSTALLMENTS', label: 'Parcelar' }
+    ]} />
+    {installments && <>
+      <NumberStepper label="Parcela inicial" value={form.first} disabled={busy} onChange={first => setForm(previous => ({ ...previous, first }))} />
+      <NumberStepper label="Total de parcelas" value={form.total} disabled={busy} onChange={total => setForm(previous => ({ ...previous, total }))} />
+      <Text style={{ color: theme.textSecondary }}>Valor informado será dividido pelo total de parcelas mensais.</Text>
+    </>}
     {!valid && <Text style={{ color: theme.textSecondary }}>Selecione cartão e categoria; preencha descrição, valor positivo, data válida e parcelas entre 1 e 1200.</Text>}
     {!!message && <Text accessibilityRole="alert" style={{ color: theme.expense }}>{message}</Text>}
     <Button title="Salvar" loading={busy} disabled={!valid} onPress={() => void save()} style={{ minHeight: 48 }} />
   </View>;
 }
+
+const styles = StyleSheet.create({
+  field: { gap: 6 },
+  label: { fontSize: 13, fontWeight: '600' },
+  input: { borderWidth: 1, borderRadius: 8, minHeight: 44, paddingHorizontal: 12, fontSize: 14 },
+  amountDateRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: 12 },
+  amountField: { width: 96, maxWidth: '100%' },
+  dateField: { flex: 1, minWidth: 160 }
+});
 
 export function CardPurchaseModal({ onClose, onRegisterCard, onCreateCategory }: { onClose(): void; onRegisterCard(): void; onCreateCategory(): void }) {
   const { theme } = useTheme();

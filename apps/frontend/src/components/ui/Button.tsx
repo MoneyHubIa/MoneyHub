@@ -152,6 +152,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   text: {
+    minWidth: 0,
+    flexShrink: 1,
     fontWeight: '600'
   }
 });

@@ -22,13 +22,15 @@ async function createCategory(page: Page) {
 }
 
 async function createTransaction(page: Page, type: 'Receita' | 'Despesa', description: string, amount: string) {
-  await page.getByRole('button', { name: 'Transações' }).click();
-  await page.getByRole('button', { name: 'Nova Transação', exact: true }).click();
-  await page.getByRole('button', { name: type, exact: true }).click();
-  await page.getByLabel('Descrição da transação').fill(description);
-  await page.getByLabel('Valor da transação').fill(amount);
-  await page.getByRole('button', { name: 'Geral E2E' }).click();
-  await page.getByRole('button', { name: 'Adicionar transação' }).click();
+  const kind = type === 'Receita' ? 'receber' : 'pagar';
+  await page.getByRole('button', { name: type === 'Receita' ? 'Contas a Receber' : 'Contas a Pagar', exact: true }).click();
+  await page.getByRole('button', { name: type === 'Receita' ? 'Nova Conta a Receber' : 'Nova Conta a Pagar', exact: true }).click();
+  await page.getByLabel(`Descri\u00e7\u00e3o da conta a ${kind}`).fill(description);
+  await page.getByLabel(`Valor da conta a ${kind}`).fill(amount);
+  await page.getByRole('button', { name: 'Categoria', exact: true }).click();
+  await page.getByRole('button', { name: 'Geral E2E', exact: true }).click();
+  await page.getByRole('button', { name: type === 'Receita' ? 'Registrar recebimento' : 'Registrar pagamento', exact: true }).click();
+  await page.getByRole('button', { name: 'Extrato', exact: true }).click();
   await expect(page.getByText(description)).toBeVisible();
 }
 
@@ -51,16 +53,18 @@ test('@financial persists income, expense, balance, and payable', async ({ page 
       page.getByLabel('Resumo financeiro').getByText('R$ 750,00', { exact: true })
     ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Contas a pagar/receber', exact: true }).click();
+    await page.getByRole('button', { name: 'Contas a Pagar', exact: true }).click();
     await page.getByRole('button', { name: 'Nova Conta a Pagar', exact: true }).click();
     await page.getByLabel('Descrição da conta a pagar').fill('Conta E2E');
     await page.getByLabel('Valor da conta a pagar').fill('100');
+    await page.getByRole('switch', { name: 'Já efetivada', exact: true }).click();
+    await page.getByRole('button', { name: 'Categoria', exact: true }).click();
     await page.getByRole('button', { name: 'Geral E2E' }).click();
     await page.getByRole('button', { name: 'Agendar Conta a Pagar' }).click();
     await expect(page.getByText('Conta E2E')).toBeVisible();
     await expect(page.getByText('Pendente', { exact: true })).toBeVisible();
     await page.reload();
-    await page.getByRole('button', { name: 'Contas a pagar/receber', exact: true }).click();
+    await page.getByRole('button', { name: 'Contas a Pagar', exact: true }).click();
     await expect(page.getByText('Conta E2E')).toBeVisible();
   } finally {
     await deleteEmulatorUser(uid);

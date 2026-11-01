@@ -17,21 +17,8 @@ import { formatISOToRegionalDate, parseRegionalDateToISO, SupportedCurrency } fr
 import { DatePickerInput } from './DatePickerInput';
 import { ThemedModal } from './ui/ThemedModal';
 
-export const CREATE_INCOME = gql`
-  mutation CreateIncome($input: CreateIncomeInput!) {
-    createIncome(input: $input) {
-      id
-    }
-  }
-`;
-
-export const CREATE_EXPENSE = gql`
-  mutation CreateExpense($input: CreateExpenseInput!) {
-    createExpense(input: $input) {
-      id
-    }
-  }
-`;
+import { CREATE_INCOME, CREATE_EXPENSE } from '../services/financial-mutations';
+export { CREATE_INCOME, CREATE_EXPENSE } from '../services/financial-mutations';
 
 export const TRANSACTION_MODAL_CONTEXT_QUERY = gql`
   query TransactionModalContext {
@@ -405,7 +392,7 @@ export function TransactionModal({
             </Text>
           </Pressable>
 
-          {!formValid && <Text>Preencha descrição, valor positivo, categoria e data válida.</Text>}
+          {!formValid && <Text style={[styles.helperText, { color: theme.textSecondary }]}>Preencha descrição, valor positivo, categoria e data válida.</Text>}
           <Pressable
             accessibilityLabel="Adicionar transação"
             accessibilityRole="button"
@@ -436,6 +423,7 @@ export function TransactionModal({
 
 const styles = StyleSheet.create({
   actionsRow: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: 12,
     marginTop: 8
@@ -496,6 +484,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600'
   },
+  helperText: {
+    fontSize: 13
+  },
   submitButton: {
     alignItems: 'center',
     borderRadius: 8,
@@ -507,6 +498,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16
   },
   submitButtonText: {
+    minWidth: 0,
+    flexShrink: 1,
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700'
@@ -522,10 +515,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10
   },
   typeOptionText: {
+    minWidth: 0,
+    flexShrink: 1,
     fontSize: 14,
     fontWeight: '700'
   },
   typeSelector: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: 10
   }

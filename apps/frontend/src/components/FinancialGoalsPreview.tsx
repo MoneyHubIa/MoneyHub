@@ -261,6 +261,7 @@ const styles = StyleSheet.create({
     marginTop: 2
   },
   figuresRow: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 4
@@ -305,6 +306,7 @@ const styles = StyleSheet.create({
     gap: 6
   },
   headerTop: {
+    flexWrap: 'wrap',
     alignItems: 'center',
     flexDirection: 'row',
     gap: 10
@@ -359,6 +361,8 @@ const styles = StyleSheet.create({
     maxWidth: 720
   },
   title: {
+    minWidth: 0,
+    flexShrink: 1,
     fontSize: 26,
     fontWeight: '700'
   }

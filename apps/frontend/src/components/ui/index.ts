@@ -4,6 +4,8 @@ export * from './ChoiceButton';
 export * from './ToggleButton';
 export * from './Card';
 export * from './Input';
+export * from './Select';
+export * from './NumberStepper';
 export * from './KpiCard';
 export * from './ProgressBar';
 export * from './ThemedModal';

@@ -456,6 +456,7 @@ export function AiAssistant({
 
   return (
     <View
+      testID="ai-assistant-card"
       style={
         isFullscreen
           ? [styles.fullscreenContainer, { backgroundColor: theme.bgSurface, borderColor: theme.border }]
@@ -463,6 +464,7 @@ export function AiAssistant({
       }
     >
       <KeyboardAvoidingView
+        testID="ai-chat-window"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={[
           styles.chatWindow,
@@ -494,7 +496,7 @@ export function AiAssistant({
               <Bot color={theme.brandAI} size={20} />
               <View style={[styles.headerDot, { backgroundColor: theme.income }]} />
             </View>
-            <View>
+            <View style={styles.headerCopy}>
               <View style={styles.headerTitleRow}>
                 <Text
                   accessibilityRole="header"
@@ -593,6 +595,7 @@ export function AiAssistant({
           ]}
         >
           <FlatList
+            style={styles.quickPromptsList}
             data={QUICK_PROMPTS}
             horizontal
             keyExtractor={(item) => item.id}
@@ -625,8 +628,9 @@ export function AiAssistant({
         </View>
 
         {/* Messages Feed */}
-        <View style={styles.messagesContainer}>
+        <View testID="ai-messages" style={styles.messagesContainer}>
           <FlatList
+            style={styles.messageList}
             contentContainerStyle={styles.messageListContent}
             data={messages}
             keyExtractor={(item) => item.id}
@@ -739,6 +743,7 @@ export function AiAssistant({
 
         {/* Input Bar */}
         <View
+          testID="ai-input-bar"
           style={[
             styles.inputBar,
             {
@@ -832,7 +837,10 @@ const styles = StyleSheet.create({
   chatWindowFullscreen: {
     borderRadius: 12,
     elevation: 0,
-    height: '100%',
+    flex: 1,
+    height: 'auto',
+    minHeight: 0,
+    maxHeight: '100%',
     boxShadow: 'none',
     width: '100%'
   },
@@ -903,8 +911,9 @@ const styles = StyleSheet.create({
   fullscreenContainer: {
     borderRadius: 12,
     borderWidth: 1,
-    flex: 1,
-    minHeight: 600,
+    flexGrow: 0,
+    flexShrink: 0,
+    height: 600,
     width: '100%'
   },
   headerAvatar: {
@@ -917,6 +926,7 @@ const styles = StyleSheet.create({
     width: 36
   },
   headerControls: {
+    flexShrink: 0,
     alignItems: 'center',
     flexDirection: 'row',
     gap: 6
@@ -932,6 +942,8 @@ const styles = StyleSheet.create({
     width: 8
   },
   headerLeft: {
+    flex: 1,
+    minWidth: 0,
     alignItems: 'center',
     flexDirection: 'row',
     gap: 10
@@ -940,6 +952,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 1
   },
+  headerCopy: {
+    flex: 1,
+    minWidth: 0
+  },
   headerTitle: {
     fontSize: 15,
     fontWeight: '700'
@@ -947,6 +963,7 @@ const styles = StyleSheet.create({
   headerTitleRow: {
     alignItems: 'center',
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 6
   },
   headingBlock: {
@@ -968,6 +985,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4
   },
   inputBar: {
+    flexShrink: 0,
     alignItems: 'flex-end',
     borderTopWidth: 1,
     flexDirection: 'row',
@@ -1028,7 +1046,12 @@ const styles = StyleSheet.create({
     marginVertical: 2
   },
   messagesContainer: {
-    flex: 1
+    flex: 1,
+    minHeight: 0
+  },
+  messageList: {
+    flex: 1,
+    minHeight: 0
   },
   modelBadge: {
     alignItems: 'center',
@@ -1064,6 +1087,7 @@ const styles = StyleSheet.create({
     lineHeight: 19
   },
   periodBar: {
+    flexShrink: 0,
     alignItems: 'center',
     borderBottomWidth: 1,
     flexDirection: 'row',
@@ -1107,9 +1131,14 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   quickPromptsBar: {
+    flexShrink: 0,
     borderBottomWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 8
+  },
+  quickPromptsList: {
+    flexGrow: 0,
+    flexShrink: 0
   },
   retryButton: {
     alignSelf: 'flex-start',
@@ -1133,6 +1162,7 @@ const styles = StyleSheet.create({
     opacity: 0.5
   },
   textInput: {
+    minWidth: 0,
     borderRadius: 8,
     borderWidth: 1,
     flex: 1,
@@ -1164,6 +1194,7 @@ const styles = StyleSheet.create({
     width: '100%'
   },
   windowHeader: {
+    flexShrink: 0,
     alignItems: 'center',
     borderBottomWidth: 1,
     flexDirection: 'row',

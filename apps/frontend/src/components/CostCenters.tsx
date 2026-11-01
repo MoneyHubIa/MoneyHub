@@ -133,7 +133,7 @@ export function CostCenters() {
           />
         </View>
 
-        {!validText(name, 60) && <Text>Informe nome com até 60 caracteres.</Text>}
+        {!validText(name, 60) && <Text style={styles.helperText}>Informe nome com até 60 caracteres.</Text>}
         <Pressable
           accessibilityRole="button"
           disabled={creating || !validText(name, 60) || description.length > 255}
@@ -191,7 +191,7 @@ const getThemedStyles = (theme: ColorTokens) =>
     container: { gap: 20 },
     header: { gap: 8 },
     eyebrow: { color: theme.income, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
-    title: { color: theme.textPrimary, fontSize: 26, fontWeight: '700' },
+    title: { minWidth: 0, flexShrink: 1, color: theme.textPrimary, fontSize: 26, fontWeight: '700' },
     subtitle: { color: theme.textSecondary, fontSize: 15, lineHeight: 22 },
     card: {
       backgroundColor: theme.bgSurface,
@@ -211,6 +211,7 @@ const getThemedStyles = (theme: ColorTokens) =>
     },
     formGroup: { gap: 6 },
     label: { color: theme.textSecondary, fontSize: 14, fontWeight: '600' },
+    helperText: { color: theme.textSecondary, fontSize: 13 },
     input: {
       backgroundColor: theme.bgElevated,
       borderColor: theme.borderElevated,

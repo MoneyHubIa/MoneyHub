@@ -114,9 +114,11 @@ describe('AccountsPayable component', () => {
   test('passes selected reminder to installment creation', async () => {
     await render(<AccountsPayable />, { wrapper: Wrapper });
     await fireEvent.press(screen.getByRole('button', { name: 'Nova Conta a Pagar' }));
+    await fireEvent.press(screen.getByRole('switch', { name: 'Já efetivada' }));
     await fireEvent.changeText(screen.getByLabelText('Descrição da conta a pagar'), 'Parcelas');
     await fireEvent.changeText(screen.getByLabelText('Valor da conta a pagar'), '300');
-    await fireEvent.press(screen.getByRole('button', { name: /^Parcelar$/ }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Parcelamento' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Parcelar ou Repetir' }));
     await fireEvent.changeText(screen.getByLabelText('Total de parcelas'), '3');
     await fireEvent.press(screen.getByRole('button', { name: '3 dias antes' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Agendar Conta a Pagar' }));
@@ -141,6 +143,7 @@ describe('AccountsPayable component', () => {
     await render(<AccountsPayable />, { wrapper: Wrapper });
 
     await fireEvent.press(screen.getByRole('button', { name: 'Nova Conta a Pagar' }));
+    await fireEvent.press(screen.getByRole('switch', { name: 'Já efetivada' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Agendar Conta a Pagar' }));
 
     expect(screen.getByRole('button', { name: 'Agendar Conta a Pagar' })).toBeDisabled();
@@ -150,14 +153,14 @@ describe('AccountsPayable component', () => {
     await render(<AccountsPayable />, { wrapper: Wrapper });
 
     await fireEvent.press(screen.getByRole('button', { name: 'Nova Conta a Pagar' }));
+    await fireEvent.press(screen.getByRole('switch', { name: 'Já efetivada' }));
     await fireEvent.changeText(
       screen.getByLabelText('Descrição da conta a pagar'),
       'Conta de Energia'
     );
     await fireEvent.changeText(screen.getByLabelText('Valor da conta a pagar'), '350');
-    const categoryTags = screen.getAllByText('Moradia');
-    expect(categoryTags[0]).toBeDefined();
-    await fireEvent.press(categoryTags[0]!);
+    await fireEvent.press(screen.getByRole('button', { name: 'Categoria' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Moradia' }));
     await fireEvent.press(screen.getByRole('button', { name: label }));
 
     await fireEvent.press(screen.getByRole('button', { name: 'Agendar Conta a Pagar' }));

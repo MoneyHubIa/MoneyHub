@@ -38,13 +38,20 @@ export interface NavigationItem {
 
 export const primaryModules: NavigationItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, isPrimary: true },
-  { id: 'transacoes', label: 'Transações', icon: WalletCards, isPrimary: true },
+  { id: 'transacoes', label: 'Extrato', icon: WalletCards, isPrimary: true },
   {
     id: 'a_pagar',
-    label: 'Contas a pagar/receber',
+    label: 'Contas a Pagar',
     icon: CalendarClock,
     isPrimary: true,
     badgeCountKey: 'payables'
+  },
+  {
+    id: 'a_receber',
+    label: 'Contas a Receber',
+    icon: CalendarClock,
+    isPrimary: true,
+    badgeCountKey: 'receivables'
   },
   { id: 'financeiro', label: 'Categorias', icon: Tag, isPrimary: true },
   { id: 'metas', label: 'Metas', icon: Target, isPrimary: true },

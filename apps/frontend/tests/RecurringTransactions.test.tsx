@@ -231,8 +231,10 @@ describe('RecurringTransactions component', () => {
     expect(screen.getByText('Sem categoria')).toBeOnTheScreen();
     expect(screen.getAllByText('Semanal').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Anual').length).toBeGreaterThan(0);
-    await fireEvent.press(screen.getByText('Operações'));
-    await fireEvent.press(screen.getByText('Nenhum'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Centro de Custo (Opcional)' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Operações' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Centro de Custo (Opcional)' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Nenhum' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Tipo Receita' }));
     expect(screen.getByRole('button', { name: 'Geral' })).toBeOnTheScreen();
   });

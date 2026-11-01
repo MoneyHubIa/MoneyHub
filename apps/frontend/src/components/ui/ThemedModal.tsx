@@ -152,6 +152,8 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   titleGroup: {
+    minWidth: 0,
+    flexShrink: 1,
     flex: 1,
     marginRight: 12
   }

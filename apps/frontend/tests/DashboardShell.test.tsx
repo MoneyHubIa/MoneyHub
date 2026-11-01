@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import type { PropsWithChildren } from 'react';
 import { Dimensions, StyleSheet } from 'react-native';
 import { print } from 'graphql';
@@ -95,6 +95,18 @@ jest.mock('@apollo/client/react', () => ({
 }));
 
 describe('MoneyHub dashboard shell', () => {
+  test.each(['desktop', 'mobile'])('opens Transferência from quick actions without changing the dashboard (%s)', async source => {
+    if (source === 'mobile') jest.mocked(Dimensions.get).mockReturnValue({ width: 390, height: 844, scale: 1, fontScale: 1 });
+    await render(<DashboardShell />, { wrapper: Wrapper });
+    await fireEvent.press(screen.getByRole('button', { name: 'Novo lançamento rápido' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Criar Transferência' }));
+    expect(screen.getByRole('header', { name: 'Transferência' })).toBeOnTheScreen();
+    expect(screen.queryByRole('header', { name: 'Novo Lançamento Rápido' })).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(screen.queryByRole('header', { name: 'Transferência' })).toBeNull();
+    expect(screen.getByText('Dashboard financeiro')).toBeOnTheScreen();
+  });
+
   test.each(['sidebar', 'menu', 'mobile'])('opens Despesa Cartão from %s without changing the dashboard', async source => {
     if (source === 'mobile') jest.mocked(Dimensions.get).mockReturnValue({ width: 390, height: 844, scale: 1, fontScale: 1 });
     await render(<DashboardShell />, { wrapper: Wrapper });
@@ -354,17 +366,32 @@ describe('MoneyHub dashboard shell', () => {
     expect(mockMarkPayablePaid).toHaveBeenCalledTimes(2);
   });
 
-  test('opens a transaction from mobile quick actions and closes its form', async () => {
-    jest.spyOn(Dimensions, 'get').mockReturnValue({ width: 390, height: 844, scale: 1, fontScale: 1 });
+  test('opens only payable, receivable and card creation from mobile quick actions', async () => {
+    jest.mocked(Dimensions.get).mockReturnValue({ width: 390, height: 844, scale: 1, fontScale: 1 });
     await render(<DashboardShell />, { wrapper: Wrapper });
+    await fireEvent.press(screen.getByRole('button', { name: 'Novo lan\u00e7amento r\u00e1pido' }));
+    const options = within(screen.getByTestId('quick-action-options'));
+    expect(options.getAllByRole('button')).toHaveLength(4);
+    expect(options.queryByRole('button', { name: 'Criar Transa\u00e7\u00e3o' })).toBeNull();
+  });
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Novo lançamento rápido' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Criar Nova Transação' }));
-
-    expect(screen.getByText('Nova Despesa')).toBeOnTheScreen();
-    expect(screen.queryByText('Novo Lançamento Rápido')).toBeNull();
-    await fireEvent.press(screen.getByRole('button', { name: 'Cancelar' }));
-    expect(screen.queryByText('Nova Despesa')).toBeNull();
+  test.each([1280, 390])('opens quick account modals without navigating at width %s', async width => {
+    jest.mocked(Dimensions.get).mockReturnValue({ width, height: 844, scale: 1, fontScale: 1 });
+    await render(<DashboardShell />, { wrapper: Wrapper });
+    for (const [action, title] of [
+      ['Criar Conta a Pagar', 'Nova Conta a Pagar'],
+      ['Criar Conta a Receber', 'Nova Conta a Receber'],
+    ] as const) {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        await fireEvent.press(screen.getByRole('button', { name: 'Novo lan\u00e7amento r\u00e1pido' }));
+        await fireEvent.press(within(screen.getByTestId('quick-action-options')).getByRole('button', { name: action }));
+        expect(screen.getByRole('header', { name: title })).toBeOnTheScreen();
+        expect(screen.queryByRole('header', { name: 'Novo Lan\u00e7amento R\u00e1pido' })).toBeNull();
+        await fireEvent.press(screen.getByRole('button', { name: 'Cancelar' }));
+        expect(screen.queryByRole('header', { name: title })).toBeNull();
+        expect(screen.getByText('Dashboard financeiro')).toBeOnTheScreen();
+      }
+    }
   });
 
   test.each([
@@ -383,20 +410,21 @@ describe('MoneyHub dashboard shell', () => {
   });
 
   test.each([
-    ['Criar A Pagar', 'Contas a Pagar'],
-    ['Criar A Receber', 'Contas a Receber'],
-    ['Criar Categoria', 'Categorias Financeiras'],
     ['Criar Meta', 'Metas financeiras']
   ])('opens the target screen from desktop quick action %s', async (action, title) => {
     await render(<DashboardShell />, { wrapper: Wrapper });
     await fireEvent.press(screen.getByRole('button', { name: action }));
 
-    expect(screen.getByRole('header', { name: title })).toBeOnTheScreen();
+    screen.getAllByRole('header', { name: title }).forEach((header) => {
+      expect(header).toBeOnTheScreen();
+    });
     expect(screen.queryByText('Dashboard financeiro')).toBeNull();
   });
 
   test.each([
-    ['Transações', 'Transações'],
+    ['Extrato', 'Extrato'],
+    ['Contas a Pagar', 'Contas a Pagar'],
+    ['Contas a Receber', 'Contas a Receber'],
     ['Recorrências', 'Transações Recorrentes'],
     ['Centros de Custo', 'Centros de Custo'],
     ['Ajustes', 'Ajustes de perfil'],

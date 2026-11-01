@@ -10,7 +10,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Plus,
   Search,
   Tag,
   Trash2,
@@ -30,7 +29,6 @@ import {
 import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../theme/useResponsive';
 import { formatCurrency, formatDate, SupportedCurrency } from '../utils/formatters';
-import { TransactionModal } from './TransactionModal';
 import { Badge } from './ui/Badge';
 import { Card } from './ui/Card';
 
@@ -104,11 +102,10 @@ export type TransactionsQueryData = {
 type FilterType = 'ALL' | 'INCOME' | 'EXPENSE';
 
 export interface TransactionsProps {
-  initialModalOpen?: boolean | undefined;
   pageSize?: number | undefined;
 }
 
-export function Transactions({ initialModalOpen = false, pageSize: customPageSize }: TransactionsProps): React.JSX.Element {
+export function Transactions({ pageSize: customPageSize }: TransactionsProps): React.JSX.Element {
   const { theme } = useTheme();
   const { isDesktop, height } = useResponsive();
   const [filterType, setFilterType] = useState<FilterType>('ALL');
@@ -116,7 +113,6 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [page, setPage] = useState(1);
-  const [isModalOpen, setIsModalOpen] = useState(initialModalOpen);
 
   const PAGE_SIZE =
     customPageSize ??
@@ -128,7 +124,9 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
       ? 4
       : 6);
 
-  const { data, loading, refetch } = useQuery<TransactionsQueryData>(MY_TRANSACTIONS_QUERY);
+  const { data, loading, refetch } = useQuery<TransactionsQueryData>(MY_TRANSACTIONS_QUERY, {
+    fetchPolicy: 'cache-and-network'
+  });
 
   const [deleteIncome] = useMutation(DELETE_INCOME, {
     refetchQueries: ['FinancialAccounts', 'DashboardSummary', 'MyTransactions'],
@@ -238,7 +236,7 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
                 !isDesktop && styles.titleMobile
               ]}
             >
-              Transações
+              Extrato
             </Text>
             {isDesktop && (
               <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
@@ -247,18 +245,7 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
             )}
           </View>
 
-          <Pressable
-            accessibilityLabel="Nova Transação"
-            accessibilityRole="button"
-            onPress={() => setIsModalOpen(true)}
-            style={({ pressed }) => [
-              styles.newTxButton,
-              { backgroundColor: theme.income, opacity: pressed ? 0.85 : 1 }
-            ]}
-          >
-            <Plus color="#FFFFFF" size={18} strokeWidth={2.5} />
-            <Text style={styles.newTxButtonText}>Nova Transação</Text>
-          </Pressable>
+
         </View>
 
         {/* 3 Metric Mini Cards */}
@@ -566,7 +553,7 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
           {filteredTransactions.length === 0 ? (
             <Card style={styles.emptyCard} variant="surface">
               <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                Nenhuma transação encontrada.
+                Nenhum lançamento encontrado.
               </Text>
             </Card>
           ) : (
@@ -642,7 +629,7 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
                           </Text>
 
                           <Pressable
-                            accessibilityLabel={`Excluir transação ${t.description}`}
+                            accessibilityLabel={`Excluir lançamento ${t.description}`}
                             accessibilityRole="button"
                             onPress={() => void handleDelete(t.id, t.__typename)}
                             style={({ pressed }) => [
@@ -728,7 +715,7 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
                           </View>
 
                           <Pressable
-                            accessibilityLabel={`Excluir transação ${t.description}`}
+                            accessibilityLabel={`Excluir lançamento ${t.description}`}
                             accessibilityRole="button"
                             onPress={() => void handleDelete(t.id, t.__typename)}
                             style={({ pressed }) => [
@@ -782,7 +769,7 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
                       </Text>
                       {isDesktop ? (
                         <Text style={[styles.pageCounter, { color: theme.textMuted }]}>
-                          {`Mostrando ${startIndex + 1} - ${endIndex} de ${filteredTransactions.length} transações`}
+                          {`Mostrando ${startIndex + 1} - ${endIndex} de ${filteredTransactions.length} lançamentos`}
                         </Text>
                       ) : (
                         <Text style={[styles.pageCounter, { color: theme.textMuted }]}>
@@ -817,20 +804,14 @@ export function Transactions({ initialModalOpen = false, pageSize: customPageSiz
         </View>
       )}
 
-      {/* Floating Transaction Creation Modal */}
-      <TransactionModal
-        categories={data?.myCategories}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={() => void refetch()}
-        preferredCurrency={currency}
-        visible={isModalOpen}
-      />
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   catPill: {
+    maxWidth: '100%',
     alignItems: 'center',
     borderRadius: 6,
     borderWidth: 1,
@@ -881,6 +862,7 @@ const styles = StyleSheet.create({
     fontSize: 13
   },
   filterChips: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: 8
   },
@@ -898,6 +880,8 @@ const styles = StyleSheet.create({
     gap: 6
   },
   headerTextWrap: {
+    minWidth: 0,
+    flexShrink: 1,
     flex: 1,
     gap: 4
   },
@@ -1004,6 +988,7 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   tCat: {
+    flexShrink: 1,
     fontSize: 11,
     fontWeight: '700'
   },
@@ -1061,12 +1046,17 @@ const styles = StyleSheet.create({
     width: '100%'
   },
   mobileTopRow: {
+    flexWrap: 'wrap',
+    gap: 8,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%'
   },
   mobileTitleGroup: {
+    flexBasis: 160,
+    minWidth: 0,
+    flexShrink: 1,
     alignItems: 'center',
     flex: 1,
     flexDirection: 'row',
@@ -1090,6 +1080,8 @@ const styles = StyleSheet.create({
     width: '100%'
   },
   mobileBadgesRow: {
+    flex: 1,
+    minWidth: 0,
     alignItems: 'center',
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1118,6 +1110,7 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   categoryFilterRow: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: 8,
     paddingTop: 10
@@ -1163,6 +1156,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8
   },
   paginationRow: {
+    flexWrap: 'wrap',
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -1,10 +1,10 @@
-import { Button, ChoiceButton, ToggleButton } from './ui';
+import { Button, ChoiceButton, NumberStepper, Select, ToggleButton } from './ui';
 import { decimal, integer, isoDate } from '../utils/validation';
 import { ValidatedInput as TextInput } from './ui/ValidatedInput';
 import React, { useState } from 'react';
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 
 type Override = { number: number; amount?: string; dueDate?: string; effectiveDate?: string | null };
@@ -20,23 +20,43 @@ export function scheduleInput(value: CommitmentScheduleValue) {
   return { mode: value.mode, first: repeated ? Number(value.first) : 1, total: repeated ? Number(value.total) : value.mode === 'FIXED' ? 12 : 1, frequency: repeated ? value.frequency : 'MONTHLY', interval: repeated && value.frequency === 'CUSTOM' ? Number(value.interval) : 1, unit: repeated && value.frequency === 'CUSTOM' ? value.unit : 'MONTHS' };
 }
 
-export function CommitmentSchedule({ value, onChange, amount, dueDate }: { value: CommitmentScheduleValue; onChange: (v: CommitmentScheduleValue) => void; amount: string; dueDate: string }) {
+export function CommitmentSchedule({ value, onChange, amount, dueDate, singleEntry = false }: { singleEntry?: boolean; value: CommitmentScheduleValue; onChange: (v: CommitmentScheduleValue) => void; amount: string; dueDate: string }) {
   const { theme } = useTheme();
   const [preview, setPreview] = useState(false);
   const field = (key: keyof CommitmentScheduleValue, label: string) => <View><Text style={{ color: theme.textSecondary }}>{label}</Text><TextInput integerOnly={['first', 'total', 'interval'].includes(key)} maxLength={key === 'effectiveDate' ? 10 : undefined} accessibilityLabel={label} value={String(value[key])} onChangeText={text => onChange({ ...value, [key]: text })} style={{ minHeight: 44, color: theme.textPrimary, borderWidth: 1, borderColor: theme.borderElevated, padding: 12, borderRadius: 8 }} /></View>;
-  const choices = (key: 'mode' | 'frequency' | 'unit', options: string[][]) => <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{options.map(([id, label]) => <ChoiceButton key={id} title={label!} selected={value[key] === id} onPress={() => onChange({ ...value, [key]: id! })} />)}</View>;
+  const choices = (key: 'unit', options: string[][]) => <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{options.map(([id, label]) => <ChoiceButton key={id} title={label!} selected={value[key] === id} onPress={() => onChange({ ...value, [key]: id! })} />)}</View>;
   return <View style={{ gap: 12 }}>
-    <Text style={{ color: theme.textSecondary }}>Parcelamento</Text>
-    {choices('mode', [['ONCE', 'Não recorrente'], ['INSTALLMENTS', 'Parcelar'], ['REPEAT', 'Repetir'], ['FIXED', 'Fixa mensal']])}
-    {['INSTALLMENTS', 'REPEAT'].includes(value.mode) && <>{field('first', 'Parcela inicial')}{field('total', 'Total de parcelas')}{choices('frequency', [['DAILY', 'Diário'], ['WEEKLY', 'Semanal'], ['MONTHLY', 'Mensal'], ['QUARTERLY', 'Trimestral'], ['YEARLY', 'Anual'], ['CUSTOM', 'Personalizar']])}</>}
+    <Select label="Parcelamento" value={value.mode} onChange={mode => onChange({ ...value, mode })} options={[
+      { value: 'ONCE', label: 'Não recorrente' },
+      { value: 'INSTALLMENTS', label: 'Parcelar ou Repetir' },
+      { value: 'FIXED', label: 'Fixa mensal' }
+    ]} />
+    {['INSTALLMENTS', 'REPEAT'].includes(value.mode) && <>
+      <NumberStepper label="Parcela inicial" value={value.first} onChange={first => onChange({ ...value, first })} />
+      <NumberStepper label="Total de parcelas" value={value.total} onChange={total => onChange({ ...value, total })} />
+      <View style={styles.compactField}>
+        <Select compact label="Frequência" value={value.frequency} onChange={frequency => onChange({ ...value, frequency })} options={[
+          { value: 'DAILY', label: 'Diário' },
+          { value: 'WEEKLY', label: 'Semanal' },
+          { value: 'MONTHLY', label: 'Mensal' },
+          { value: 'QUARTERLY', label: 'Trimestral' },
+          { value: 'YEARLY', label: 'Anual' },
+          { value: 'CUSTOM', label: 'Personalizar' }
+        ]} />
+      </View>
+    </>}
     {value.mode !== 'ONCE' && <Text style={{ color: theme.textSecondary }}>{value.mode === 'INSTALLMENTS' ? 'Valor informado será dividido pelo total de parcelas.' : 'Valor informado será repetido em cada vencimento.'}</Text>}
     {['INSTALLMENTS', 'REPEAT'].includes(value.mode) && value.frequency === 'CUSTOM' && <>{field('interval', 'Intervalo')}{choices('unit', [['DAYS', 'Dias'], ['WEEKS', 'Semanas'], ['MONTHS', 'Meses']])}</>}
-    <ToggleButton accessibilityLabel="Já efetivada" label={`Já efetivada${value.mode !== 'ONCE' ? value.mode === 'FIXED' ? ' (primeira ocorrência)' : ' (ocorrências geradas)' : ''}`} value={value.effective} onChange={effective => onChange({ ...value, effective })} />
-    {value.effective && field('effectiveDate', 'Data de efetivação (YYYY-MM-DD)')}
-    <Button title="Conferir parcelas e vencimentos" variant="secondary" disabled={!decimal(amount) || !isoDate(dueDate) || !validSchedule(value)} onPress={() => setPreview(p => !p)} style={{ minHeight: 48 }} />
-    {preview && !!decimal(amount) && isoDate(dueDate) && validSchedule(value) && <SchedulePreview value={value} onChange={onChange} amount={amount} dueDate={dueDate} />}
+    <ToggleButton compact singleLineLabel accessibilityLabel="Já efetivada" label={`Já efetivada${value.mode !== 'ONCE' ? value.mode === 'FIXED' ? ' (primeira ocorrência)' : ' (ocorrências geradas)' : ''}`} value={value.effective} onChange={effective => onChange({ ...value, effective })} />
+    {value.effective && !(singleEntry && value.mode === 'ONCE') && field('effectiveDate', 'Data de efetivação (YYYY-MM-DD)')}
+    {!(singleEntry && value.mode === 'ONCE') && <Button title="Conferir parcelas e vencimentos" variant="secondary" disabled={!decimal(amount) || !isoDate(dueDate) || !validSchedule(value)} onPress={() => setPreview(p => !p)} style={{ minHeight: 48 }} />}
+    {!(singleEntry && value.mode === 'ONCE') && preview && !!decimal(amount) && isoDate(dueDate) && validSchedule(value) && <SchedulePreview value={value} onChange={onChange} amount={amount} dueDate={dueDate} />}
   </View>;
 }
+
+const styles = StyleSheet.create({
+  compactField: { width: 136, maxWidth: '100%', alignSelf: 'flex-start' }
+});
 
 function SchedulePreview({ value, onChange, amount, dueDate }: { value: CommitmentScheduleValue; onChange: (v: CommitmentScheduleValue) => void; amount: string; dueDate: string }) {
   const { theme } = useTheme();

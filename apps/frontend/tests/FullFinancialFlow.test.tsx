@@ -209,7 +209,7 @@ describe('Full Financial Flow E2E Regression Tests', () => {
 
   test('2. Transactions renders with regional currency and displays expense and income records', async () => {
     await render(<Transactions />, { wrapper: Wrapper });
-    expect(screen.getByRole('header', { name: 'Transações' })).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Extrato' })).toBeOnTheScreen();
     expect(screen.getByText('Aluguel Agosto')).toBeOnTheScreen();
     expect(screen.getByText('Projeto Web')).toBeOnTheScreen();
     expect(screen.getByText('- R$ 2.500,00')).toBeOnTheScreen();

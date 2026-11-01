@@ -399,7 +399,7 @@ export function Agenda() {
           <Text style={styles.label}>Lembrete</Text>
           <View style={styles.optionRow}>{reminderOptions.map((option) => <Pressable accessibilityRole="button" key={option.label} onPress={() => setReminderOffsetDays(option.value)} style={[styles.optionButton, reminderOffsetDays === option.value && styles.optionButtonSelected]}><Text style={[styles.optionText, reminderOffsetDays === option.value && styles.optionTextSelected]}>{option.label}</Text></Pressable>)}</View>
         </View>
-        {!formValid && <Text>Confira título, data e fim da recorrência.</Text>}
+        {!formValid && <Text style={styles.helperText}>Confira título, data e fim da recorrência.</Text>}
         <Pressable accessibilityRole="button" disabled={creating || updating || !formValid} onPress={handleSave} style={[styles.submitButton, (creating || updating || !formValid) && styles.submitButtonDisabled]}>
           {creating || updating ? <ActivityIndicator color="#ffffff" size="small" /> : <><PlusCircle color="#ffffff" size={18} /><Text style={styles.submitButtonText}>{editingId ? 'Atualizar evento' : 'Salvar evento'}</Text></>}
         </Pressable>
@@ -511,6 +511,7 @@ const getThemedStyles = (theme: ColorTokens) =>
     recurrenceHint: { color: theme.textMuted, fontSize: 13, lineHeight: 18 },
     inputGroup: { gap: 6 },
     label: { color: theme.textSecondary, fontSize: 13, fontWeight: '600' },
+    helperText: { color: theme.textSecondary, fontSize: 13 },
     input: {
       backgroundColor: theme.bgElevated,
       borderColor: theme.borderElevated,

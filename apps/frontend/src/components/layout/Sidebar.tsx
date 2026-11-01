@@ -28,7 +28,7 @@ export interface SidebarProps {
   onSelectSection: (id: NavigationId) => void;
   pendingPayablesCount?: number | undefined;
   pendingReceivablesCount?: number | undefined;
-  onQuickAction: (action: 'a_pagar' | 'a_receber' | 'categoria' | 'meta' | 'despesa_cartao') => void;
+  onQuickAction: (action: 'a_pagar' | 'a_receber' | 'meta' | 'despesa_cartao') => void;
   onLogout: () => void;
   loggingOut?: boolean | undefined;
   style?: StyleProp<ViewStyle> | undefined;
@@ -236,7 +236,7 @@ export function Sidebar({
             >
               <Plus color={theme.expense} size={14} />
               <Text style={[styles.quickButtonText, { color: theme.textPrimary }]}>
-                A Pagar
+                Conta a Pagar
               </Text>
             </Pressable>
 
@@ -248,21 +248,11 @@ export function Sidebar({
             >
               <Plus color={theme.income} size={14} />
               <Text style={[styles.quickButtonText, { color: theme.textPrimary }]}>
-                A Receber
+                Conta a Receber
               </Text>
             </Pressable>
 
-            <Pressable
-              accessibilityLabel="Criar Categoria"
-              accessibilityRole="button"
-              onPress={() => onQuickAction('categoria')}
-              style={[styles.quickButton, { borderColor: theme.border }]}
-            >
-              <Plus color={theme.info} size={14} />
-              <Text style={[styles.quickButtonText, { color: theme.textPrimary }]}>
-                Categoria
-              </Text>
-            </Pressable>
+
 
             <Pressable
               accessibilityLabel="Criar Meta"
@@ -412,10 +402,13 @@ const styles = StyleSheet.create({
     flexBasis: '47%',
     flexDirection: 'row',
     gap: 4,
-    height: 32,
+    minHeight: 44,
+    paddingHorizontal: 6,
+    paddingVertical: 8,
     justifyContent: 'center'
   },
   quickButtonText: {
+    flexShrink: 1,
     fontSize: 11,
     fontWeight: '600'
   },
