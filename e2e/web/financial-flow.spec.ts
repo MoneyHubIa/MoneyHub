@@ -44,11 +44,16 @@ test('@financial persists income, expense, balance, and payable', async ({ page 
     await createTransaction(page, 'Despesa', 'Despesa E2E', '250');
 
     await page.getByRole('button', { name: 'Dashboard' }).click();
-    await expect(page.getByText(/Saldo das contas:.*750,00/)).toBeVisible();
+    await expect(
+      page.getByLabel('Saldo das contas', { exact: true }).getByText('R$ 750,00', { exact: true })
+    ).toBeVisible();
     await expect(
       page.getByLabel('Resumo financeiro').getByText('R$ 750,00', { exact: true })
     ).toBeVisible();
     await page.reload();
+    await expect(
+      page.getByLabel('Saldo das contas', { exact: true }).getByText('R$ 750,00', { exact: true })
+    ).toBeVisible();
     await expect(
       page.getByLabel('Resumo financeiro').getByText('R$ 750,00', { exact: true })
     ).toBeVisible();

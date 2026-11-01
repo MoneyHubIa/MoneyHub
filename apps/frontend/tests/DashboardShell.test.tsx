@@ -140,9 +140,16 @@ describe('MoneyHub dashboard shell', () => {
   });
 
   test('renders the product and financial summary', async () => {
+    mockAccountsData = {
+      myFinancialAccounts: [
+        { id: 'checking', name: 'Principal', type: 'CHECKING', balance: '1000.00', archived: false, isDefault: true },
+        { id: 'savings', name: 'Reserva', type: 'SAVINGS', balance: '-250.00', archived: false, isDefault: false }
+      ]
+    };
     await render(<DashboardShell />, { wrapper: Wrapper });
 
     expect(screen.getByText('MoneyHub')).toBeOnTheScreen();
+    expect(within(screen.getByLabelText('Saldo das contas')).getByText('R$ 750,00')).toBeOnTheScreen();
     expect(screen.getByLabelText('Metas no dashboard')).toHaveTextContent('R$ 250,00', { exact: false });
     expect(screen.getByText('Dashboard financeiro')).toBeOnTheScreen();
     expect(screen.getByText('Resultado do período')).toBeOnTheScreen();

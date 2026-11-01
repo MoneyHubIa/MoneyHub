@@ -370,6 +370,7 @@ export function DashboardShell(): React.JSX.Element {
           </Text>
         </View>
         <Card
+          accessibilityLabel="Saldo das contas"
           style={[
             styles.accountsBalancePanel,
             { borderColor: theme.borderElevated, borderLeftColor: theme.income }
