@@ -9,6 +9,8 @@ A interface usa componentes React Native, StyleSheet e tokens próprios.
 
 - app/(auth): login, registro e solicitação de recuperação.
 - app/(app): app autenticado, onboarding e verificação de email.
+- app/(public): apresentação, informações, planos, contato, privacidade e termos.
+- app/index.web.tsx: apresentação para visitantes e painel para sessões ativas.
 - app/reset-password.tsx: ação pública de recuperação, fora dos grupos anteriores.
 - app/_layout.tsx: ApolloProvider, ThemeProvider, AuthProvider e Stack.
 - src/navigation/modules.ts: itens de navegação.
@@ -18,6 +20,28 @@ Apollo usa InMemoryCache e token SDK por requisição; detalhes de URL e
 credenciais ficam em [@setup](SETUP.md) e [@auth](AUTH.md).
 Hooks/Context guardam estado local. Formulários/componentes existentes também
 declaram operações GraphQL; não presuma uma camada exclusiva de queries.
+
+## Site público Web
+
+As rotas /apresentacao, /informacoes, /planos, /contato, /privacidade e /termos
+ficam disponíveis sem autenticação, inclusive para usuários conectados. Login e
+cadastro Web oferecem retorno à apresentação. Android/iOS preservam a entrada
+por sessão; links institucionais nativos retornam ao fluxo de login ou painel.
+
+src/components/public usa variantes .web.tsx com HTML semântico e CSS isolado.
+O mapa financeiro possui cenários fictícios pessoal/negócio, sem consultar dados
+financeiros. A fonte Manrope e sua licença ficam em public/fonts.
+
+O catálogo tipado e os canais de contato ficam em public/content.ts. Os preços
+são mensais; benefícios são ilustrativos e não alteram permissões do aplicativo.
+Gratuito abre cadastro; Plus/Ultra abrem /contato?plano=plus ou plano=ultra,
+com assunto preparado para email/WhatsApp. Parâmetros inválidos são ignorados.
+Não há envio automático de mensagens, checkout ou novas APIs.
+
+O site não acrescenta eventos Analytics. Metadados por página são atualizados
+no cliente; a exportação continua SPA (single), sem prerenderização por rota.
+Os documentos institucionais são iniciais, com identificação jurídica e
+condições comerciais pendentes; não comprovam conformidade ou oferta definitiva.
 
 ## Layout e tema
 

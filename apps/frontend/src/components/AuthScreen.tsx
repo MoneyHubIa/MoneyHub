@@ -54,6 +54,11 @@ export function AuthScreen({ mode, onSubmit }: AuthScreenProps) {
               {registering ? 'Entrar' : 'Criar conta'}
             </Link>
           </Text>
+          {Platform.OS === 'web' ? (
+            <Link href={'/apresentacao' as Href} style={styles.backLink}>
+              Voltar à apresentação
+            </Link>
+          ) : null}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -90,5 +95,6 @@ const styles = StyleSheet.create({
   subtitle: { color: '#64748b', fontSize: 15, lineHeight: 22 },
   alternative: { color: '#64748b', fontSize: 14, textAlign: 'center' },
   recoveryLink: { color: '#0f766e', fontWeight: '700', textAlign: 'right' },
-  link: { color: '#0f766e', fontWeight: '700' }
+  link: { color: '#0f766e', fontWeight: '700' },
+  backLink: { color: '#475569', fontSize: 14, textAlign: 'center' }
 });

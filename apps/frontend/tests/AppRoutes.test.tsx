@@ -2,6 +2,13 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { Text as MockText } from 'react-native';
 import RootLayout from '../app/_layout';
 import IndexRoute from '../app/index';
+import WebIndexRoute from '../app/index.web';
+import PresentationRoute from '../app/(public)/apresentacao';
+import InformationRoute from '../app/(public)/informacoes';
+import PlansRoute from '../app/(public)/planos';
+import ContactRoute from '../app/(public)/contato';
+import PrivacyRoute from '../app/(public)/privacidade';
+import TermsRoute from '../app/(public)/termos';
 import AnonymousLayout from '../app/(auth)/_layout';
 import AuthenticatedLayout from '../app/(app)/_layout';
 import OnboardingScreen from '../app/(app)/onboarding';
@@ -93,6 +100,11 @@ jest.mock('@/components/AuthScreen', () => ({
   }
 }));
 
+jest.mock('@/components/public/PublicPage', () => ({
+  __esModule: true,
+  default: ({ page }: { page: string }) => <MockText>{`public:${page}`}</MockText>
+}));
+
 jest.mock('@/components/PasswordRecoveryScreens', () => ({
   ForgotPasswordScreen: () => <MockText>forgot-password</MockText>,
   ResetPasswordScreen: ({ mode, oobCode }: { mode?: string; oobCode?: string }) => (
@@ -155,6 +167,34 @@ describe('Expo application routes', () => {
     mockAuthState = { loading: false, user: { uid: 'user-1' } };
     await view.rerender(<IndexRoute />);
     expect(screen.getByText('redirect:/(app)')).toBeOnTheScreen();
+  });
+
+  test('Web entry restores session, shows public presentation to visitors and preserves app routing', async () => {
+    mockAuthState = { loading: true, user: null };
+    const view = await render(<WebIndexRoute />);
+    expect(screen.getByLabelText('Carregando sessao')).toBeOnTheScreen();
+
+    mockAuthState = { loading: false, user: null };
+    await view.rerender(<WebIndexRoute />);
+    expect(screen.getByText('public:apresentacao')).toBeOnTheScreen();
+
+    mockAuthState = { loading: false, user: { uid: 'user-1' } };
+    await view.rerender(<WebIndexRoute />);
+    expect(screen.getByText('redirect:/(app)')).toBeOnTheScreen();
+  });
+
+  test('institutional routes compose public pages even with an active session', async () => {
+    mockAuthState = { loading: false, user: { uid: 'user-1' } };
+    const routes = [
+      [PresentationRoute, 'apresentacao'], [InformationRoute, 'informacoes'],
+      [PlansRoute, 'planos'], [ContactRoute, 'contato'],
+      [PrivacyRoute, 'privacidade'], [TermsRoute, 'termos']
+    ] as const;
+    for (const [Route, page] of routes) {
+      const view = await render(<Route />);
+      expect(screen.getByText(`public:${page}`)).toBeOnTheScreen();
+      await view.unmount();
+    }
   });
 
   test('anonymous layout handles loading and an existing session', async () => {
