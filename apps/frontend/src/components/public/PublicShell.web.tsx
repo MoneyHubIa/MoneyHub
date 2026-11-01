@@ -1,6 +1,13 @@
 import { Link, type Href, useLocalSearchParams, usePathname } from 'expo-router';
 import { ArrowUpRight, Menu, WalletCards, X } from 'lucide-react-native';
-import { useEffect, useRef, useState, type PropsWithChildren, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentPropsWithRef,
+  type PropsWithChildren,
+  type ReactNode
+} from 'react';
 import Head from 'expo-router/head';
 import { useAuth } from '@/providers/AuthProvider';
 import { publicContact, publicMetadata, type PublicPageName } from './content';
@@ -13,12 +20,21 @@ type SiteLinkProps = PropsWithChildren<{
   onClick?: () => void;
 }>;
 
+type RouterAnchorProps = ComponentPropsWithRef<'a'> & { onPress?: unknown };
+
+function RouterAnchor(props: RouterAnchorProps) {
+  // Expo Router supplies both handlers on Web; only onClick belongs on a DOM anchor.
+  const anchorProps = { ...props };
+  delete anchorProps.onPress;
+  return <a {...anchorProps} />;
+}
+
 export function SiteLink({ href, children, className, current, onClick }: SiteLinkProps) {
   return (
     <Link href={href as Href} asChild>
-      <a className={className} aria-current={current ? 'page' : undefined} onClick={onClick}>
+      <RouterAnchor className={className} aria-current={current ? 'page' : undefined} onClick={onClick}>
         {children}
-      </a>
+      </RouterAnchor>
     </Link>
   );
 }

@@ -19,6 +19,7 @@ jest.mock('expo-router', () => ({
   Link: ({ href, children }: { href: string; children: ReactElement<{ onClick?: () => void }> }) =>
     jest.requireActual('react').cloneElement(children, {
       href,
+      onPress: () => undefined,
       onClick: (event: { preventDefault(): void }) => {
         event.preventDefault();
         children.props.onClick?.();
@@ -93,6 +94,17 @@ async function click(element: Element) {
     element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
   });
 }
+
+test('router native press handlers do not leak to DOM anchors', async () => {
+  const errors = jest.spyOn(console, 'error');
+  await renderPage('apresentacao');
+  expect(container.querySelector('.mh-desktop-nav a[aria-current="page"]')?.getAttribute('href'))
+    .toBe('/apresentacao');
+  await click(container.querySelector('[aria-label="Abrir menu"]')!);
+  await click(container.querySelector('#mh-mobile-menu a')!);
+  expect(container.querySelector('#mh-mobile-menu')).toBeNull();
+  expect(errors).not.toHaveBeenCalled();
+});
 
 test('financial demonstration explains each destination and switches personal/business examples', async () => {
   await renderPage('apresentacao');
