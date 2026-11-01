@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.0](https://github.com/MoneyHubIa/MoneyHub/compare/v0.3.0...v0.4.0) (2026-11-01)
+
+### Features
+
+* standardize financial forms and quick actions ([794bfbc](https://github.com/MoneyHubIa/MoneyHub/commit/794bfbc9c4748294fbf76e9eaab40d6287717562))
+
 ## [0.3.0](https://github.com/MoneyHubIa/MoneyHub/compare/v0.2.1...v0.3.0) (2026-10-31)
 
 ### Features
