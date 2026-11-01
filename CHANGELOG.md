@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.5.1](https://github.com/MoneyHubIa/MoneyHub/compare/v0.5.0...v0.5.1) (2026-11-01)
+
 ## [0.5.0](https://github.com/MoneyHubIa/MoneyHub/compare/v0.4.2...v0.5.0) (2026-11-01)
 
 ### Features
