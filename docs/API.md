@@ -41,7 +41,11 @@ Campos adicionais de AuthUser incluem profile e needsProfileBootstrap.
 Erros GraphQL usam errors[].extensions.code; não infira sucesso pelo HTTP 200.
 UNAUTHENTICATED, EMAIL_NOT_VERIFIED e PROFILE_NOT_FOUND descrevem identidade;
 BAD_USER_INPUT indica validação; FORBIDDEN/NOT_FOUND dependem do domínio;
-SERVICE_UNAVAILABLE é o erro público de falha do adapter IA.
+SERVICE_UNAVAILABLE também identifica indisponibilidade transitória da
+persistência durante a autenticação, com HTTP 503. Falhas inesperadas dessa
+persistência retornam INTERNAL_SERVER_ERROR com HTTP 500; credenciais inválidas
+continuam retornando UNAUTHENTICATED com HTTP 401. O adapter IA também usa
+SERVICE_UNAVAILABLE para falhas públicas do provedor.
 
 A validação de domínio ocorre em serviços; bootstrapProfile ainda valida
 e usa Prisma no resolver. Não existe um utilitário único de erro para tudo.

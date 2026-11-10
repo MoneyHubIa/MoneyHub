@@ -5,10 +5,31 @@ import { join } from 'node:path';
 import { describe, test } from 'node:test';
 import {
   loadRootEnvironment,
-  loadRuntimeConfig
+  loadRuntimeConfig,
+  loadDatabasePoolMax,
+  loadTrustProxyHops
 } from '../../../src/core/runtime-config/runtime-config.js';
 
 describe('runtime configuration', () => {
+  test('uses small instance pools and trusts only the Vercel proxy by default', () => {
+    assert.equal(loadDatabasePoolMax({}), 2);
+    assert.equal(loadDatabasePoolMax({ DATABASE_POOL_MAX: '4' }), 4);
+    assert.equal(loadTrustProxyHops({}), 0);
+    assert.equal(loadTrustProxyHops({ NODE_ENV: 'production' }), 0);
+    assert.equal(loadTrustProxyHops({ VERCEL: '1' }), 1);
+    assert.equal(loadTrustProxyHops({ VERCEL: '1', TRUST_PROXY_HOPS: '0' }), 0);
+    assert.equal(loadTrustProxyHops({ TRUST_PROXY_HOPS: '2' }), 2);
+  });
+
+  test('rejects unsafe or invalid pool and proxy configuration without echoing values', () => {
+    for (const raw of ['', ' ', '-1', '1.5', 'true', 'Infinity', '1e2', '9007199254740992', 'secret-value']) {
+      assert.throws(() => loadDatabasePoolMax({ DATABASE_POOL_MAX: raw }), { message: 'DATABASE_POOL_MAX must be an integer greater than or equal to 1.' });
+      assert.throws(() => loadTrustProxyHops({ TRUST_PROXY_HOPS: raw }), { message: 'TRUST_PROXY_HOPS must be an integer greater than or equal to 0.' });
+    }
+    assert.throws(() => loadDatabasePoolMax({ DATABASE_POOL_MAX: '0' }));
+    assert.throws(() => loadRuntimeConfig({ APP_URL: 'https://example.test', FIREBASE_WEB_API_KEY: 'test', DATABASE_POOL_MAX: '0' }));
+  });
+
   test('normalizes the single public application URL', () => {
     const config = loadRuntimeConfig({
       APP_URL: 'https://moneyhub.example/',

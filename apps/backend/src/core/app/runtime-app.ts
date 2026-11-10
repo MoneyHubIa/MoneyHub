@@ -14,7 +14,7 @@ export async function createRuntimeApp(
   options: RuntimeAppOptions = {}
 ): Promise<Express> {
   const environment = options.environment ?? process.env;
-  const { appUrl, firebaseWebApiKey } = loadRuntimeConfig(environment);
+  const { appUrl, firebaseWebApiKey, trustProxyHops } = loadRuntimeConfig(environment);
   const firebaseAuthRest = createFirebaseAuthRestClient({
     apiKey: firebaseWebApiKey,
     ...(environment.FIREBASE_AUTH_EMULATOR_HOST
@@ -32,6 +32,7 @@ export async function createRuntimeApp(
   return createApp({
     appUrl,
     passwordRecovery,
+    trustProxyHops,
     ...(options.frontendDistDir ? { frontendDistDir: options.frontendDistDir } : {}),
     ...(environment.NODE_ENV ? { nodeEnvironment: environment.NODE_ENV } : {})
   });

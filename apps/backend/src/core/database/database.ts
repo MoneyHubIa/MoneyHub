@@ -3,6 +3,7 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { PrismaPg } from '@prisma/adapter-pg';
 import type { IdentityRepository } from '../../modules/auth/authentication/auth.js';
 import { PrismaClient } from '../../generated/prisma/client.js';
+import { createDatabasePool } from './pool.js';
 
 let prisma: PrismaClient | null = null;
 const databaseScope = new AsyncLocalStorage<PrismaClient>();
@@ -32,16 +33,9 @@ const noDatabaseRepository: IdentityRepository = {
   }
 };
 
-import pg from 'pg';
-
 function createPrismaClient(databaseUrl: string): PrismaClient {
-  const sslMode = new URL(databaseUrl).searchParams.get('sslmode');
-  const pool = new pg.Pool({
-    connectionString: databaseUrl,
-    ssl: sslMode === 'disable' ? false : { rejectUnauthorized: false },
-    allowExitOnIdle: true
-  });
-  const adapter = new PrismaPg(pool);
+  const pool = createDatabasePool(databaseUrl);
+  const adapter = new PrismaPg(pool, { disposeExternalPool: true });
   return new PrismaClient({ adapter });
 }
 

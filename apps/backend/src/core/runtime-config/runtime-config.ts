@@ -5,7 +5,26 @@ import { config as loadEnvironmentFile } from 'dotenv';
 export type RuntimeConfig = Readonly<{
   appUrl: URL;
   firebaseWebApiKey: string;
+  trustProxyHops: number;
+  databasePoolMax: number;
 }>;
+
+function integerSetting(environment: NodeJS.ProcessEnv, name: string, fallback: number, minimum: number): number {
+  const raw = environment[name];
+  const value = raw === undefined ? fallback : /^\d+$/.test(raw.trim()) ? Number(raw) : NaN;
+  if (!Number.isSafeInteger(value) || value < minimum) {
+    throw new Error(`${name} must be an integer greater than or equal to ${minimum}.`);
+  }
+  return value;
+}
+
+export function loadDatabasePoolMax(environment: NodeJS.ProcessEnv = process.env): number {
+  return integerSetting(environment, 'DATABASE_POOL_MAX', 2, 1);
+}
+
+export function loadTrustProxyHops(environment: NodeJS.ProcessEnv = process.env): number {
+  return integerSetting(environment, 'TRUST_PROXY_HOPS', environment.VERCEL === '1' ? 1 : 0, 0);
+}
 
 export function loadRootEnvironment(workingDirectory = process.cwd()): void {
   const candidates = [
@@ -31,6 +50,8 @@ export function loadRuntimeConfig(
 
   return {
     appUrl: new URL(environment.APP_URL),
-    firebaseWebApiKey: environment.FIREBASE_WEB_API_KEY.trim()
+    firebaseWebApiKey: environment.FIREBASE_WEB_API_KEY.trim(),
+    trustProxyHops: loadTrustProxyHops(environment),
+    databasePoolMax: loadDatabasePoolMax(environment)
   };
 }

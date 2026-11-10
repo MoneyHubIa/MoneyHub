@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { createFirebaseVerifier } from '../../../../src/modules/auth/authentication/auth.js';
+import { createFirebaseVerifier, IdentityPersistenceError } from '../../../../src/modules/auth/authentication/auth.js';
 
 describe('Firebase authentication verifier', () => {
   test('rejects token before reading identity or persistence', async () => {
@@ -120,6 +120,7 @@ describe('Firebase authentication verifier', () => {
   });
 
   test('propagates identity persistence failure without returning partial context', async () => {
+    const failure = new Error('database unavailable');
     const verifier = createFirebaseVerifier({
       verifyToken: async () => ({ uid: 'firebase-user-5' }),
       getUser: async () => ({
@@ -129,12 +130,18 @@ describe('Firebase authentication verifier', () => {
       }),
       identityRepository: {
         synchronizeExistingIdentity: async () => {
-          throw new Error('database unavailable');
+          throw failure;
         }
       }
     });
 
-    await assert.rejects(verifier('valid-token'), /database unavailable/);
+    await assert.rejects(verifier('valid-token'), (error: unknown) => {
+      assert.ok(error instanceof IdentityPersistenceError);
+      assert.equal(error.cause, failure);
+      assert.equal(error.unavailableReason, null);
+      assert.equal(error.message, 'Identity persistence failed.');
+      return true;
+    });
   });
 
   test('does not share context between consecutive identities', async () => {

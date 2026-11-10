@@ -6,13 +6,15 @@ const previous = {
   APP_URL: process.env.APP_URL,
   FIREBASE_WEB_API_KEY: process.env.FIREBASE_WEB_API_KEY,
   FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
-  FIREBASE_AUTH_EMULATOR_HOST: process.env.FIREBASE_AUTH_EMULATOR_HOST
+  FIREBASE_AUTH_EMULATOR_HOST: process.env.FIREBASE_AUTH_EMULATOR_HOST,
+  TRUST_PROXY_HOPS: process.env.TRUST_PROXY_HOPS
 };
 
 process.env.APP_URL = 'https://moneyhub.example';
 process.env.FIREBASE_WEB_API_KEY = 'test-web-key';
 process.env.FIREBASE_PROJECT_ID = 'demo-moneyhub';
 process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
+process.env.TRUST_PROXY_HOPS = '1';
 
 after(() => {
   for (const [key, value] of Object.entries(previous)) {
@@ -29,6 +31,9 @@ test('Vercel entry exports an API-only Express application', async () => {
 
     assert.equal(health.status, 200);
     assert.equal(root.status, 404);
+    assert.equal(app.get('trust proxy'), 1);
+    const graphql = await request(app).post('/graphql').set('x-forwarded-for', '198.51.100.7').send({ query: '{ health { status } }' });
+    assert.equal(graphql.status, 200);
   } finally {
     await app.locals.stop?.();
   }
