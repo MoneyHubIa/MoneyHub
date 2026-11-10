@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.6.1](https://github.com/MoneyHubIa/MoneyHub/compare/v0.6.0...v0.6.1) (2026-11-10)
+
+### Bug Fixes
+
+* configure serverless database pooling and auth errors ([ed1bb5e](https://github.com/MoneyHubIa/MoneyHub/commit/ed1bb5ecabc1ddc819d371c479d0bd6f6a36aa91))
+
 ## [0.6.0](https://github.com/MoneyHubIa/MoneyHub/compare/v0.5.1...v0.6.0) (2026-11-10)
 
 ### Features
