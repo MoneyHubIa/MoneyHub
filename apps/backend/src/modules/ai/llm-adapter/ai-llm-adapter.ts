@@ -19,9 +19,12 @@ export type LlmMessage = {
 
 export type LlmToolProperty = {
   type: string;
-  description: string;
+  description?: string;
   enum?: string[];
-  items?: { type: string };
+  items?: LlmToolProperty;
+  properties?: Record<string, LlmToolProperty>;
+  required?: string[];
+  additionalProperties?: boolean;
 };
 
 export type LlmToolDefinition = {

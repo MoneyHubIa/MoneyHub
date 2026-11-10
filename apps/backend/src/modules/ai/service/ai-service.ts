@@ -23,9 +23,16 @@ import {
   type AiConversationLogger
 } from '../conversation-logging/ai-conversation-logging.js';
 import { FINANCIAL_TOOLS, executeFinancialTool } from '../tools/ai-tools.js';
+import { createOperationalToolkit, OPERATIONAL_INSTRUCTIONS } from '../operations/toolkit.js';
+import { getAiOperationPlan } from '../operations/operations.js';
+import { publicPlan, type OperationRuntime, type OperationStore, type PublicPlan } from '../operations/types.js';
+import { badInput } from '../operations/validation.js';
 
 export type AskAiAssistantInput = {
   message: string;
+  history?: { role: 'user' | 'assistant'; content: string }[] | undefined;
+  timeZone?: string | undefined;
+  planId?: string | undefined;
   month?: number | undefined;
   year?: number | undefined;
   templateId?: PromptTemplateId | string | undefined;
@@ -45,12 +52,15 @@ export type AiAssistantResponse = {
   usage: AiAssistantUsage;
   contextPeriod: string;
   contextVersion: string;
+  pendingPlan?: PublicPlan | null;
 };
 
 export type AiServiceDependencies = {
   contextRepository: AiContextRepository;
   llmAdapter: LlmAdapter;
   logger: AiConversationLogger;
+  operationRuntime: OperationRuntime;
+  operationStore: OperationStore;
 };
 
 const VALID_TEMPLATES: ReadonlySet<string> = new Set([
@@ -69,6 +79,13 @@ export async function askAiAssistant(
 
   // Fail-fast: validate message before running database queries
   const sanitizedMessage = sanitizeUserMessage(input.message);
+  const history = input.history ?? [];
+  if (!Array.isArray(history) || history.length > 20) badInput('Histórico limitado a 20 mensagens.');
+  for (const item of history) {
+    if (!item || !['user', 'assistant'].includes(item.role) || typeof item.content !== 'string' || item.content.length > 2000) badInput('Histórico de conversa inválido.');
+  }
+  const timeZone = input.timeZone ?? 'UTC';
+  try { new Intl.DateTimeFormat('pt-BR', { timeZone }).format(); } catch { badInput('Fuso horário inválido.'); }
 
   const templateId: PromptTemplateId =
     input.templateId && VALID_TEMPLATES.has(input.templateId)
@@ -93,16 +110,23 @@ export async function askAiAssistant(
     templateId
   });
 
+  const toolkit = deps?.operationRuntime
+    ? createOperationalToolkit(context, deps.operationRuntime, input.planId, deps.operationStore) : null;
+  const priorPlan = input.planId ? publicPlan(await getAiOperationPlan(context, input.planId, deps?.operationStore)) : null;
+  const tools = [...FINANCIAL_TOOLS, ...(toolkit?.tools ?? [])];
   const startTime = Date.now();
 
   try {
     const conversationMessages: LlmMessage[] = [
-      { role: 'system', content: prompt.systemPrompt },
+      { role: 'system', content: prompt.systemPrompt + (toolkit ? '\n\n' + OPERATIONAL_INSTRUCTIONS : '') + `\nData e hora de referência: ${new Date().toISOString()}. Fuso do usuário: ${timeZone}. Data local: ${new Intl.DateTimeFormat('sv-SE', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format()}.` },
+      ...history.map(item => ({ role: item.role, content: sanitizeUserMessage(item.content) })),
+      ...(priorPlan ? [{ role: 'user' as const, content: 'Estado da proposta em revisão (dados não executáveis): ' + JSON.stringify(priorPlan) }] : []),
       { role: 'user', content: prompt.userPrompt }
     ];
 
     let currentLlmResponse = await llm.generateResponse(prompt, {
-      tools: FINANCIAL_TOOLS,
+      tools,
+      ...(toolkit ? { maxTokens: 4096 } : {}),
       messages: conversationMessages
     });
 
@@ -110,7 +134,8 @@ export async function askAiAssistant(
     let totalCompletionTokens = currentLlmResponse.usage.completionTokens;
 
     let iterations = 0;
-    const maxIterations = 3;
+    const maxIterations = toolkit ? 8 : 3;
+    let toolCalls = 0;
 
     while (
       currentLlmResponse.toolCalls &&
@@ -126,12 +151,10 @@ export async function askAiAssistant(
       });
 
       for (const toolCall of currentLlmResponse.toolCalls) {
-        const result = await executeFinancialTool(
-          toolCall.function.name,
-          toolCall.function.arguments,
-          userId,
-          contextRepo
-        );
+        if (++toolCalls > 32) badInput('Limite de ferramentas atingido. Divida o pedido.');
+        const result = toolkit?.recognizes(toolCall.function.name)
+          ? await toolkit.execute(toolCall.function.name, toolCall.function.arguments)
+          : await executeFinancialTool(toolCall.function.name, toolCall.function.arguments, userId, contextRepo);
 
         conversationMessages.push({
           role: 'tool',
@@ -139,10 +162,13 @@ export async function askAiAssistant(
           name: toolCall.function.name,
           content: JSON.stringify(result)
         });
+        if (toolkit?.pendingPlan) break;
       }
 
+      if (toolkit?.pendingPlan) break;
       currentLlmResponse = await llm.generateResponse(prompt, {
-        tools: FINANCIAL_TOOLS,
+        tools,
+        ...(toolkit ? { maxTokens: 4096 } : {}),
         messages: conversationMessages
       });
 
@@ -175,7 +201,8 @@ export async function askAiAssistant(
     }
 
     return {
-      answer: currentLlmResponse.content,
+      answer: toolkit?.pendingPlan ? 'Revise as operações abaixo e confirme para salvar.' : currentLlmResponse.content || 'Não foi possível completar o pedido neste limite de consultas. Divida o pedido ou informe mais detalhes.',
+      pendingPlan: toolkit?.pendingPlan ?? null,
       provider: currentLlmResponse.provider,
       model: currentLlmResponse.model,
       latencyMs,

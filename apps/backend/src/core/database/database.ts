@@ -1,8 +1,30 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+import type { Prisma } from '../../generated/prisma/client.js';
 import { PrismaPg } from '@prisma/adapter-pg';
 import type { IdentityRepository } from '../../modules/auth/authentication/auth.js';
 import { PrismaClient } from '../../generated/prisma/client.js';
 
 let prisma: PrismaClient | null = null;
+const databaseScope = new AsyncLocalStorage<PrismaClient>();
+
+/** Inject a client into one asynchronous request without changing the global client. */
+export function withDatabaseClient<T>(client: PrismaClient, work: () => Promise<T>): Promise<T> {
+  return databaseScope.run(client, work);
+}
+
+/** Reuse an operation transaction in domain services, including nested callbacks. */
+export function withTransactionClient<T>(transaction: Prisma.TransactionClient, work: () => Promise<T>): Promise<T> {
+  const scoped = new Proxy(transaction, {
+    get(target, property) {
+      if (property === '$transaction') {
+        return (callback: (client: Prisma.TransactionClient) => Promise<unknown>) => callback(transaction);
+      }
+      const value = Reflect.get(target, property, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    }
+  }) as PrismaClient;
+  return databaseScope.run(scoped, work);
+}
 
 const noDatabaseRepository: IdentityRepository = {
   synchronizeExistingIdentity: async () => {
@@ -24,6 +46,8 @@ function createPrismaClient(databaseUrl: string): PrismaClient {
 }
 
 export function getPrismaClient(): PrismaClient {
+  const scoped = databaseScope.getStore();
+  if (scoped) return scoped;
   if (!prisma) {
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) {
