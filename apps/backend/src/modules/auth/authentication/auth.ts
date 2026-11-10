@@ -7,6 +7,17 @@ import {
 } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getIdentityRepository } from '../../../core/database/database.js';
+import { databaseUnavailableReason } from '../../../core/database/database-errors.js';
+
+export class IdentityPersistenceError extends Error {
+  readonly unavailableReason;
+
+  constructor(cause: unknown) {
+    super('Identity persistence failed.', { cause });
+    this.name = 'IdentityPersistenceError';
+    this.unavailableReason = databaseUnavailableReason(cause);
+  }
+}
 
 export type AuthContext = Readonly<{
   uid: string;
@@ -71,8 +82,12 @@ export function createFirebaseVerifier(
       email: firebaseUser.email.trim().toLowerCase(),
       emailVerified: firebaseUser.emailVerified
     };
-    const projection =
-      await dependencies.identityRepository.synchronizeExistingIdentity(identity);
+    let projection: IdentityProjection | null;
+    try {
+      projection = await dependencies.identityRepository.synchronizeExistingIdentity(identity);
+    } catch (error) {
+      throw new IdentityPersistenceError(error);
+    }
 
     return Object.freeze({
       ...identity,
@@ -173,6 +188,8 @@ export const verifyFirebaseIdToken: VerifyIdToken = (token) => {
   return createFirebaseVerifier({
     verifyToken: async (value) => auth.verifyIdToken(value, checkRevoked),
     getUser: async (uid) => auth.getUser(uid),
-    identityRepository: getIdentityRepository()
+    identityRepository: {
+      synchronizeExistingIdentity: (identity) => getIdentityRepository().synchronizeExistingIdentity(identity)
+    }
   })(token);
 };

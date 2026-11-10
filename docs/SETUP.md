@@ -74,6 +74,12 @@ O servidor só habilita arquivos estáticos quando encontra index.html.
 
 ## Backend e banco
 
+`DATABASE_POOL_MAX` controla conexões por instância (padrão `2`, inteiro positivo).
+`TRUST_PROXY_HOPS` controla saltos confiáveis de proxy (padrão `1` com `VERCEL=1`,
+`0` nos demais ambientes, inteiro não negativo). Configuração inválida impede
+a inicialização. Em produção Supabase/Vercel, use transaction pooling no
+runtime e preserve a conexão de migrations; checklist em [@deploy](DEPLOY.md#pooling-e-confiança-no-proxy).
+
 | Variável | Uso |
 | --- | --- |
 | APP_URL | Origem pública do app; obrigatória no backend e no build Expo. |

@@ -36,6 +36,58 @@ O postinstall backend gera Prisma; não execute migrations no startup da funçã
 - Credenciais de Admin devem ser segredos, nunca valores públicos do app.
 - Mudanças de ambiente exigem nova publicação.
 
+### Pooling e confiança no proxy
+
+O backend reutiliza um cliente Prisma e um `pg.Pool` por instância. O padrão
+`DATABASE_POOL_MAX=2` limita cada instância, não a soma de todas as instâncias.
+O pool usa timeout de aquisição de 5000 ms, timeout ocioso de 5000 ms e vida
+máxima de conexão de 300 segundos. Na Vercel, `attachDatabasePool` mantém o
+ciclo de vida necessário para fechar conexões ociosas antes da suspensão.
+O pool não é encerrado ao final de cada requisição.
+
+Estas configurações externas devem ser realizadas pelo operador antes da
+publicação; alterar o repositório não altera os painéis dos provedores:
+
+1. No projeto Supabase, abra as configurações de connection pooling em
+   **Database > Settings** e defina **Pool Size = 20** para o pool usado pelo
+   backend. Confirme capacidade disponível para serviços internos e operações
+   administrativas; esse orçamento não é um `max_connections=20` do PostgreSQL.
+2. Abra **Connect**, selecione **Transaction pooler** e copie a URL completa
+   correspondente à porta **6543**. No projeto backend da Vercel, em
+   **Settings > Environment Variables > Production**, salve essa URL como
+   `DATABASE_URL`, preservando usuário, senha e parâmetros indicados pelo Supabase.
+   Não publique a URL nem altere somente a porta de uma URL de outro endpoint.
+3. No mesmo ambiente Vercel, configure `DATABASE_POOL_MAX=2` e
+   `TRUST_PROXY_HOPS=1`. As duas variáveis aceitam inteiros; o limite do pool deve
+   ser positivo e o número de saltos deve ser não negativo. Valores inválidos
+   impedem a inicialização. A quantidade de instâncias Vercel permanece automática.
+4. Preserve a URL direta, ou session pooler apropriado, para o Prisma CLI.
+   `DIRECT_URL` e o secret GitHub `PRODUCTION_DATABASE_URL` usado pelo workflow
+   de migrations não devem ser substituídos pela URL de transaction pooling.
+5. Publique uma nova versão pelo workflow Release, após atualizar o ambiente.
+   Verifique login, reloads e requisições autenticadas concorrentes pela origem
+   frontend. Confira as métricas de conexão, considerando também deployments
+   antigos e outros clientes que ainda usem session mode.
+
+Com `VERCEL=1`, o padrão de confiança é um salto; fora da Vercel, o padrão é
+zero. Um salto confia somente no proxy mais próximo, não em toda a cadeia
+enviada em `X-Forwarded-For`. Não use `trust proxy: true` nem desative a
+validação do rate limiter. Se houver outra topologia de proxy, confirme os
+saltos e a sanitização dos cabeçalhos antes de alterar esse número.
+Os rate limiters continuam locais a cada instância; esta correção não cria
+um contador de requisições distribuído.
+
+Na autenticação, indisponibilidade transitória da persistência retorna HTTP
+503 com `SERVICE_UNAVAILABLE`; falhas inesperadas retornam HTTP 500 com
+`INTERNAL_SERVER_ERROR`. Tokens inválidos continuam retornando HTTP 401 com
+`UNAUTHENTICATED`. Correlacione o `requestId` com o evento
+`authentication_failed`, etapa `identity_persistence`, sem tratar falha de
+banco como token inválido. Não repita mutations automaticamente após falhas.
+
+Referências: [Supabase e Prisma](https://supabase.com/docs/guides/database/prisma/prisma-troubleshooting),
+[pooling na Vercel](https://vercel.com/kb/guide/connection-pooling-with-functions),
+[cabeçalhos da Vercel](https://vercel.com/docs/headers/request-headers).
+
 ### Firebase público no build Vercel
 
 No projeto frontend, cadastre `APP_URL` e as variáveis `EXPO_PUBLIC_FIREBASE_*`

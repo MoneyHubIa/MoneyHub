@@ -7,12 +7,14 @@ import { expressMiddleware } from '@as-integrations/express4';
 import cors from 'cors';
 import express, { type Express, type Request, type RequestHandler } from 'express';
 import { rateLimit } from 'express-rate-limit';
+import { GraphQLError } from 'graphql';
 // Keep a runtime import so Vercel includes Helmet in the function bundle.
 import 'helmet';
 import type { HelmetOptions } from 'helmet';
 import { z } from 'zod';
 import {
   verifyFirebaseIdToken,
+  IdentityPersistenceError,
   type AuthContext,
   type VerifyIdToken
 } from '../../modules/auth/authentication/auth.js';
@@ -28,6 +30,7 @@ import {
   type GraphQLContext
 } from '../graphql/graphql.js';
 import { disconnectDatabase } from '../database/database.js';
+import { loadTrustProxyHops } from '../runtime-config/runtime-config.js';
 import {
   appLogger,
   createHttpLoggingMiddleware,
@@ -46,6 +49,7 @@ type CreateAppOptions = {
   nodeEnvironment?: string;
   passwordRecovery?: PasswordRecoveryService;
   passwordRecoveryRateLimitNow?: () => number;
+  trustProxyHops?: number;
 };
 
 const passwordRecoveryInput = z.object({
@@ -173,7 +177,28 @@ async function authenticate(
   try {
     return await verifyIdToken(token);
   } catch (error) {
-    console.error('[AUTH ERROR] Firebase ID token verification failed:', error);
+    const persistence = error instanceof IdentityPersistenceError;
+    const unavailable = persistence && error.unavailableReason !== null;
+    try {
+      const event = {
+        event: 'authentication_failed',
+        requestId: request.res?.locals.requestId,
+        stage: persistence ? 'identity_persistence' : 'token_verification',
+        code: persistence ? error.unavailableReason ?? 'IDENTITY_PERSISTENCE_FAILED' : 'UNAUTHENTICATED'
+      };
+      if (persistence) appLogger.error(event);
+      else appLogger.warn(event);
+    } catch { /* Authentication outcomes must not depend on logging. */ }
+    if (persistence) {
+      throw new GraphQLError(unavailable
+        ? 'Serviço temporariamente indisponível. Tente novamente.'
+        : 'Não foi possível concluir a autenticação.', {
+        extensions: {
+          code: unavailable ? 'SERVICE_UNAVAILABLE' : 'INTERNAL_SERVER_ERROR',
+          http: { status: unavailable ? 503 : 500 }
+        }
+      });
+    }
     throw unauthenticatedError();
   }
 }
@@ -183,8 +208,11 @@ export async function createApp(
 ): Promise<Express> {
   const verifyIdToken = options.verifyIdToken ?? verifyFirebaseIdToken;
   const logger = options.logger ?? appLogger;
+  const trustProxyHops = options.trustProxyHops ?? loadTrustProxyHops();
+  if (!Number.isSafeInteger(trustProxyHops) || trustProxyHops < 0) throw new Error('TRUST_PROXY_HOPS must be a non-negative integer.');
   const app = express();
-  const apollo = new ApolloServer<GraphQLContext>({ typeDefs, resolvers });
+  app.set('trust proxy', trustProxyHops === 0 ? false : trustProxyHops);
+  const apollo = new ApolloServer<GraphQLContext>({ typeDefs, resolvers, includeStacktraceInErrorResponses: false });
   await apollo.start();
 
   app.disable('x-powered-by');
