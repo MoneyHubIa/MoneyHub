@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.6.0](https://github.com/MoneyHubIa/MoneyHub/compare/v0.5.1...v0.6.0) (2026-11-10)
+
+### Features
+
+* adicionar voz e operações confirmadas ao assistente IA ([85f31e4](https://github.com/MoneyHubIa/MoneyHub/commit/85f31e476f962e58480cddf3d520b83c45e89474))
+
+### Bug Fixes
+
+* corrigir referências, recibos e categorias nas operações de IA ([1b2b581](https://github.com/MoneyHubIa/MoneyHub/commit/1b2b58161f271fe37ad8cbff8c3d29b6dbeea9b3))
+
 ## [0.5.1](https://github.com/MoneyHubIa/MoneyHub/compare/v0.5.0...v0.5.1) (2026-11-01)
 
 ## [0.5.0](https://github.com/MoneyHubIa/MoneyHub/compare/v0.4.2...v0.5.0) (2026-11-01)
