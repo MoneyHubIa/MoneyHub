@@ -12,7 +12,6 @@ export function object(value: unknown): Arguments {
 }
 export const REFERENCE = /^\$ref:([A-Za-z][A-Za-z0-9_-]{0,59})\.id$/;
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-export const PLACEHOLDER_ID = '00000000-0000-4000-8000-000000000000';
 export function mapValues(value: unknown, visit: (key: string, value: unknown) => unknown, key = ''): unknown {
   const mapped = visit(key, value);
   if (Array.isArray(mapped)) return mapped.map(item => mapValues(item, visit, key));
@@ -24,13 +23,13 @@ export function references(value: unknown): string[] {
   mapValues(value, (_key, item) => { if (typeof item === 'string' && REFERENCE.test(item)) keys.add(item.match(REFERENCE)![1]!); return item; });
   return [...keys];
 }
-export function resolveReferences(args: Arguments, actions: OperationAction[], placeholders = false): Arguments {
+export function resolveReferences(args: Arguments, actions: OperationAction[], preservePending = false): Arguments {
   return mapValues(args, (_key, value) => {
     if (typeof value !== 'string' || !REFERENCE.test(value)) return value;
     const key = value.match(REFERENCE)![1];
     const action = actions.find(item => item.key === key);
     if (!action) badInput(`Referência de ação desconhecida: ${key}.`);
-    if (placeholders && action.status === 'PENDING') return PLACEHOLDER_ID;
+    if (preservePending && action.status === 'PENDING') return value;
     if (action.status !== 'SUCCEEDED' || typeof action.result?.id !== 'string') badInput(`Ação dependente de ${key}, que não foi concluída.`, 'DEPENDENCY_FAILED');
     return action.result.id;
   }) as Arguments;

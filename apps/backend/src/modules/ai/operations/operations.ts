@@ -44,7 +44,7 @@ export async function prepareAiOperations(context: GraphQLContext, raw: unknown,
     const proposed: ProposedAction = { key: candidate.key, operation: candidate.operation, arguments: args };
     const prepared = await runtime.prepare(context, proposed, id, plan.actions);
     const signature = (operation: string, value: Arguments) => fingerprint({ operation, arguments: stripOperationId(value) });
-    if (previous?.actions.some(action => action.status === 'SUCCEEDED' && signature(action.operation, action.arguments) === signature(proposed.operation, prepared.arguments))) badInput('Esta operação já foi concluída. Revise somente as pendências.');
+    if (previous?.actions.some(action => action.status === 'SUCCEEDED' && signature(action.operation, resolveReferences(action.arguments, previous.actions)) === signature(proposed.operation, prepared.arguments))) badInput('Esta operação já foi concluída. Revise somente as pendências.');
     plan.actions.push({ ...proposed, ...prepared, id, position, status: 'PENDING', result: null, error: null });
   }
   await store.transaction(async transaction => {

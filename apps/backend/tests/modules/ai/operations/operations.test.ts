@@ -71,6 +71,113 @@ test('operational flows use the real domain services, transactions and PostgreSQ
         const accounts = await aiOperationRuntime.read(context,'myFinancialAccounts',{},'Banco IA') as { items: { balance:string }[] };
         assert.equal(accounts.items[0]?.balance,'450.00');
       });
+      await t.test('account receipts identify both new accounts and edits outside the first result', async () => {
+        const created = await prepare([
+          action('bank', 'saveFinancialAccount', { name: 'ZZ Conta para editar', initialBalance: '25' }),
+          action('bill', 'createAccountPayable', { categoryId, financialAccountId: '$ref:bank.id', description: 'Conta nova referenciada', amount: '2', dueDate: '2026-12-15' })
+        ]);
+        const creation = await confirm(created.id);
+        assert.equal(creation.status, 'COMPLETED');
+        const account = await database.prisma.financialAccount.findFirstOrThrow({ where: { userId, name: 'ZZ Conta para editar' } });
+        assert.equal(JSON.parse(creation.actions[0]!.resultJson!).id, account.id);
+        assert.equal((await database.prisma.accountPayable.findFirstOrThrow({ where: { description: 'Conta nova referenciada' } })).financialAccountId, account.id);
+        const listed = await aiOperationRuntime.read(context, 'myFinancialAccounts', {}) as { items: { id: string }[] };
+        assert.notEqual(listed.items[0]!.id, account.id);
+
+        const edited = await prepare([
+          action('edit', 'saveFinancialAccount', { id: account.id, name: 'ZZ Conta editada', type: account.type, initialBalance: String(account.initialBalance), isDefault: false }),
+          action('bill', 'createAccountPayable', { categoryId, financialAccountId: '$ref:edit.id', description: 'Conta editada referenciada', amount: '3', dueDate: '2026-12-15' })
+        ]);
+        const result = await confirm(edited.id);
+        assert.equal(result.status, 'COMPLETED');
+        assert.equal(JSON.parse(result.actions[0]!.resultJson!).id, account.id);
+        assert.equal((await database.prisma.accountPayable.findFirstOrThrow({ where: { description: 'Conta editada referenciada' } })).financialAccountId, account.id);
+      });
+      await t.test('retry signatures resolve successful references before rejecting duplicate payables', async () => {
+        const bill = { categoryId: '$ref:cat.id', description: 'Nao duplicar na retomada', amount: '10', dueDate: '2026-12-15' };
+        const original = await prepare([
+          action('cat', 'createCategory', { name: 'Categoria da retomada', type: 'BOTH' }),
+          action('bill', 'createAccountPayable', bill),
+          action('invalidGoal', 'createFinancialGoal', { name: 'Meta falha para retomada', targetAmount: '100', startDate: '2026-12-10', deadline: '2026-12-01' })
+        ]);
+        const result = await confirm(original.id);
+        assert.equal(result.status, 'PARTIAL');
+        assert.deepEqual(result.actions.map(item => item.status), ['SUCCEEDED', 'SUCCEEDED', 'FAILED']);
+        const resolvedCategory = JSON.parse(result.actions[0]!.resultJson!).id as string;
+        const planCount = await database.prisma.aiOperationPlan.count();
+        for (const category of ['$ref:cat.id', resolvedCategory]) {
+          await assert.rejects(prepare([action('retryBill', 'createAccountPayable', { ...bill, categoryId: category, amount: '10.00' })], original.id), /Esta operação já foi concluída/);
+        }
+        assert.equal(await database.prisma.aiOperationPlan.count(), planCount);
+        assert.equal(await database.prisma.accountPayable.count({ where: { description: bill.description } }), 1);
+      });
+      await t.test('retry references preserve new local actions while resolving previous successes', async () => {
+        const original = await prepare([
+          action('cat', 'createCategory', { name: 'Categoria reutilizada', type: 'BOTH' }),
+          action('center', 'createCostCenter', { name: 'Centro anterior' }),
+          action('invalidGoal', 'createFinancialGoal', { name: 'Meta falha para referencias', targetAmount: '100', startDate: '2026-12-10', deadline: '2026-12-01' })
+        ]);
+        const result = await confirm(original.id);
+        assert.equal(result.status, 'PARTIAL');
+        const resolvedCategory = JSON.parse(result.actions[0]!.resultJson!).id as string;
+        const previousCenter = JSON.parse(result.actions[1]!.resultJson!).id as string;
+        const bill = { categoryId: '$ref:cat.id', costCenterId: '$ref:center.id', description: 'Referencias mistas', amount: '12', dueDate: '2026-12-15' };
+        for (const reference of ['$ref:missing.id', '$ref:invalidGoal.id']) {
+          await assert.rejects(prepare([action('bill', 'createAccountPayable', { ...bill, categoryId: reference })], original.id), /Inclua primeiro a ação pendente/);
+        }
+        await assert.rejects(prepare([
+          action('bill', 'createAccountPayable', { ...bill, costCenterId: '$ref:future.id' }),
+          action('future', 'createCostCenter', { name: 'Centro futuro' })
+        ], original.id), /Inclua primeiro a ação pendente/);
+        const retry = await prepare([
+          action('center', 'createCostCenter', { name: 'Novo centro local' }),
+          action('bill', 'createAccountPayable', bill)
+        ], original.id);
+        const stored = await getAiOperationPlan(context, retry.id);
+        assert.equal((stored.actions[1]!.arguments.input as Record<string, unknown>).categoryId, resolvedCategory);
+        assert.equal((stored.actions[1]!.arguments.input as Record<string, unknown>).costCenterId, '$ref:center.id');
+        const confirmed = await confirm(retry.id);
+        assert.equal(confirmed.status, 'COMPLETED');
+        const newCenter = JSON.parse(confirmed.actions[0]!.resultJson!).id as string;
+        assert.notEqual(newCenter, previousCenter);
+        const payable = await database.prisma.accountPayable.findFirstOrThrow({ where: { description: bill.description } });
+        assert.equal(payable.categoryId, resolvedCategory);
+        assert.equal(payable.costCenterId, newCenter);
+      });
+      await t.test('income series and recurring edits validate the effective type regardless of input order', async () => {
+        const account = await database.prisma.financialAccount.findFirstOrThrow({ where: { userId, isDefault: true } });
+        const created = await prepare([
+          action('incomeCategory', 'createCategory', { name: 'Somente receitas', type: 'INCOME' }),
+          action('expenseCategory', 'createCategory', { name: 'Somente despesas', type: 'EXPENSE' }),
+          action('series', 'createCommitmentSeries', { financialAccountId: account.id, categoryId: '$ref:incomeCategory.id', description: 'Serie de receitas', amount: '40', dueDate: '2026-12-15', type: 'INCOME', schedule: { mode: 'INSTALLMENTS', first: 1, total: 2, frequency: 'MONTHLY' } }),
+          action('recurring', 'createRecurringTransaction', { categoryId: '$ref:incomeCategory.id', description: 'Recorrencia de receitas', amount: '10', type: 'INCOME', recurrenceRule: 'MONTHLY', startDate: '2026-12-01' })
+        ]);
+        const creation = await confirm(created.id);
+        assert.equal(creation.status, 'COMPLETED');
+        const [incomeCategory, expenseCategory, seriesId, recurringId] = creation.actions.map(item => JSON.parse(item.resultJson!).id as string);
+        const seriesFields = { categoryId: incomeCategory!, fromNumber: 2, financialAccountId: account.id, description: 'Serie de receitas revisada', amount: '22', dueDate: '2027-01-15' };
+        const seriesInput = { ...seriesFields, id: seriesId! };
+        for (const idFirst of [false, true]) {
+          const revised = await prepare([
+            action('series', 'updateCommitmentSeries', idFirst ? { id: seriesId!, ...seriesFields } : seriesInput),
+            action('recurring', 'updateRecurringTransaction', idFirst ? { id: recurringId!, categoryId: incomeCategory! } : { categoryId: incomeCategory!, id: recurringId! })
+          ]);
+          assert.equal((await confirm(revised.id)).status, 'COMPLETED');
+        }
+        const receivable = await database.prisma.accountReceivable.findFirstOrThrow({ where: { seriesId: seriesId!, installmentNumber: 2 } });
+        assert.equal(receivable.description, seriesInput.description);
+        assert.equal(receivable.amount.toString(), '22');
+        assert.equal(receivable.categoryId, incomeCategory);
+        assert.equal((await database.prisma.recurringTransaction.findUniqueOrThrow({ where: { id: recurringId! } })).type, 'INCOME');
+        await assert.rejects(prepare([action('series', 'updateCommitmentSeries', { ...seriesInput, categoryId: expenseCategory! })]), /Categoria incompatível com o lançamento/);
+        await assert.rejects(prepare([action('recurring', 'updateRecurringTransaction', { categoryId: expenseCategory!, id: recurringId! })]), /Categoria incompatível com o lançamento/);
+        await assert.rejects(prepare([action('recurring', 'updateRecurringTransaction', { id: recurringId!, categoryId: incomeCategory!, type: 'EXPENSE' })]), /Categoria incompatível com o lançamento/);
+        const changed = await prepare([action('recurring', 'updateRecurringTransaction', { categoryId: expenseCategory!, id: recurringId!, type: 'EXPENSE' })]);
+        assert.equal((await confirm(changed.id)).status, 'COMPLETED');
+        const recurring = await database.prisma.recurringTransaction.findUniqueOrThrow({ where: { id: recurringId! } });
+        assert.equal(recurring.type, 'EXPENSE');
+        assert.equal(recurring.categoryId, expenseCategory);
+      });
       await t.test('partial failure rolls back its effects, blocks dependents and preserves independent successes', async () => {
         const plan = await prepare([
           action('bill','createAccountPayable',{categoryId,description:'Preservada',amount:'10',dueDate:'2026-12-15'}),

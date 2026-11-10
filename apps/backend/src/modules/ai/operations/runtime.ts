@@ -153,6 +153,7 @@ export function createOperationRuntime(catalog: OperationCatalog): OperationRunt
       const normalized = args.input === undefined ? args : object(args.input);
       const names = new Map<string, string>();
       const snapshots: Snapshot[] = [];
+      const categories: Arguments[] = [];
       let target: Arguments | undefined;
       const checkRecord = async (entity: string, value: string) => {
         const found = (await records(context, entity, value))[0];
@@ -182,13 +183,15 @@ export function createOperationRuntime(catalog: OperationCatalog): OperationRunt
           const found = await checkRecord(entity, value);
           if (key === 'id') target = found;
           if (key !== 'id' && ['account', 'card'].includes(entity) && found.archived) badInput('Conta ou cartão arquivado.');
-          if (key === 'categoryId') {
-            const income = /Income|Receivable/.test(action.operation) || normalized.type === 'INCOME';
-            if (found.type !== 'BOTH' && found.type !== (income ? 'INCOME' : 'EXPENSE')) badInput('Categoria incompatível com o lançamento.');
-          }
+          if (key === 'categoryId') categories.push(found);
         }
       };
       await inspect(args);
+      const effectiveType = normalized.type ?? target?.type ?? (target?.spec ? object(target.spec).type : undefined);
+      const income = /Income|Receivable/.test(action.operation) || effectiveType === 'INCOME';
+      for (const category of categories) {
+        if (category.type !== 'BOTH' && category.type !== (income ? 'INCOME' : 'EXPENSE')) badInput('Categoria incompatível com o lançamento.');
+      }
       if (normalized.sourceId && normalized.sourceId === normalized.destinationId) badInput('Origem e destino devem ser diferentes.');
       const earlierProfile = [...previous].reverse().find(item => item.operation === 'updateMyProfile');
       const currency = String(earlierProfile ? object(earlierProfile.arguments.input).preferredCurrency : (await records(context, 'profile'))[0]?.preferredCurrency ?? 'BRL');
@@ -248,7 +251,9 @@ export function createOperationRuntime(catalog: OperationCatalog): OperationRunt
       const before = name === 'saveFinancialAccount' && !object(args.input).id ? await records(context, 'account') : [];
       const result = json<unknown>(await catalog.invoke(context, name, checked.arguments));
       if (Array.isArray(result) && name === 'saveFinancialAccount') {
-        const saved = result.find(item => object(item).id === object(args.input).id || !before.some(old => old.id === object(item).id));
+        const id = object(checked.arguments.input).id;
+        const saved = id ? result.find(item => object(item).id === id)
+          : result.find(item => !before.some(old => old.id === object(item).id));
         if (!saved) badInput('Não foi possível identificar a conta salva.');
         return { id: object(saved).id, data: result };
       }
