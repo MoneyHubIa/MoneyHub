@@ -27,6 +27,7 @@ model User {
   notifications         Notification[]
   financialAccounts     FinancialAccount[]
   financialGoals        FinancialGoal[]
+  aiOperationPlans      AiOperationPlan[]
 
   @@map("users")
 }
@@ -403,4 +404,42 @@ model FinancialAudit {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   @@index([userId, createdAt, id])
   @@map("financial_audit")
+}
+
+model AiOperationPlan {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  status      String    @default("PENDING") @db.VarChar(20)
+  confirmedAt DateTime? @map("confirmed_at") @db.Timestamptz(3)
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actions     AiOperation[]
+  @@unique([id, userId])
+  @@index([userId, createdAt])
+  @@map("ai_operation_plans")
+}
+
+model AiOperation {
+  id          String   @id @db.Uuid
+  planId      String   @map("plan_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  position    Int
+  key         String   @db.VarChar(60)
+  operation   String   @db.VarChar(80)
+  title       String   @db.VarChar(300)
+  arguments   Json
+  details     Json
+  snapshots   Json
+  status      String   @default("PENDING") @db.VarChar(20)
+  result      Json?
+  error       String?  @db.VarChar(1000)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  plan        AiOperationPlan @relation(fields: [planId, userId], references: [id, userId], onDelete: Cascade)
+  @@unique([planId, position])
+  @@unique([planId, key])
+  @@index([userId, status])
+  @@map("ai_operations")
 }

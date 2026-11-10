@@ -9,6 +9,13 @@
     "plugins": [
       "expo-router",
       "expo-splash-screen",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Permita que o MoneyHub use o microfone para ditar mensagens ao assistente financeiro.",
+          "speechRecognitionPermission": "Permita que o MoneyHub converta sua fala em texto para o assistente financeiro."
+        }
+      ],
       "@react-native-firebase/app",
       "@react-native-firebase/analytics"
     ],

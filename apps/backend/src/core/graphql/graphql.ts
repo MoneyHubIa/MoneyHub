@@ -1,3 +1,7 @@
+import { createOperationCatalog } from '../../modules/ai/operations/catalog.js';
+import { createOperationRuntime } from '../../modules/ai/operations/runtime.js';
+import { confirmAiOperationPlan, cancelAiOperationPlan, getAiOperationPlan } from '../../modules/ai/operations/operations.js';
+import { publicPlan } from '../../modules/ai/operations/types.js';
 import { bankingTypeDefs, bankingResolvers } from '../../modules/finance/banking/banking-graphql.js';
 import { financialGoalsTypeDefs, financialGoalsResolvers } from '../../modules/finance/financial-goals/financial-goals-graphql.js';
 import { GraphQLError } from 'graphql';
@@ -926,10 +930,19 @@ export const typeDefs = `#graphql
     usage: AiAssistantUsage!
     contextPeriod: String!
     contextVersion: String!
+    pendingPlan: AiOperationPlan
   }
+
+  type AiOperationDetail { label: String! before: String after: String! }
+  type AiOperationAction { id: ID! key: String! operation: String! title: String! details: [AiOperationDetail!]! status: String! resultJson: String error: String }
+  type AiOperationPlan { id: ID! status: String! confirmedAt: String createdAt: String! expiresAt: String! totals: [String!]! actions: [AiOperationAction!]! }
+  input AiChatMessageInput { role: String! content: String! }
 
   input AskAiAssistantInput {
     message: String!
+    history: [AiChatMessageInput!]
+    timeZone: String
+    planId: ID
     month: Int
     year: Int
     templateId: String
@@ -1181,6 +1194,7 @@ export const typeDefs = `#graphql
     categoryAnalysis(input: CategoryAnalysisInput): CategoryAnalysisResult!
     periodComparison(input: PeriodComparisonInput): PeriodComparisonResult!
     aiFinancialContext(input: AiFinancialContextInput): AiFinancialContext!
+    aiOperationPlan(id: ID!): AiOperationPlan!
   }
 
   type Mutation {
@@ -1211,6 +1225,8 @@ export const typeDefs = `#graphql
     deleteRecurringTransaction(id: ID!): Boolean!
     processRecurringTransactions: ProcessRecurringResult!
     askAiAssistant(input: AskAiAssistantInput!): AiAssistantResponse!
+    confirmAiOperationPlan(id: ID!): AiOperationPlan!
+    cancelAiOperationPlan(id: ID!): AiOperationPlan!
     createCalendarEvent(input: CreateCalendarEventInput!): CalendarEvent!
     updateCalendarEvent(input: UpdateCalendarEventInput!): CalendarEvent!
     deleteCalendarEvent(id: ID!): Boolean!
@@ -1224,6 +1240,7 @@ export const resolvers = {
   Query: {
     ...financialGoalsResolvers.Query,
     ...bankingResolvers.Query,
+    aiOperationPlan: async (_: unknown, args: { id: string }, context: GraphQLContext) => publicPlan(await getAiOperationPlan(context, args.id)),
     health: () => ({
       status: 'ok',
       service: 'moneyhub-backend',
@@ -1575,12 +1592,14 @@ export const resolvers = {
     ) => {
       return processRecurringTransactions(context, recurringTransactionRepository());
     },
+    confirmAiOperationPlan: (_: unknown, args: { id: string }, context: GraphQLContext) => confirmAiOperationPlan(context, args.id, aiOperationRuntime),
+    cancelAiOperationPlan: (_: unknown, args: { id: string }, context: GraphQLContext) => cancelAiOperationPlan(context, args.id),
     askAiAssistant: (
       _parent: unknown,
       args: { input: AskAiAssistantInput },
       context: GraphQLContext
     ) => {
-      return askAiAssistant(context, args.input);
+      return askAiAssistant(context, args.input, { operationRuntime: aiOperationRuntime });
     },
     createCalendarEvent: (
       _parent: unknown,
@@ -1675,3 +1694,6 @@ export function unauthenticatedError(): GraphQLError {
     }
   });
 }
+
+export const aiOperationCatalog = createOperationCatalog(typeDefs, resolvers);
+export const aiOperationRuntime = createOperationRuntime(aiOperationCatalog);

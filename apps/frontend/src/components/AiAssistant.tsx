@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import { useMutation } from '@apollo/client/react';
+import { useApolloClient, useMutation } from '@apollo/client/react';
 import {
   Bot,
   Calendar,
@@ -7,10 +7,12 @@ import {
   ChevronRight,
   Clock,
   Cpu,
+  Mic,
   Minus,
   RotateCcw,
   Send,
   Sparkles,
+  Square,
   X,
   Zap
 } from 'lucide-react-native';
@@ -27,7 +29,10 @@ import {
   View
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { AiOperationPlanCard } from './AiOperationPlanCard';
+import { AI_OPERATION_PLAN_FRAGMENT, AI_OPERATION_PLAN_QUERY, CANCEL_AI_OPERATION_PLAN, CONFIRM_AI_OPERATION_PLAN, operationResultText, type AiOperationPlan } from '../services/aiOperations';
 import { useResponsive } from '../theme/useResponsive';
+import { ASSISTANT_MESSAGE_MAX_LENGTH, useVoiceInput, VOICE_UNAVAILABLE_MESSAGE } from '../hooks/useVoiceInput';
 
 export const ASK_AI_ASSISTANT_MUTATION = gql`
   mutation AskAiAssistant($input: AskAiAssistantInput!) {
@@ -43,8 +48,10 @@ export const ASK_AI_ASSISTANT_MUTATION = gql`
       }
       contextPeriod
       contextVersion
+      pendingPlan { ...AiOperationPlanFields }
     }
   }
+  ${AI_OPERATION_PLAN_FRAGMENT}
 `;
 
 export type AiAssistantUsage = {
@@ -61,6 +68,7 @@ export type AiAssistantResponse = {
   usage: AiAssistantUsage;
   contextPeriod: string;
   contextVersion: string;
+  pendingPlan?: AiOperationPlan | null;
 };
 
 export type AskAiAssistantData = {
@@ -69,6 +77,9 @@ export type AskAiAssistantData = {
 
 export type AskAiAssistantInput = {
   message: string;
+  history?: { role: 'user' | 'assistant'; content: string }[];
+  timeZone?: string;
+  planId?: string;
   month?: number | undefined;
   year?: number | undefined;
   templateId?: string | undefined;
@@ -77,6 +88,7 @@ export type AskAiAssistantInput = {
 export type ChatMessage = {
   id: string;
   sender: 'user' | 'assistant';
+  plan?: AiOperationPlan | null;
   content: string;
   timestamp: Date;
   model?: string | undefined;
@@ -290,7 +302,8 @@ export function AiAssistant({
   onClose,
   onToggle
 }: AiAssistantProps): React.JSX.Element {
-  const { theme } = useTheme();
+  const { theme, setThemeMode } = useTheme();
+  const client = useApolloClient();
   const { isDesktop } = useResponsive();
   const currentDate = new Date();
   const [internalIsOpen, setInternalIsOpen] = useState<boolean>(true);
@@ -303,12 +316,18 @@ export function AiAssistant({
     initialYear ?? currentDate.getFullYear()
   );
   const [inputText, setInputText] = useState<string>('');
+  const [operationBusy, setOperationBusy] = useState(false);
+  const [operationError, setOperationError] = useState<string | null>(null);
+  const [currentPlanId, setCurrentPlanId] = useState<string | undefined>();
+  const [editingPlanId, setEditingPlanId] = useState<string | undefined>();
+  const operationLock = useRef(false);
+  const inputRef = useRef<TextInput | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       sender: 'assistant',
       content:
-        'Olá! Sou seu assistente financeiro no MoneyHub. Posso analisar suas receitas, despesas, contas a pagar e metas para sugerir otimizações.',
+        'Olá! Sou seu assistente financeiro no MoneyHub. Posso consultar dados e preparar operações do aplicativo para você revisar e confirmar.',
       timestamp: new Date(),
       model: 'MoneyHub AI'
     }
@@ -321,7 +340,26 @@ export function AiAssistant({
     { input: AskAiAssistantInput }
   >(ASK_AI_ASSISTANT_MUTATION);
 
+  const busy = loading || operationBusy;
+  const voice = useVoiceInput({
+    value: inputText,
+    onChange: setInputText,
+    enabled: viewMode === 'fullscreen' || isWidgetOpen,
+    blocked: busy
+  });
+  const decorativeIconProps = Platform.OS === 'web'
+    ? { 'aria-hidden': true as const }
+    : { accessible: false };
+  const voiceTransitioning = voice.status === 'preparing' || voice.status === 'stopping';
+  const microphoneDisabled = voice.available !== true || busy || voiceTransitioning;
+  const sendDisabled = !inputText.trim() || inputText.length > ASSISTANT_MESSAGE_MAX_LENGTH || busy || voice.isBusy;
+  const voiceFeedback = voice.status === 'preparing' ? 'Preparando microfone…'
+    : voice.status === 'listening' ? 'Ouvindo… Toque no botão para parar.'
+      : voice.status === 'stopping' ? 'Finalizando…'
+        : voice.message ?? (voice.available === false ? VOICE_UNAVAILABLE_MESSAGE : null);
+
   const handleToggle = () => {
+    if (isWidgetOpen) voice.cancel();
     if (onToggle) {
       onToggle();
     } else if (onClose && isWidgetOpen) {
@@ -332,6 +370,7 @@ export function AiAssistant({
   };
 
   const handleClose = () => {
+    voice.cancel();
     if (onClose) {
       onClose();
     } else {
@@ -357,25 +396,81 @@ export function AiAssistant({
     }
   };
 
-  const handleResetConversation = () => {
-    setMessages([
-      {
-        id: `welcome-${Date.now()}`,
-        sender: 'assistant',
-        content:
-          'Conversa reiniciada! Como posso ajudar na gestão das suas finanças hoje?',
-        timestamp: new Date(),
-        model: 'MoneyHub AI'
+  const replacePlan = (plan: AiOperationPlan) => {
+    setMessages(previous => previous.map(message => message.plan?.id === plan.id
+      ? { ...message, plan, content: operationResultText(plan) } : message));
+    if (plan.status !== 'PENDING') setCurrentPlanId(undefined);
+  };
+
+  const refreshOperationResults = async (updated: AiOperationPlan) => {
+    if (!updated.actions.some(action => action.status === 'SUCCEEDED')) return;
+    for (const action of updated.actions) {
+      if (action.operation === 'updateMyProfile' && action.status === 'SUCCEEDED' && action.resultJson) {
+        const profile = JSON.parse(action.resultJson) as { theme?: string };
+        if (profile.theme === 'LIGHT' || profile.theme === 'DARK') {
+          setThemeMode(profile.theme.toLowerCase() as 'light' | 'dark');
+        }
       }
-    ]);
+    }
+    try {
+      await client.refetchQueries({ include: 'active', updateCache: cache => { cache.evict({ id: 'ROOT_QUERY' }); } });
+    } catch {
+      setOperationError('Operações salvas. Não foi possível atualizar as telas; carregue novamente.');
+    }
+  };
+
+  const runPlanAction = async (plan: AiOperationPlan, mode: 'confirm' | 'cancel' | 'refresh') => {
+    if (operationLock.current || loading || voice.isBusy) return;
+    operationLock.current = true;
+    setOperationBusy(true);
+    setOperationError(null);
+    try {
+      let updated: AiOperationPlan | undefined;
+      if (mode === 'refresh') {
+        const response = await client.query<{ aiOperationPlan: AiOperationPlan }>({ query: AI_OPERATION_PLAN_QUERY, variables: { id: plan.id }, fetchPolicy: 'network-only' });
+        updated = response.data?.aiOperationPlan;
+      } else {
+        const response = await client.mutate<{ confirmAiOperationPlan?: AiOperationPlan; cancelAiOperationPlan?: AiOperationPlan }>({ mutation: mode === 'confirm' ? CONFIRM_AI_OPERATION_PLAN : CANCEL_AI_OPERATION_PLAN, variables: { id: plan.id } });
+        updated = response.data?.confirmAiOperationPlan ?? response.data?.cancelAiOperationPlan;
+      }
+      if (!updated) throw new Error('Resultado indisponível.');
+      replacePlan(updated);
+      setEditingPlanId(undefined);
+      await refreshOperationResults(updated);
+      return updated;
+    } catch {
+      let recovered: AiOperationPlan | undefined;
+      try {
+        const response = await client.query<{ aiOperationPlan: AiOperationPlan }>({ query: AI_OPERATION_PLAN_QUERY, variables: { id: plan.id }, fetchPolicy: 'network-only' });
+        recovered = response.data?.aiOperationPlan;
+        if (recovered) { replacePlan(recovered); await refreshOperationResults(recovered); }
+      } catch { /* The saved plan can be queried again without replaying successful steps. */ }
+      if (!recovered || ['PENDING', 'EXECUTING'].includes(recovered.status)) setOperationError('Não foi possível concluir a consulta do resultado. Consulte a proposta ou tente novamente; ações já salvas não serão duplicadas.');
+      return recovered;
+    } finally {
+      operationLock.current = false;
+      setOperationBusy(false);
+    }
+  };
+
+  const handleResetConversation = async () => {
+    if (operationLock.current) return;
+    voice.cancel();
+    const pending = messages.find(message => message.plan?.id === currentPlanId)?.plan;
+    if (pending?.status === 'PENDING' && (await runPlanAction(pending, 'cancel'))?.status !== 'CANCELLED') return;
+    setCurrentPlanId(undefined);
+    setEditingPlanId(undefined);
+    setMessages([{ id: `welcome-${Date.now()}`, sender: 'assistant', content: 'Conversa reiniciada! Como posso ajudar na gestão das suas finanças hoje?', timestamp: new Date(), model: 'MoneyHub AI' }]);
   };
 
   const handleSendMessage = async (customMessage?: string, templateId?: string) => {
     const textToSend = (customMessage ?? inputText).trim();
-    if (!textToSend || textToSend.length > 2000 || loading) {
+    if (!textToSend || textToSend.length > ASSISTANT_MESSAGE_MAX_LENGTH || busy || voice.isBusy || operationLock.current) {
       return;
     }
 
+    setOperationError(null);
+    const history = messages.filter(message => !message.id.startsWith('welcome')).slice(-20).map(message => ({ role: message.sender, content: message.content.slice(0, 2000) }));
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       sender: 'user',
@@ -393,6 +488,9 @@ export function AiAssistant({
         variables: {
           input: {
             message: textToSend,
+            history,
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            ...(currentPlanId ? { planId: currentPlanId } : {}),
             month: selectedMonth,
             year: selectedYear,
             templateId: templateId ?? 'GENERAL_FINANCIAL_ASSISTANT'
@@ -406,12 +504,15 @@ export function AiAssistant({
           id: `assistant-${Date.now()}`,
           sender: 'assistant',
           content: aiData.answer,
+          plan: aiData.pendingPlan ?? null,
           timestamp: new Date(),
           model: aiData.model,
           latencyMs: aiData.latencyMs,
           tokens: aiData.usage?.totalTokens
         };
-        setMessages((prev) => [...prev, assistantMessage]);
+        setMessages((prev) => [...prev.map(message => aiData.pendingPlan && message.plan && message.plan.id === currentPlanId && message.plan.status === 'PENDING'
+          ? { ...message, plan: { ...message.plan, status: 'CANCELLED' } } : message), assistantMessage]);
+        if (aiData.pendingPlan) { setCurrentPlanId(aiData.pendingPlan.id); setEditingPlanId(undefined); }
       }
     } catch {
       // Error handled by mutation state
@@ -518,7 +619,8 @@ export function AiAssistant({
             <Pressable
               accessibilityLabel="Limpar conversa"
               accessibilityRole="button"
-              onPress={handleResetConversation}
+              disabled={operationBusy}
+              onPress={() => void handleResetConversation()}
               style={[styles.iconButton, { backgroundColor: theme.bgSurface }]}
             >
               <RotateCcw color={theme.textSecondary} size={15} />
@@ -605,7 +707,8 @@ export function AiAssistant({
                 <Pressable
                   accessibilityLabel={item.label}
                   accessibilityRole="button"
-                  disabled={loading}
+                  disabled={busy || voice.isBusy}
+                  accessibilityState={{ disabled: busy || voice.isBusy }}
                   onPress={() => handleSendMessage(item.prompt, item.templateId)}
                   style={[
                     styles.quickPill,
@@ -613,7 +716,7 @@ export function AiAssistant({
                       backgroundColor: theme.bgSurface,
                       borderColor: theme.borderElevated
                     },
-                    loading && styles.quickPillDisabled
+                    (busy || voice.isBusy) && styles.quickPillDisabled
                   ]}
                 >
                   <Icon color={theme.brandAI} size={13} />
@@ -676,6 +779,11 @@ export function AiAssistant({
                       textColor={theme.textPrimary}
                     />
 
+                    {item.plan && <AiOperationPlanCard plan={item.plan} busy={busy || voice.isBusy} editing={editingPlanId === item.plan.id}
+                      onConfirm={() => void runPlanAction(item.plan!, 'confirm')}
+                      onCancel={() => void runPlanAction(item.plan!, 'cancel')}
+                      onRefresh={() => void runPlanAction(item.plan!, 'refresh')}
+                      onEdit={() => { setCurrentPlanId(item.plan!.id); setEditingPlanId(item.plan!.id); inputRef.current?.focus(); }} />}
                     {!isUser && (item.model || item.latencyMs !== undefined) && (
                       <View style={styles.messageFooter}>
                         {item.model && (
@@ -752,40 +860,73 @@ export function AiAssistant({
             }
           ]}
         >
-          <TextInput
-            accessibilityLabel="Mensagem para a IA"
-            multiline
-            maxLength={2000} onChangeText={setInputText}
-            placeholder="Pergunte sobre seus gastos, receitas ou metas..."
-            placeholderTextColor={theme.textMuted}
-            style={[
-              styles.textInput,
-              {
-                backgroundColor: theme.bgSurface,
-                borderColor: theme.borderElevated,
-                color: theme.textPrimary
-              }
-            ]}
-            value={inputText}
-          />
+          {operationError && <Text accessibilityLiveRegion="polite" style={{ color: theme.textPrimary }}>{operationError}</Text>}
+          <View style={styles.inputRow}>
+            <TextInput
+              ref={inputRef}
+              accessibilityLabel="Mensagem para a IA"
+              multiline
+              editable={!voice.isBusy}
+              maxLength={ASSISTANT_MESSAGE_MAX_LENGTH}
+              onChangeText={setInputText}
+              placeholder="Pergunte sobre seus gastos, receitas ou metas..."
+              placeholderTextColor={theme.textMuted}
+              style={[
+                styles.textInput,
+                {
+                  backgroundColor: theme.bgSurface,
+                  borderColor: theme.borderElevated,
+                  color: theme.textPrimary
+                }
+              ]}
+              value={inputText}
+            />
 
-          <Pressable
-            accessibilityLabel="Enviar mensagem"
-            accessibilityRole="button"
-            disabled={!inputText.trim() || inputText.length > 2000 || loading}
-            onPress={() => handleSendMessage()}
-            style={[
-              styles.sendButton,
-              { backgroundColor: theme.brandAI },
-              (!inputText.trim() || inputText.length > 2000 || loading) && styles.sendButtonDisabled
-            ]}
-          >
-            {loading ? (
-              <ActivityIndicator color="#ffffff" size="small" />
-            ) : (
-              <Send color="#ffffff" size={17} />
-            )}
-          </Pressable>
+            <Pressable
+              accessibilityLabel={voice.status === 'listening' ? 'Parar entrada por voz' : 'Iniciar entrada por voz'}
+              accessibilityHint="Sua fala preenche o campo para revisão antes de enviar."
+              accessibilityRole="button"
+              accessibilityState={{ disabled: microphoneDisabled, busy: voiceTransitioning }}
+              disabled={microphoneDisabled}
+              onPress={() => voice.status === 'listening' ? voice.stop() : void voice.start()}
+              style={({ pressed }) => [
+                styles.microphoneButton,
+                {
+                  backgroundColor: voice.isBusy ? theme.brandAI : theme.bgSurface,
+                  borderColor: theme.brandAI,
+                  opacity: microphoneDisabled ? 0.5 : pressed ? 0.8 : 1
+                }
+              ]}
+            >
+              {voiceTransitioning ? <ActivityIndicator color="#ffffff" size="small" />
+                : voice.status === 'listening' ? <Square color="#ffffff" size={18} {...decorativeIconProps} />
+                  : <Mic color={theme.brandAI} size={20} {...decorativeIconProps} />}
+            </Pressable>
+
+            <Pressable
+              accessibilityLabel="Enviar mensagem"
+              accessibilityRole="button"
+              disabled={sendDisabled}
+              accessibilityState={{ disabled: sendDisabled }}
+              onPress={() => handleSendMessage()}
+              style={[
+                styles.sendButton,
+                { backgroundColor: theme.brandAI },
+                sendDisabled && styles.sendButtonDisabled
+              ]}
+            >
+              {loading ? (
+                <ActivityIndicator color="#ffffff" size="small" />
+              ) : (
+                <Send color="#ffffff" size={17} />
+              )}
+            </Pressable>
+          </View>
+          {voiceFeedback && (
+            <Text accessibilityLiveRegion="polite" style={[styles.voiceFeedback, { color: theme.textPrimary }]}>
+              {voiceFeedback}
+            </Text>
+          )}
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -986,11 +1127,26 @@ const styles = StyleSheet.create({
   },
   inputBar: {
     flexShrink: 0,
-    alignItems: 'flex-end',
     borderTopWidth: 1,
-    flexDirection: 'row',
     gap: 8,
     padding: 10
+  },
+  inputRow: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    gap: 8
+  },
+  microphoneButton: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    minHeight: 48,
+    minWidth: 48,
+    justifyContent: 'center'
+  },
+  voiceFeedback: {
+    fontSize: 12,
+    lineHeight: 18
   },
   latencyBadge: {
     alignItems: 'center',
@@ -1154,9 +1310,9 @@ const styles = StyleSheet.create({
   sendButton: {
     alignItems: 'center',
     borderRadius: 8,
-    height: 40,
+    height: 48,
     justifyContent: 'center',
-    width: 40
+    width: 48
   },
   sendButtonDisabled: {
     opacity: 0.5
@@ -1166,9 +1322,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     flex: 1,
-    fontSize: 13,
+    fontSize: 16,
     maxHeight: 80,
-    minHeight: 40,
+    minHeight: 48,
     paddingHorizontal: 12,
     paddingVertical: 8
   },

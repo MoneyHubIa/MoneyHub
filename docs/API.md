@@ -80,3 +80,27 @@ O histórico de movimentos expõe nodes, hasNextPage e endCursor.
 [adapter Firebase REST](../apps/backend/src/modules/auth/firebase-rest/firebase-auth-rest.ts).
 
 Relacionados: [@auth](AUTH.md), [@finance](FINANCE.md), [@ai](AI.md), [@limits](LIMITS.md).
+
+## Propostas operacionais do assistente
+
+`askAiAssistant` aceita os campos opcionais `history`, `timeZone` e `planId` e
+retorna `pendingPlan` quando houver ações para revisar. As operações seguem os
+tipos e regras dos módulos existentes. O modelo prepara a proposta; o cliente
+confirma separadamente:
+
+```graphql
+mutation ConfirmarOperacoes($id: ID!) {
+  confirmAiOperationPlan(id: $id) {
+    id
+    status
+    actions { id title status error }
+  }
+}
+```
+
+`aiOperationPlan(id)` consulta o resultado persistido e
+`cancelAiOperationPlan(id)` cancela propostas ainda não confirmadas. Propostas são
+restritas ao usuário autenticado e verificado, aceitam até 20 ações e expiram após
+30 minutos enquanto pendentes. Repetir confirmação não duplica efeitos já salvos.
+Resultados parciais preservam os sucessos e identificam falhas e dependências
+bloqueadas. Consulte [@ai](AI.md) para ferramentas, revisão, retomada e implantação.
