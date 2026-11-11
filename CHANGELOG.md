@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.7.0](https://github.com/MoneyHubIa/MoneyHub/compare/v0.6.1...v0.7.0) (2026-11-11)
+
+### Features
+
+* import bank statements and optimize dashboard loading ([5cf7380](https://github.com/MoneyHubIa/MoneyHub/commit/5cf73803ecbb1ebd847656f936b16de6df660d56))
+
 ## [0.6.1](https://github.com/MoneyHubIa/MoneyHub/compare/v0.6.0...v0.6.1) (2026-11-10)
 
 ### Bug Fixes
