@@ -29,11 +29,13 @@ export type AuthContext = Readonly<{
 
 export type VerifyIdToken = (token: string) => Promise<AuthContext>;
 
-type FirebaseToken = { uid: string };
+type FirebaseToken = { uid: string; auth_time?: number };
 type FirebaseUser = {
   uid: string;
   email?: string | null;
   emailVerified: boolean;
+  disabled?: boolean;
+  tokensValidAfterTime?: string;
 };
 
 export type IdentityProjection = {
@@ -53,6 +55,7 @@ type FirebaseVerifierDependencies = {
   verifyToken(token: string): Promise<FirebaseToken>;
   getUser(uid: string): Promise<FirebaseUser>;
   identityRepository: IdentityRepository;
+  checkRevoked?: boolean;
 };
 
 export function createFirebaseVerifier(
@@ -63,12 +66,26 @@ export function createFirebaseVerifier(
     let firebaseUser: FirebaseUser;
     try {
       firebaseUser = await dependencies.getUser(decodedToken.uid);
-    } catch {
+    } catch (error) {
+      if (dependencies.checkRevoked) throw error;
       firebaseUser = {
         uid: decodedToken.uid,
         email: ((decodedToken as Record<string, unknown>).email as string | undefined) ?? null,
         emailVerified: Boolean((decodedToken as Record<string, unknown>).email_verified)
       };
+    }
+
+    if (dependencies.checkRevoked) {
+      if (firebaseUser.disabled) {
+        throw Object.assign(new Error('The user record is disabled.'), { code: 'auth/user-disabled' });
+      }
+      if (firebaseUser.tokensValidAfterTime) {
+        const validAfter = Date.parse(firebaseUser.tokensValidAfterTime);
+        if (!Number.isFinite(decodedToken.auth_time) || !Number.isFinite(validAfter)
+          || decodedToken.auth_time! * 1000 < validAfter) {
+          throw Object.assign(new Error('The Firebase ID token has been revoked.'), { code: 'auth/id-token-revoked' });
+        }
+      }
     }
 
     if (!firebaseUser.email) {
@@ -186,8 +203,11 @@ export const verifyFirebaseIdToken: VerifyIdToken = (token) => {
   const { checkRevoked } = resolveFirebaseAdminCredential();
   const auth = firebaseAuth();
   return createFirebaseVerifier({
-    verifyToken: async (value) => auth.verifyIdToken(value, checkRevoked),
+    // Keep signature/expiry validation in the SDK; reuse one fresh UserRecord for
+    // revocation, disabled status and identity metadata instead of fetching it twice.
+    verifyToken: async (value) => auth.verifyIdToken(value, false),
     getUser: async (uid) => auth.getUser(uid),
+    checkRevoked,
     identityRepository: {
       synchronizeExistingIdentity: (identity) => getIdentityRepository().synchronizeExistingIdentity(identity)
     }

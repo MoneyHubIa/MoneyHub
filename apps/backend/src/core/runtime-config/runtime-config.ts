@@ -7,6 +7,7 @@ export type RuntimeConfig = Readonly<{
   firebaseWebApiKey: string;
   trustProxyHops: number;
   databasePoolMax: number;
+  databasePoolIdleTimeoutMs: number;
 }>;
 
 function integerSetting(environment: NodeJS.ProcessEnv, name: string, fallback: number, minimum: number): number {
@@ -19,7 +20,13 @@ function integerSetting(environment: NodeJS.ProcessEnv, name: string, fallback: 
 }
 
 export function loadDatabasePoolMax(environment: NodeJS.ProcessEnv = process.env): number {
-  return integerSetting(environment, 'DATABASE_POOL_MAX', 2, 1);
+  const production = environment.NODE_ENV === 'production' || environment.VERCEL === '1';
+  return integerSetting(environment, 'DATABASE_POOL_MAX', production ? 2 : 4, 1);
+}
+
+export function loadDatabasePoolIdleTimeoutMs(environment: NodeJS.ProcessEnv = process.env): number {
+  const production = environment.NODE_ENV === 'production' || environment.VERCEL === '1';
+  return integerSetting(environment, 'DATABASE_POOL_IDLE_TIMEOUT_MS', production ? 5000 : 60000, 1);
 }
 
 export function loadTrustProxyHops(environment: NodeJS.ProcessEnv = process.env): number {
@@ -52,6 +59,7 @@ export function loadRuntimeConfig(
     appUrl: new URL(environment.APP_URL),
     firebaseWebApiKey: environment.FIREBASE_WEB_API_KEY.trim(),
     trustProxyHops: loadTrustProxyHops(environment),
-    databasePoolMax: loadDatabasePoolMax(environment)
+    databasePoolMax: loadDatabasePoolMax(environment),
+    databasePoolIdleTimeoutMs: loadDatabasePoolIdleTimeoutMs(environment)
   };
 }

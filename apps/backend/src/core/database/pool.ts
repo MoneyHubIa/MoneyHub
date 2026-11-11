@@ -1,6 +1,6 @@
 import pg from 'pg';
 import { attachDatabasePool } from '@vercel/functions/db-connections';
-import { loadDatabasePoolMax } from '../runtime-config/runtime-config.js';
+import { loadDatabasePoolMax, loadDatabasePoolIdleTimeoutMs } from '../runtime-config/runtime-config.js';
 
 /** Each warm instance shares a small client pool; the external pooler controls the database budget. */
 export function createDatabasePool(databaseUrl: string, environment: NodeJS.ProcessEnv = process.env): pg.Pool {
@@ -10,7 +10,7 @@ export function createDatabasePool(databaseUrl: string, environment: NodeJS.Proc
     ssl: sslMode === 'disable' ? false : { rejectUnauthorized: false },
     max: loadDatabasePoolMax(environment),
     connectionTimeoutMillis: 5000,
-    idleTimeoutMillis: 5000,
+    idleTimeoutMillis: loadDatabasePoolIdleTimeoutMs(environment),
     maxLifetimeSeconds: 300,
     allowExitOnIdle: true
   });

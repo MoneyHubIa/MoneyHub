@@ -70,3 +70,12 @@ os lembretes selecionados, inclusive nas ocorrências futuras.
 Os testes de banking executam todas as migrations em PostgreSQL embarcado,
 validam isolamento, unicidade, baixa, rollback, datas e arredondamento. Os testes
 de interface cobrem contas, transferências, fechamento e seleção múltipla.
+
+A importação OFX/CSV e suas regras de revisão/conciliação estão em
+[FINANCE.md](FINANCE.md#importação-de-extrato-bancário). Aplique também
+`20261111010000_bank_statement_imports` antes de liberar o cliente atualizado.
+Novas dependências Expo exigem reconstruir os binários nativos. O E2E inclui
+importação em desktop/mobile web e teste de concorrência em PostgreSQL. Para
+executar apenas este último em banco local descartável já migrado, configure
+`BANK_STATEMENT_TEST_DATABASE_URL` apontando para `moneyhub_e2e` em localhost e
+execute `node --import tsx --test apps/backend/tests/integration/bank-statement-imports/bank-statement-imports.integration.test.ts`.

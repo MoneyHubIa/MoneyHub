@@ -35,6 +35,7 @@ Composição de identidade e permissões fica em [@auth](AUTH.md).
 | Agenda | myAgenda | createCalendarEvent, updateCalendarEvent, deleteCalendarEvent |
 | Notificações | myNotifications | syncAgendaNotifications, markNotificationRead, markAllNotificationsRead |
 | Metas | myFinancialGoals, financialGoal, financialGoalsSummary | createFinancialGoal, updateFinancialGoal, deleteFinancialGoal, recordFinancialGoalMovement |
+| Importação bancária | bankStatementImport | previewBankStatementImport, confirmBankStatementImport |
 | IA | aiFinancialContext | askAiAssistant |
 
 Campos adicionais de AuthUser incluem profile e needsProfileBootstrap.
@@ -75,6 +76,15 @@ Dinheiro trafega como string decimal. Valores, datas, estado e idempotência
 de metas estão em [@finance](FINANCE.md); não derive regras de negócio do formato
 dos exemplos ou de nomes de campo.
 O histórico de movimentos expõe nodes, hasNextPage e endCursor.
+
+Importação recebe arquivo em base64 e conta financeira autenticada. A prévia
+CSV sem mapeamento retorna cabeçalhos/amostras; csvDelimiter permite atualizar
+essas amostras. Com mapeamento válido ou OFX, retorna lote e sugestões.
+confirmBankStatementImport recebe uma decisão por linha: CREATE, LINK_ACCOUNT,
+TRANSFER, CARD_PAYMENT ou IGNORE. O retorno contém registros, contagens e totais
+conciliados, incluindo vínculos existentes; não representa variação adicional do
+saldo. Consulte o schema de importação para campos de cada decisão. JSON do
+GraphQL aceita até 4 MiB; o arquivo decodificado continua limitado a 2 MiB.
 
 ## Fontes
 

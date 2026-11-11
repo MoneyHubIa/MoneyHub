@@ -3,7 +3,8 @@ import { createServer, type Socket } from 'node:net';
 import { test } from 'node:test';
 import { createDatabasePool } from '../../../src/core/database/pool.js';
 
-test('bounds concurrent connections, queues excess work and reuses released connections', async () => {
+test('bounds concurrent connections, queues excess work and reuses released connections after six idle seconds', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
   const sockets = new Set<Socket>();
   let accepted = 0;
   // A minimal PostgreSQL handshake is enough to exercise real pg.Pool acquisition and release.
@@ -22,7 +23,7 @@ test('bounds concurrent connections, queues excess work and reuses released conn
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
-  const pool = createDatabasePool(`postgresql://test:test@127.0.0.1:${address.port}/test?sslmode=disable`, {});
+  const pool = createDatabasePool(`postgresql://test:test@127.0.0.1:${address.port}/test?sslmode=disable`, { DATABASE_POOL_MAX: '2' });
   try {
     const [first, second] = await Promise.all([pool.connect(), pool.connect()]);
     const waiting = pool.connect();
@@ -34,6 +35,11 @@ test('bounds concurrent connections, queues excess work and reuses released conn
     assert.equal(accepted, 2);
     third.release();
     second.release();
+    assert.equal(pool.options.idleTimeoutMillis, 60000);
+    t.mock.timers.tick(6000);
+    const reused = await pool.connect();
+    assert.equal(accepted, 2);
+    reused.release();
   } finally {
     await pool.end();
     for (const socket of sockets) socket.destroy();

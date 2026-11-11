@@ -207,6 +207,46 @@ describe('Expo application routes', () => {
     expect(screen.getByText('redirect:/(app)')).toBeOnTheScreen();
   });
 
+  test('keeps login hidden between successful session validation and the authenticated app', async () => {
+    const anonymous = await render(<AnonymousLayout />);
+    expect(screen.getByText('stack')).toBeOnTheScreen();
+
+    mockAuthState = { loading: true, user: null };
+    await anonymous.rerender(<AnonymousLayout />);
+    expect(screen.getByLabelText('Carregando sessao')).toBeOnTheScreen();
+    expect(screen.queryByText('stack')).toBeNull();
+
+    mockAuthState = { loading: false, user: { uid: 'user-1', emailVerified: true } };
+    await anonymous.rerender(<AnonymousLayout />);
+    expect(screen.queryByText('stack')).toBeNull();
+    expect(screen.getByText('redirect:/(app)')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Carregando sessao')).toBeOnTheScreen();
+    await anonymous.unmount();
+
+    mockQueryState = { loading: true, data: undefined };
+    const authenticated = await render(<AuthenticatedLayout />);
+    expect(screen.getByLabelText('Carregando sessao')).toBeOnTheScreen();
+    expect(screen.queryByText('stack')).toBeNull();
+    expect(screen.queryByText('redirect:/(auth)/login')).toBeNull();
+
+    mockQueryState = { loading: false, data: { me: { id: 'user-1', needsProfileBootstrap: false } } };
+    await authenticated.rerender(<AuthenticatedLayout />);
+    expect(screen.getByText('stack')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Carregando sessao')).toBeNull();
+  });
+
+  test('restores the login form after failed session validation', async () => {
+    const view = await render(<AnonymousLayout />);
+    mockAuthState = { loading: true, user: null };
+    await view.rerender(<AnonymousLayout />);
+    expect(screen.queryByText('stack')).toBeNull();
+
+    mockAuthState = { loading: false, user: null };
+    await view.rerender(<AnonymousLayout />);
+    expect(screen.getByText('stack')).toBeOnTheScreen();
+    expect(screen.queryByText('redirect:/(app)')).toBeNull();
+  });
+
   test('authenticated layout redirects anonymous and unverified users', async () => {
     mockAuthState = { loading: false, user: null };
     const view = await render(<AuthenticatedLayout />);

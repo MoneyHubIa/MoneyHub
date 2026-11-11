@@ -2,6 +2,9 @@ import { GraphQLError } from 'graphql';
 import type { GraphQLContext } from '../../../core/graphql/graphql.js';
 import { requireVerifiedUserId } from '../financial-categories/financial-categories.js';
 import { getPrismaClient } from '../../../core/database/database.js';
+import { Prisma } from '../../../generated/prisma/client.js';
+import { accountSelection, aggregateCents } from '../financial-read-model.js';
+import { money } from '../banking/rules.js';
 
 export type CashFlowGranularity = 'DAILY' | 'MONTHLY';
 
@@ -35,21 +38,14 @@ export type CashFlowResult = {
 };
 
 export type CashFlowTransactionItem = {
-  amount: number;
+  amount: string | number;
   date: Date;
 };
 
 export type CashFlowRepository = {
-  getIncomesBetween(args: {
-    userId: string;
-    startDate: Date;
-    endDate: Date;
-  }): Promise<CashFlowTransactionItem[]>;
-  getExpensesBetween(args: {
-    userId: string;
-    startDate: Date;
-    endDate: Date;
-  }): Promise<CashFlowTransactionItem[]>;
+  getMovementsBetween(args: {
+    userId: string; startDate: Date; endDate: Date;
+  }): Promise<{ incomes: CashFlowTransactionItem[]; expenses: CashFlowTransactionItem[] }>;
 };
 
 const MONTH_NAMES_SHORT = [
@@ -60,53 +56,26 @@ const MONTH_NAMES_SHORT = [
 function padZero(num: number): string {
   return num < 10 ? `0${num}` : String(num);
 }
-export function cashFlowRepository(financialAccountIds?: string[]): CashFlowRepository {
-  const prisma = getPrismaClient();
-
+export function cashFlowRepository(financialAccountIds?: string[] | null): CashFlowRepository {
   return {
-    async getIncomesBetween({ userId, startDate, endDate }) {
-      const rows = await prisma.income.findMany({
-        where: {
-          userId,
-          ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}),
-          deletedAt: null,
-          occurredAt: {
-            gte: startDate,
-            lte: endDate
-          }
-        },
-        select: {
-          amount: true,
-          occurredAt: true
-        }
-      });
-
-      return rows.map((r) => ({
-        amount: Number(r.amount),
-        date: r.occurredAt
-      }));
-    },
-    async getExpensesBetween({ userId, startDate, endDate }) {
-      const rows = await prisma.expense.findMany({
-        where: {
-          userId,
-          ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}),
-          deletedAt: null,
-          occurredAt: {
-            gte: startDate,
-            lte: endDate
-          }
-        },
-        select: {
-          amount: true,
-          occurredAt: true
-        }
-      });
-
-      return rows.map((r) => ({
-        amount: Number(r.amount),
-        date: r.occurredAt
-      }));
+    async getMovementsBetween({ userId, startDate, endDate }) {
+      const selection = accountSelection(financialAccountIds);
+      const rows = await getPrismaClient().$queryRaw<Array<{ kind: string; date: string; amount: string }>>(Prisma.sql`
+        WITH movements AS (
+          SELECT 'INCOME' AS kind, m.occurred_at, m.amount FROM incomes m
+          WHERE m.user_id = ${userId}::uuid AND m.deleted_at IS NULL
+            AND m.occurred_at >= ${startDate.toISOString()}::timestamptz AND m.occurred_at <= ${endDate.toISOString()}::timestamptz ${selection}
+          UNION ALL
+          SELECT 'EXPENSE' AS kind, m.occurred_at, m.amount FROM expenses m
+          WHERE m.user_id = ${userId}::uuid AND m.deleted_at IS NULL
+            AND m.occurred_at >= ${startDate.toISOString()}::timestamptz AND m.occurred_at <= ${endDate.toISOString()}::timestamptz ${selection}
+        )
+        SELECT kind, (occurred_at AT TIME ZONE 'UTC')::date::text AS date, SUM(amount)::text AS amount
+        FROM movements GROUP BY kind, (occurred_at AT TIME ZONE 'UTC')::date
+      `);
+      const items = (kind: string) => rows.filter(row => row.kind === kind)
+        .map(row => ({ amount: row.amount, date: new Date(row.date + 'T00:00:00.000Z') }));
+      return { incomes: items('INCOME'), expenses: items('EXPENSE') };
     }
   };
 }
@@ -147,33 +116,30 @@ export async function getCashFlow(
     const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
     const endDate = new Date(Date.UTC(year, month - 1, daysInMonth, 23, 59, 59, 999));
 
-    const [incomes, expenses] = await Promise.all([
-      repository.getIncomesBetween({ userId, startDate, endDate }),
-      repository.getExpensesBetween({ userId, startDate, endDate })
-    ]);
+    const { incomes, expenses } = await repository.getMovementsBetween({ userId, startDate, endDate });
 
-    const dailyIncomes: Record<number, number> = {};
-    const dailyExpenses: Record<number, number> = {};
+    const dailyIncomes: Record<number, bigint> = {};
+    const dailyExpenses: Record<number, bigint> = {};
 
     for (const item of incomes) {
       const day = item.date.getUTCDate();
-      dailyIncomes[day] = (dailyIncomes[day] ?? 0) + item.amount;
+      dailyIncomes[day] = (dailyIncomes[day] ?? 0n) + aggregateCents(item.amount);
     }
 
     for (const item of expenses) {
       const day = item.date.getUTCDate();
-      dailyExpenses[day] = (dailyExpenses[day] ?? 0) + item.amount;
+      dailyExpenses[day] = (dailyExpenses[day] ?? 0n) + aggregateCents(item.amount);
     }
 
-    let runningAccumulated = 0;
-    let totalIncomeNum = 0;
-    let totalExpenseNum = 0;
+    let runningAccumulated = 0n;
+    let totalIncomeNum = 0n;
+    let totalExpenseNum = 0n;
 
     const dataPoints: CashFlowDataPoint[] = [];
 
     for (let day = 1; day <= daysInMonth; day++) {
-      const income = dailyIncomes[day] ?? 0;
-      const expense = dailyExpenses[day] ?? 0;
+      const income = dailyIncomes[day] ?? 0n;
+      const expense = dailyExpenses[day] ?? 0n;
       const net = income - expense;
       runningAccumulated += net;
       totalIncomeNum += income;
@@ -182,10 +148,10 @@ export async function getCashFlow(
       dataPoints.push({
         label: `${padZero(day)}/${padZero(month)}`,
         date: `${year}-${padZero(month)}-${padZero(day)}`,
-        income: income.toFixed(2),
-        expense: expense.toFixed(2),
-        net: net.toFixed(2),
-        accumulatedBalance: runningAccumulated.toFixed(2)
+        income: money(income),
+        expense: money(expense),
+        net: money(net),
+        accumulatedBalance: money(runningAccumulated)
       });
     }
 
@@ -193,9 +159,9 @@ export async function getCashFlow(
       granularity: 'DAILY',
       dataPoints,
       totals: {
-        totalIncome: totalIncomeNum.toFixed(2),
-        totalExpense: totalExpenseNum.toFixed(2),
-        netBalance: (totalIncomeNum - totalExpenseNum).toFixed(2)
+        totalIncome: money(totalIncomeNum),
+        totalExpense: money(totalExpenseNum),
+        netBalance: money(totalIncomeNum - totalExpenseNum)
       }
     };
   }
@@ -208,10 +174,7 @@ export async function getCashFlow(
   const startMonth = ((startMonthIndex % 12) + 12) % 12; // 0-11
   const startDate = new Date(Date.UTC(startYear, startMonth, 1, 0, 0, 0, 0));
 
-  const [incomes, expenses] = await Promise.all([
-    repository.getIncomesBetween({ userId, startDate, endDate: endMonthDate }),
-    repository.getExpensesBetween({ userId, startDate, endDate: endMonthDate })
-  ]);
+  const { incomes, expenses } = await repository.getMovementsBetween({ userId, startDate, endDate: endMonthDate });
 
   const monthKeys: Array<{ y: number; m: number; key: string; label: string }> = [];
   for (let i = monthsCount - 1; i >= 0; i--) {
@@ -223,32 +186,32 @@ export async function getCashFlow(
     monthKeys.push({ y, m, key, label });
   }
 
-  const monthlyIncomes: Record<string, number> = {};
-  const monthlyExpenses: Record<string, number> = {};
+  const monthlyIncomes: Record<string, bigint> = {};
+  const monthlyExpenses: Record<string, bigint> = {};
 
   for (const item of incomes) {
     const y = item.date.getUTCFullYear();
     const m = item.date.getUTCMonth() + 1;
     const key = `${y}-${padZero(m)}`;
-    monthlyIncomes[key] = (monthlyIncomes[key] ?? 0) + item.amount;
+    monthlyIncomes[key] = (monthlyIncomes[key] ?? 0n) + aggregateCents(item.amount);
   }
 
   for (const item of expenses) {
     const y = item.date.getUTCFullYear();
     const m = item.date.getUTCMonth() + 1;
     const key = `${y}-${padZero(m)}`;
-    monthlyExpenses[key] = (monthlyExpenses[key] ?? 0) + item.amount;
+    monthlyExpenses[key] = (monthlyExpenses[key] ?? 0n) + aggregateCents(item.amount);
   }
 
-  let runningAccumulated = 0;
-  let totalIncomeNum = 0;
-  let totalExpenseNum = 0;
+  let runningAccumulated = 0n;
+  let totalIncomeNum = 0n;
+  let totalExpenseNum = 0n;
 
   const dataPoints: CashFlowDataPoint[] = [];
 
   for (const item of monthKeys) {
-    const income = monthlyIncomes[item.key] ?? 0;
-    const expense = monthlyExpenses[item.key] ?? 0;
+    const income = monthlyIncomes[item.key] ?? 0n;
+    const expense = monthlyExpenses[item.key] ?? 0n;
     const net = income - expense;
     runningAccumulated += net;
     totalIncomeNum += income;
@@ -257,10 +220,10 @@ export async function getCashFlow(
     dataPoints.push({
       label: item.label,
       date: item.key,
-      income: income.toFixed(2),
-      expense: expense.toFixed(2),
-      net: net.toFixed(2),
-      accumulatedBalance: runningAccumulated.toFixed(2)
+      income: money(income),
+      expense: money(expense),
+      net: money(net),
+      accumulatedBalance: money(runningAccumulated)
     });
   }
 
@@ -268,9 +231,9 @@ export async function getCashFlow(
     granularity: 'MONTHLY',
     dataPoints,
     totals: {
-      totalIncome: totalIncomeNum.toFixed(2),
-      totalExpense: totalExpenseNum.toFixed(2),
-      netBalance: (totalIncomeNum - totalExpenseNum).toFixed(2)
+      totalIncome: money(totalIncomeNum),
+      totalExpense: money(totalExpenseNum),
+      netBalance: money(totalIncomeNum - totalExpenseNum)
     }
   };
 }

@@ -23,6 +23,7 @@ export interface ThemedModalProps {
   children: React.ReactNode;
   maxWidth?: number | undefined;
   contentStyle?: StyleProp<ViewStyle> | undefined;
+  scrollViewRef?: React.Ref<ScrollView> | undefined;
 }
 
 export function ThemedModal({
@@ -33,7 +34,8 @@ export function ThemedModal({
   subtitle,
   children,
   maxWidth = 540,
-  contentStyle
+  contentStyle,
+  scrollViewRef
 }: ThemedModalProps): React.JSX.Element {
   const { theme } = useTheme();
 
@@ -93,6 +95,7 @@ export function ThemedModal({
             </Pressable>
           </View>
           <ScrollView
+            ref={scrollViewRef}
             contentContainerStyle={styles.body}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}

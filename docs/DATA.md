@@ -61,6 +61,33 @@ O cliente Prisma é gerado em apps/backend/src/generated/prisma.
 O runtime reutiliza cliente/pool configurado por DATABASE_URL.
 Prisma CLI usa DIRECT_URL antes de DATABASE_URL; carregamento em [@setup](SETUP.md).
 
+As leituras do dashboard agregam valores no PostgreSQL: saldos de todas as contas
+em uma consulta, resumo mensal em uma, fluxo diário em uma, categorias em uma e
+os dois períodos de comparação em uma. Valores monetários permanecem `numeric`
+no SQL e centavos inteiros na aplicação. Filtros por usuário, contas financeiras,
+exclusão lógica e limites UTC continuam obrigatórios em cada leitura.
+Transferências concluídas afetam os saldos das contas; não entram como receitas
+ou despesas dos gráficos. Contas arquivadas e categorias excluídas preservam seu
+histórico financeiro.
+
+A sincronização de identidade lê usuário e perfil em um único `LEFT JOIN`, dando
+prioridade ao `firebase_uid` antes do email. Só atualiza a linha quando UID, email
+ou verificação mudam; requisições sem mudanças preservam `updated_at` e
+`email_verified_at`. Com credenciais Firebase Admin JSON/arquivo, uma leitura
+atual de `UserRecord` atende à verificação de revogação, conta desabilitada e
+metadados. Falha nessa leitura impede autenticação quando revogação é exigida.
+O backend não mantém cache de autenticação ou dados financeiros entre requisições.
+
+Na validação de 11/11/2026, seis operações GraphQL concorrentes do dashboard
+(contas, resumo, fluxo, categorias, comparação e notificações) passaram de 27
+para 13 consultas. A comparação somente de leitura reproduziu as consultas
+anteriores no mesmo conjunto de dados, com cinco execuções aquecidas por versão:
+mediana de `3003,1` ms antes e `843,1` ms depois, redução de aproximadamente `72%`.
+O teste usou os padrões locais de pool de cada versão (`2` antes, `4` depois).
+Esses tempos não incluem autenticação HTTP/Firebase, renderização ou conexão
+inicial, e não representam garantia para outros volumes de dados ou ambientes.
+Os padrões de produção/Vercel continuam em `2` conexões por instância.
+
 Use migrations versionadas e prisma migrate deploy no processo de publicação;
 nunca aplique schema na inicialização da função. A migration de metas é
 20261004000000_financial_goals e é aditiva.

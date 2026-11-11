@@ -74,7 +74,12 @@ O servidor só habilita arquivos estáticos quando encontra index.html.
 
 ## Backend e banco
 
-`DATABASE_POOL_MAX` controla conexões por instância (padrão `2`, inteiro positivo).
+`DATABASE_POOL_MAX` controla conexões por instância: padrão `4` fora de produção,
+`2` com `NODE_ENV=production` ou `VERCEL=1`. `DATABASE_POOL_IDLE_TIMEOUT_MS`
+controla o tempo ocioso: padrão `60000` ms fora de produção e `5000` ms em
+produção/Vercel. Ambas aceitam inteiros positivos; valores explícitos prevalecem
+sobre os padrões. Ao copiar `.env.example` para produção, ajuste os dois valores
+para `2` e `5000`, respectivamente, ou remova-os para usar os padrões do ambiente.
 `TRUST_PROXY_HOPS` controla saltos confiáveis de proxy (padrão `1` com `VERCEL=1`,
 `0` nos demais ambientes, inteiro não negativo). Configuração inválida impede
 a inicialização. Em produção Supabase/Vercel, use transaction pooling no

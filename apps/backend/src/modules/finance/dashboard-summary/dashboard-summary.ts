@@ -1,6 +1,8 @@
 import { GraphQLError } from 'graphql';
 import type { GraphQLContext } from '../../../core/graphql/graphql.js';
 import { requireVerifiedUserId } from '../financial-categories/financial-categories.js';
+import { aggregateCents, readPeriodTotals, type FinancialPeriodTotals } from '../financial-read-model.js';
+import { money } from '../banking/rules.js';
 
 export type DashboardSummary = {
   totalIncome: string;
@@ -18,17 +20,16 @@ export type DashboardSummaryInput = {
 };
 
 export type DashboardSummaryRepository = {
-  getIncomeSummary(args: {
+  getSummary(args: {
     userId: string;
     startDate: Date;
     endDate: Date;
-  }): Promise<{ sum: number; count: number }>;
-  getExpenseSummary(args: {
-    userId: string;
-    startDate: Date;
-    endDate: Date;
-  }): Promise<{ sum: number; count: number }>;
+  }): Promise<FinancialPeriodTotals>;
 };
+
+export function dashboardSummaryRepository(financialAccountIds?: string[] | null): DashboardSummaryRepository {
+  return { getSummary: async ({ userId, startDate, endDate }) => (await readPeriodTotals(userId, [{ startDate, endDate }], financialAccountIds))[0]! };
+}
 
 export async function getDashboardSummary(
   context: GraphQLContext,
@@ -56,21 +57,17 @@ export async function getDashboardSummary(
   const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
   const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
 
-  const [incomes, expenses] = await Promise.all([
-    repository.getIncomeSummary({ userId, startDate, endDate }),
-    repository.getExpenseSummary({ userId, startDate, endDate })
-  ]);
-
-  const totalIncomeNum = incomes.sum;
-  const totalExpenseNum = expenses.sum;
+  const totals = await repository.getSummary({ userId, startDate, endDate });
+  const totalIncomeNum = aggregateCents(totals.incomeTotal);
+  const totalExpenseNum = aggregateCents(totals.expenseTotal);
   const netBalanceNum = totalIncomeNum - totalExpenseNum;
 
   return {
-    totalIncome: totalIncomeNum.toFixed(2),
-    totalExpense: totalExpenseNum.toFixed(2),
-    netBalance: netBalanceNum.toFixed(2),
-    incomeCount: incomes.count,
-    expenseCount: expenses.count,
+    totalIncome: money(totalIncomeNum),
+    totalExpense: money(totalExpenseNum),
+    netBalance: money(netBalanceNum),
+    incomeCount: totals.incomeCount,
+    expenseCount: totals.expenseCount,
     month,
     year
   };

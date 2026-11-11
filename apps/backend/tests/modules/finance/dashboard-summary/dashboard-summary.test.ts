@@ -22,8 +22,7 @@ function verifiedContext() {
 
 function createRepository(overrides: Partial<DashboardSummaryRepository> = {}): DashboardSummaryRepository {
   return {
-    getIncomeSummary: async () => ({ sum: 5000, count: 2 }),
-    getExpenseSummary: async () => ({ sum: 1800, count: 4 }),
+    getSummary: async () => ({ incomeTotal: 5000, incomeCount: 2, expenseTotal: 1800, expenseCount: 4 }),
     ...overrides
   };
 }
@@ -40,8 +39,7 @@ describe('dashboard summary', () => {
 
   test('calculates totals and net balance for authenticated user', async () => {
     const repository = createRepository({
-      getIncomeSummary: async () => ({ sum: 7500.5, count: 3 }),
-      getExpenseSummary: async () => ({ sum: 2500.25, count: 5 })
+      getSummary: async () => ({ incomeTotal: 7500.5, incomeCount: 3, expenseTotal: 2500.25, expenseCount: 5 })
     });
 
     const result = await getDashboardSummary(verifiedContext(), { month: 1, year: 2026 }, repository);
@@ -68,8 +66,7 @@ describe('dashboard summary', () => {
 
   test('handles negative net balance when expenses exceed income', async () => {
     const repository = createRepository({
-      getIncomeSummary: async () => ({ sum: 1000, count: 1 }),
-      getExpenseSummary: async () => ({ sum: 2500, count: 3 })
+      getSummary: async () => ({ incomeTotal: 1000, incomeCount: 1, expenseTotal: 2500, expenseCount: 3 })
     });
 
     const result = await getDashboardSummary(verifiedContext(), { month: 2, year: 2026 }, repository);

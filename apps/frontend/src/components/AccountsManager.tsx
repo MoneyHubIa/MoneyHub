@@ -1,4 +1,5 @@
 import { CREATE_INCOME, CREATE_EXPENSE } from '../services/financial-mutations';
+import { BankStatementImportButton } from './BankStatementImport';
 import { Button, Select, ToggleButton } from './ui';
 import { validSchedule, scheduleInput } from './CommitmentSchedule';
 import { decimal, validText } from '../utils/validation';
@@ -721,6 +722,7 @@ export function AccountsManager({
           </View>
 
           {/* New Account Button */}
+          <BankStatementImportButton />
           <Pressable
             accessibilityLabel={isPayable ? 'Nova Conta a Pagar' : 'Nova Conta a Receber'}
             accessibilityRole="button"

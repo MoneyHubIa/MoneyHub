@@ -8,6 +8,8 @@ import type { AuthService } from '../src/services/authService';
 
 const mockSyncAgendaNotifications = jest.fn().mockResolvedValue({ data: {} });
 const mockDashboardQuery = jest.fn();
+const mockRefetchSummary = jest.fn();
+const mockRefetchFinancialAccounts = jest.fn();
 const mockClearStore = jest.fn();
 const mockReplace = jest.fn();
 const mockMarkPayablePaid = jest.fn();
@@ -51,8 +53,10 @@ jest.mock('@apollo/client/react', () => ({
   useApolloClient: () => ({
     clearStore: mockClearStore
   }),
-  useQuery: (document: unknown) => {
-    mockDashboardQuery(document);
+  useQuery: (document: Parameters<typeof print>[0], options: unknown) => {
+    mockDashboardQuery(document, options);
+    const { print: printDocument } = jest.requireActual<typeof import('graphql')>('graphql');
+    const query = printDocument(document);
     return {
       data: mockSummaryUnavailable ? undefined : {
         myCategories: [],
@@ -79,7 +83,8 @@ jest.mock('@apollo/client/react', () => ({
         ...mockAccountsData
       },
       loading: mockSummaryLoading,
-      refetch: jest.fn()
+      refetch: query.includes('query FinancialAccounts') ? mockRefetchFinancialAccounts
+        : query.includes('query DashboardSummary') ? mockRefetchSummary : jest.fn()
     };
   },
   useMutation: (document: Parameters<typeof print>[0]) => {
@@ -95,6 +100,29 @@ jest.mock('@apollo/client/react', () => ({
 }));
 
 describe('MoneyHub dashboard shell', () => {
+  test('fetches fresh dashboard data on mount without an immediate explicit refetch', async () => {
+    await render(<DashboardShell />, { wrapper: Wrapper });
+    expect(mockRefetchSummary).not.toHaveBeenCalled();
+    expect(mockRefetchFinancialAccounts).not.toHaveBeenCalled();
+    for (const name of ['FinancialAccounts', 'DashboardSummary']) {
+      expect(mockDashboardQuery.mock.calls.some(([document, options]) =>
+        print(document).includes(`query ${name}`) && options?.fetchPolicy === 'cache-and-network'
+      )).toBe(true);
+    }
+  });
+
+  test('refreshes summary and balances once when returning to the dashboard', async () => {
+    await render(<DashboardShell />, { wrapper: Wrapper });
+    await fireEvent.press(screen.getByRole('button', { name: /Agenda/i }));
+    expect(mockRefetchSummary).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByRole('button', { name: 'Dashboard' }));
+    expect(mockRefetchSummary).toHaveBeenCalledTimes(1);
+    expect(mockRefetchFinancialAccounts).toHaveBeenCalledTimes(1);
+    await fireEvent.press(screen.getByRole('button', { name: 'Dashboard' }));
+    expect(mockRefetchSummary).toHaveBeenCalledTimes(1);
+    expect(mockRefetchFinancialAccounts).toHaveBeenCalledTimes(1);
+  });
+
   test.each(['desktop', 'mobile'])('opens Transferência from quick actions without changing the dashboard (%s)', async source => {
     if (source === 'mobile') jest.mocked(Dimensions.get).mockReturnValue({ width: 390, height: 844, scale: 1, fontScale: 1 });
     await render(<DashboardShell />, { wrapper: Wrapper });

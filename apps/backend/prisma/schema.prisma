@@ -28,6 +28,7 @@ model User {
   financialAccounts     FinancialAccount[]
   financialGoals        FinancialGoal[]
   aiOperationPlans      AiOperationPlan[]
+  bankStatementImports  BankStatementImport[]
 
   @@map("users")
 }
@@ -313,6 +314,7 @@ model FinancialAccount {
   cards CreditCard[]
   outgoing Transfer[] @relation("transfer_source")
   incoming Transfer[] @relation("transfer_destination")
+  statementImports BankStatementImport[]
   @@unique([userId, seedKey])
   @@unique([userId, id])
   @@index([userId, archived])
@@ -442,4 +444,49 @@ model AiOperation {
   @@unique([planId, key])
   @@index([userId, status])
   @@map("ai_operations")
+}
+
+model BankStatementImport {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String   @map("user_id") @db.Uuid
+  financialAccountId String   @map("financial_account_id") @db.Uuid
+  fileName           String   @map("file_name") @db.VarChar(255)
+  format             String   @db.VarChar(3)
+  fileHash           String   @map("file_hash") @db.Char(64)
+  currency           String   @db.Char(3)
+  rows               Json
+  status             String   @default("PENDING") @db.VarChar(20)
+  confirmationHash   String?  @map("confirmation_hash") @db.Char(64)
+  result             Json?
+  expiresAt          DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user               User @relation(fields: [userId], references: [id], onDelete: Cascade, map: "bank_statement_import_user_fkey")
+  financialAccount   FinancialAccount @relation(fields: [userId, financialAccountId], references: [userId, id], onDelete: NoAction, map: "bank_statement_import_account_fkey")
+  entries            BankStatementImportEntry[]
+
+  @@unique([id, userId, financialAccountId], map: "bank_statement_import_scope_key")
+  @@index([userId, status, expiresAt], map: "bank_statement_import_owner_expiry_idx")
+  @@map("bank_statement_imports")
+}
+
+model BankStatementImportEntry {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  importId           String   @map("import_id") @db.Uuid
+  userId             String   @map("user_id") @db.Uuid
+  financialAccountId String   @map("financial_account_id") @db.Uuid
+  rowNumber          Int      @map("row_number")
+  sourceKey          String   @map("source_key") @db.Char(64)
+  fingerprint        String   @db.Char(64)
+  entityKind         String   @map("entity_kind") @db.VarChar(20)
+  entityId           String   @map("entity_id") @db.Uuid
+  targetKey          String   @map("target_key") @db.VarChar(120)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  import             BankStatementImport @relation(fields: [importId, userId, financialAccountId], references: [id, userId, financialAccountId], onDelete: Cascade, map: "bank_statement_entry_import_fkey")
+
+  @@unique([userId, financialAccountId, sourceKey], map: "bank_statement_entry_source_key")
+  @@unique([userId, financialAccountId, targetKey], map: "bank_statement_entry_target_key")
+  @@index([userId, financialAccountId, fingerprint], map: "bank_statement_entry_fingerprint_idx")
+  @@index([importId, userId, financialAccountId], map: "bank_statement_entry_import_idx")
+  @@map("bank_statement_import_entries")
 }

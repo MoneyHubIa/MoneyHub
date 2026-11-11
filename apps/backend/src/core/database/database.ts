@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import type { Prisma } from '../../generated/prisma/client.js';
+import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaPg } from '@prisma/adapter-pg';
 import type { IdentityRepository } from '../../modules/auth/authentication/auth.js';
 import { PrismaClient } from '../../generated/prisma/client.js';
@@ -58,19 +58,22 @@ export function getIdentityRepository(): IdentityRepository {
     return noDatabaseRepository;
   }
 
-  prisma ??= createPrismaClient(databaseUrl);
+  return createIdentityRepository(getPrismaClient());
+}
 
+export function createIdentityRepository(client: PrismaClient): IdentityRepository {
   return {
     synchronizeExistingIdentity: async (identity) => {
-      const existing =
-        (await prisma!.user.findUnique({
-          where: { firebaseUid: identity.uid },
-          include: { profile: { select: { id: true } } }
-        })) ??
-        (await prisma!.user.findUnique({
-          where: { email: identity.email },
-          include: { profile: { select: { id: true } } }
-        }));
+      const [existing] = await client.$queryRaw<Array<{
+        id: string; firebaseUid: string; email: string; emailVerifiedAt: Date | null; profileId: string | null;
+      }>>(Prisma.sql`
+        SELECT u.id, u.firebase_uid AS "firebaseUid", u.email,
+          u.email_verified_at AS "emailVerifiedAt", p.id AS "profileId"
+        FROM users u LEFT JOIN profiles p ON p.user_id = u.id
+        WHERE u.firebase_uid = ${identity.uid} OR u.email = ${identity.email}
+        ORDER BY (u.firebase_uid = ${identity.uid}) DESC
+        LIMIT 1
+      `);
 
       if (!existing) {
         return null;
@@ -84,19 +87,22 @@ export function getIdentityRepository(): IdentityRepository {
         emailVerifiedAt = new Date();
       }
 
-      const user = await prisma!.user.update({
-        where: { id: existing.id },
-        data: {
-          firebaseUid: identity.uid,
-          email: identity.email,
-          emailVerifiedAt
-        },
-        select: { id: true }
-      });
+      if (existing.firebaseUid !== identity.uid || emailChanged
+        || existing.emailVerifiedAt?.getTime() !== emailVerifiedAt?.getTime()) {
+        await client.user.update({
+          where: { id: existing.id },
+          data: {
+            firebaseUid: identity.uid,
+            email: identity.email,
+            emailVerifiedAt
+          },
+          select: { id: true }
+        });
+      }
 
       return {
-        userId: user.id,
-        profileId: existing.profile?.id ?? null
+        userId: existing.id,
+        profileId: existing.profileId
       };
     }
   };

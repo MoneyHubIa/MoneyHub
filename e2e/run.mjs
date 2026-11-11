@@ -45,8 +45,8 @@ try {
   await run('docker', ['compose', '-p', 'moneyhub-e2e', '-f', 'e2e/compose.yaml', 'up', '-d', '--wait']);
   composeStarted = true;
   await run(npmExecutable, ['run', 'db:migrate', '-w', 'apps/backend']);
-  await run(process.execPath, ['--import', 'tsx', '--test', 'apps/backend/tests/integration/financial-goals/financial-goals.integration.test.ts'], {
-    env: { ...environment, FINANCIAL_GOALS_TEST_DATABASE_URL: environment.DATABASE_URL }
+  await run(process.execPath, ['--import', 'tsx', '--test', 'apps/backend/tests/integration/financial-goals/financial-goals.integration.test.ts', 'apps/backend/tests/integration/bank-statement-imports/bank-statement-imports.integration.test.ts'], {
+    env: { ...environment, FINANCIAL_GOALS_TEST_DATABASE_URL: environment.DATABASE_URL, BANK_STATEMENT_TEST_DATABASE_URL: environment.DATABASE_URL }
   });
   await run(npmExecutable, ['run', 'build', '-w', 'apps/backend']);
   await run(npmExecutable, ['run', 'build:web', '-w', 'apps/frontend']);

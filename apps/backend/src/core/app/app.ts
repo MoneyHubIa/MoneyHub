@@ -436,7 +436,7 @@ export async function createApp(
       standardHeaders: 'draft-7',
       legacyHeaders: false
     }),
-    express.json({ limit: '1mb' }),
+    express.json({ limit: '4mb' }),
     expressMiddleware(apollo, {
       context: async ({ req }) => ({
         requestId: req.res?.locals.requestId ?? crypto.randomUUID(),

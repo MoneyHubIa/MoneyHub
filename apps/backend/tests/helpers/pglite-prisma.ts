@@ -6,7 +6,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../../src/generated/prisma/client.js';
 
 /** Run the production Prisma adapter and services against an isolated PostgreSQL WASM database. */
-export async function createTestDatabase() {
+export async function createTestDatabase(onQuery?: (query: string) => void) {
   const db = new PGlite();
   const root = new URL('../../prisma/migrations/', import.meta.url);
   for (const name of (await readdir(root)).filter(name => /^\d/.test(name)).sort()) {
@@ -46,6 +46,7 @@ export async function createTestDatabase() {
     const release = await acquire();
     return Object.assign(new EventEmitter(), { query, release });
   }) as unknown as pg.Pool['connect'];
-  const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
+  const prisma = new PrismaClient({ adapter: new PrismaPg(pool), log: [{ level: 'query', emit: 'event' }] });
+  if (onQuery) prisma.$on('query', event => onQuery(event.query));
   return { db, prisma, close: async () => { await prisma.$disconnect(); await pool.end(); await db.close(); } };
 }

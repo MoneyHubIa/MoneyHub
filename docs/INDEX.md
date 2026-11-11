@@ -14,7 +14,7 @@ consulte a fonte executável para assinaturas, campos ou versões completas.
 | [@auth](AUTH.md) | autenticacao, login, firebase, sessao, senha, autorizacao | Entender identidade, permissões e recuperação. |
 | [@data](DATA.md) | dados, postgres, prisma, schema, migrations | Entender persistência e relações. |
 | [@api](API.md) | graphql, rest, endpoints, queries, mutations, erros | Localizar operações e contratos de transporte. |
-| [@finance](FINANCE.md) | financeiro, metas, aportes, recorrencias, agenda, notificacoes, dashboard | Consultar regras de negócio atuais. |
+| [@finance](FINANCE.md) | financeiro, extrato, importar, ofx, csv, conciliacao, metas, aportes, recorrencias, agenda, notificacoes, dashboard | Consultar regras de negócio atuais. |
 | [@frontend](FRONTEND.md) | expo, rotas, componentes, tema, interface, analytics | Alterar app, navegação e instrumentação. |
 | [@ai](AI.md) | ia, llm, prompts, ferramentas, tools, modelo, auditoria | Configurar ou entender o assistente. |
 | [@tests](TESTING.md) | testes, cobertura, e2e, maestro, ci, acessibilidade | Executar verificações e identificar seu alcance. |

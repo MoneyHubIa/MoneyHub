@@ -15,14 +15,51 @@ despesa como receita negativa. Categorias aceitam INCOME, EXPENSE ou BOTH.
 Centro de custo é opcional. Consultas financeiras excluem registros
 logicamente apagados quando o domínio possui deleted_at.
 
-Contas a pagar/receber representam compromissos. No repositório padrão,
-markAccountPayablePaid gera Expense com prefixo [Pago] e
-markAccountReceivableReceived gera Income com prefixo [Recebido].
-A data de baixa vira data do lançamento.
-O serviço atualiza a conta e cria o lançamento em chamadas separadas;
-não atribua a esse fluxo a atomicidade/idempotência implementada para metas.
+Contas a pagar/receber representam compromissos. No banco atual, triggers
+sincronizam a baixa com Expense/Income na mesma transação, identificados por
+settlementId. A data de baixa vira data do lançamento. Faturas usam o serviço
+de pagamento de cartão, que distribui o pagamento entre suas compras.
 
 Moeda do perfil é preferência de exibição, sem conversão cambial.
+
+## Importação de extrato bancário
+
+O botão Importar extrato está em Extrato e Contas a Pagar/Receber, em web e
+mobile. Aceita OFX bancário SGML/XML e CSV com cabeçalho, até 2 MiB e 500
+movimentações. PDF, imagens, extratos de compras de cartão e investimentos não
+são aceitos. UTF-8/BOM e Windows-1252 são reconhecidos no servidor.
+
+CSV exige mapear data, descrição e valor assinado, ou débito/crédito separados.
+O usuário escolhe separadores e formato de data. Linhas inválidas aparecem com
+erro e devem ser ignoradas ou corrigidas no arquivo de origem. Não há descarte
+silencioso. OFX com moeda diferente do perfil é rejeitado, sem conversão.
+
+A prévia não cria lançamentos. Na revisão, categorias padrão de entrada/saída
+podem ser aplicadas em lote e ajustadas por linha. Débitos criam contas PAID;
+créditos criam contas RECEIVED. Vencimento e baixa usam o dia da movimentação,
+sem recorrência ou lembrete. A descrição de nova conta já vem limitada a 120
+caracteres na revisão, que preserva o texto original do extrato para consulta.
+
+Vínculos são sempre explícitos: contas pendentes/vencidas exigem mesma conta,
+direção e valor integral, com vencimento até sete dias da movimentação. Contas
+já baixadas exigem mesmo valor e data. A classificação existente é preservada.
+Transferências usam duas contas próprias e não geram receita/despesa; a outra
+ponta pode ser conciliada posteriormente sem repetir a transferência. Faturas
+permitem pagamento parcial/total ou vínculo com pagamento existente, na conta
+financeira do cartão, reutilizando o rateio atual.
+
+Identificador OFX e mesma linha do mesmo arquivo CSV bloqueiam reimportação por
+usuário/conta. Correspondências por data, descrição normalizada e valor entre
+arquivos ou formatos são possíveis duplicados: ficam desmarcadas e exigem
+reconhecimento explícito para importar. Duas movimentações legítimas iguais
+podem ser mantidas. Um destino não pode ser conciliado duas vezes na mesma conta.
+
+Lotes pendentes expiram em 24 horas e são removidos na próxima prévia do mesmo
+usuário. Arquivos originais não são persistidos; dados normalizados e vínculos
+confirmados permanecem para rastreabilidade. A confirmação inteira é atômica,
+serializa operações bancárias do usuário e é idempotente para decisões iguais.
+Falhas não salvam linhas parcialmente. Se a resposta de rede for perdida, o
+cliente consulta o resultado antes de permitir nova tentativa.
 
 ## Recorrências e indicadores
 

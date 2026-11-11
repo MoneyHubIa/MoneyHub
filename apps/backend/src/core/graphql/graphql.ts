@@ -3,6 +3,7 @@ import { createOperationRuntime } from '../../modules/ai/operations/runtime.js';
 import { confirmAiOperationPlan, cancelAiOperationPlan, getAiOperationPlan } from '../../modules/ai/operations/operations.js';
 import { publicPlan } from '../../modules/ai/operations/types.js';
 import { bankingTypeDefs, bankingResolvers } from '../../modules/finance/banking/banking-graphql.js';
+import { bankStatementImportsTypeDefs, bankStatementImportsResolvers } from '../../modules/finance/bank-statement-imports/bank-statement-imports-graphql.js';
 import { financialGoalsTypeDefs, financialGoalsResolvers } from '../../modules/finance/financial-goals/financial-goals-graphql.js';
 import { GraphQLError } from 'graphql';
 import type { Prisma } from '../../generated/prisma/client.js';
@@ -66,7 +67,7 @@ import {
 } from '../../modules/finance/expenses/expenses.js';
 import {
   getDashboardSummary,
-  type DashboardSummaryRepository
+  dashboardSummaryRepository
 } from '../../modules/finance/dashboard-summary/dashboard-summary.js';
 import {
   createAccountPayable,
@@ -276,44 +277,6 @@ function expenseRepository(): ExpenseRepository {
     update: async ({ where, data }) => mapExpense(await prisma.expense.update({ where, data }))
   };
 }
-function dashboardSummaryRepository(financialAccountIds?: string[]): DashboardSummaryRepository {
-  const prisma = getPrismaClient();
-  return {
-    getIncomeSummary: async ({ userId, startDate, endDate }) => {
-      const result = await prisma.income.aggregate({
-        where: {
-          userId,
-          ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}),
-          deletedAt: null,
-          occurredAt: { gte: startDate, lte: endDate }
-        },
-        _sum: { amount: true },
-        _count: { _all: true }
-      });
-      return {
-        sum: Number(result._sum.amount ?? 0),
-        count: result._count._all
-      };
-    },
-    getExpenseSummary: async ({ userId, startDate, endDate }) => {
-      const result = await prisma.expense.aggregate({
-        where: {
-          userId,
-          ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}),
-          deletedAt: null,
-          occurredAt: { gte: startDate, lte: endDate }
-        },
-        _sum: { amount: true },
-        _count: { _all: true }
-      });
-      return {
-        sum: Number(result._sum.amount ?? 0),
-        count: result._count._all
-      };
-    }
-  };
-}
-
 function accountPayableRepository(financialAccountIds?: string[]): AccountPayableRepository {
   const prisma = getPrismaClient();
   const mapAccountPayable = (item: PrismaAccountPayable): AccountPayable => ({
@@ -603,6 +566,7 @@ function agendaNotificationsRepository(): AgendaNotificationsRepository {
 export const typeDefs = `#graphql
   ${financialGoalsTypeDefs}
   ${bankingTypeDefs}
+  ${bankStatementImportsTypeDefs}
   type Health {
     status: String!
     service: String!
@@ -1240,6 +1204,7 @@ export const resolvers = {
   Query: {
     ...financialGoalsResolvers.Query,
     ...bankingResolvers.Query,
+    ...bankStatementImportsResolvers.Query,
     aiOperationPlan: async (_: unknown, args: { id: string }, context: GraphQLContext) => publicPlan(await getAiOperationPlan(context, args.id)),
     health: () => ({
       status: 'ok',
@@ -1343,6 +1308,7 @@ export const resolvers = {
   Mutation: {
     ...financialGoalsResolvers.Mutation,
     ...bankingResolvers.Mutation,
+    ...bankStatementImportsResolvers.Mutation,
     bootstrapProfile: async (
       _parent: unknown,
       args: { input: BootstrapProfileInput },

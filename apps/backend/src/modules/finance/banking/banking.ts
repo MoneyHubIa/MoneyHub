@@ -1,6 +1,6 @@
 import { getPrismaClient } from '../../../core/database/database.js';
 import type { GraphQLContext } from '../../../core/graphql/graphql.js';
-import type { Prisma } from '../../../generated/prisma/client.js';
+import { Prisma, type FinancialAccount } from '../../../generated/prisma/client.js';
 import { requireVerifiedUserId } from '../financial-categories/financial-categories.js';
 import { validateReminderOffsetDays } from '../../agenda/notifications/agenda-notifications.js';
 import { allocate, canonical, cents, day, installments, invalid, money, statementDates, type Schedule } from './rules.js';
@@ -14,20 +14,31 @@ export async function account(tx: Tx, userId: string, id?: string) {
 async function lock(tx: Tx, userId: string) {
   await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR NO KEY UPDATE`;
 }
-export async function balance(tx: Tx, userId: string, id: string, initial: string) {
-  const [income, expense, outgoing, incoming] = await Promise.all([
-    tx.income.aggregate({ where: { userId, financialAccountId: id, deletedAt: null }, _sum: { amount: true } }),
-    tx.expense.aggregate({ where: { userId, financialAccountId: id, deletedAt: null }, _sum: { amount: true } }),
-    tx.transfer.aggregate({ where: { userId, sourceId: id, status: 'COMPLETED' }, _sum: { amount: true } }),
-    tx.transfer.aggregate({ where: { userId, destinationId: id, status: 'COMPLETED' }, _sum: { amount: true } })
-  ]);
-  return money(cents(initial, true) + cents(String(income._sum.amount ?? 0), true) - cents(String(expense._sum.amount ?? 0), true) - cents(String(outgoing._sum.amount ?? 0), true) + cents(String(incoming._sum.amount ?? 0), true));
-}
 export async function accounts(context: GraphQLContext) {
   const userId = requireVerifiedUserId(context);
   const db = getPrismaClient();
-  const items = await db.financialAccount.findMany({ where: { userId }, orderBy: [{ isDefault: 'desc' }, { name: 'asc' }] });
-  return Promise.all(items.map(async item => ({ ...item, initialBalance: String(item.initialBalance), balance: await balance(db, userId, item.id, String(item.initialBalance)) })));
+  const items = await db.$queryRaw<Array<Omit<FinancialAccount, 'initialBalance'> & { initialBalance: string; balance: string }>>(Prisma.sql`
+    WITH movements AS (
+      SELECT financial_account_id AS account_id, SUM(amount) AS amount FROM incomes
+      WHERE user_id = ${userId}::uuid AND deleted_at IS NULL GROUP BY financial_account_id
+      UNION ALL
+      SELECT financial_account_id, -SUM(amount) FROM expenses
+      WHERE user_id = ${userId}::uuid AND deleted_at IS NULL GROUP BY financial_account_id
+      UNION ALL
+      SELECT source_id, -SUM(amount) FROM transfers
+      WHERE user_id = ${userId}::uuid AND status = 'COMPLETED' GROUP BY source_id
+      UNION ALL
+      SELECT destination_id, SUM(amount) FROM transfers
+      WHERE user_id = ${userId}::uuid AND status = 'COMPLETED' GROUP BY destination_id
+    ), balances AS (SELECT account_id, SUM(amount) AS amount FROM movements GROUP BY account_id)
+    SELECT a.id, a.user_id AS "userId", a.name, a.type, a.account_number AS "accountNumber",
+      a.additional_data AS "additionalData", a.initial_balance::text AS "initialBalance",
+      a.is_default AS "isDefault", a.archived, a.seed_key AS "seedKey",
+      (a.initial_balance + COALESCE(b.amount, 0))::numeric(38,2)::text AS balance
+    FROM financial_accounts a LEFT JOIN balances b ON b.account_id = a.id
+    WHERE a.user_id = ${userId}::uuid ORDER BY a.is_default DESC, a.name ASC
+  `);
+  return items.map(item => ({ ...item, initialBalance: new Prisma.Decimal(item.initialBalance).toString() }));
 }
 export type AccountInput = { id?: string; name: string; type: string; accountNumber?: string | null; additionalData?: string | null; initialBalance: string; isDefault: boolean; archived?: boolean };
 export async function saveAccount(context: GraphQLContext, input: AccountInput) {

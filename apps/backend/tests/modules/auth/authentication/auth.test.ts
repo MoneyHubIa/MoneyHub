@@ -3,6 +3,43 @@ import { describe, test } from 'node:test';
 import { createFirebaseVerifier, IdentityPersistenceError } from '../../../../src/modules/auth/authentication/auth.js';
 
 describe('Firebase authentication verifier', () => {
+  test('checks fresh user metadata once per request while enforcing revocation', async () => {
+    let reads = 0;
+    let emailVerified = true;
+    const verifier = createFirebaseVerifier({
+      checkRevoked: true,
+      verifyToken: async () => ({ uid: 'fresh', auth_time: 2000, email: 'stale@example.com', email_verified: false }),
+      getUser: async () => {
+        reads++;
+        return { uid: 'fresh', email: 'fresh@example.com', emailVerified, disabled: false, tokensValidAfterTime: new Date(2000000).toUTCString() };
+      },
+      identityRepository: { synchronizeExistingIdentity: async () => null }
+    });
+    assert.equal((await verifier('token')).email, 'fresh@example.com');
+    assert.equal(reads, 1);
+    emailVerified = false;
+    assert.equal((await verifier('token')).emailVerified, false);
+    assert.equal(reads, 2);
+  });
+
+  test('fails closed on disabled, revoked or unavailable user records', async () => {
+    for (const scenario of ['disabled', 'revoked', 'missing-auth-time', 'unavailable']) {
+      let persistenceCalls = 0;
+      const verifier = createFirebaseVerifier({
+        checkRevoked: true,
+        verifyToken: async () => ({ uid: 'user', ...(scenario === 'missing-auth-time' ? {} : { auth_time: 1000 }), email: 'claim@example.com', email_verified: true }),
+        getUser: async () => {
+          if (scenario === 'unavailable') throw new Error('lookup-unavailable');
+          return { uid: 'user', email: 'user@example.com', emailVerified: true, disabled: scenario === 'disabled', tokensValidAfterTime: new Date(1001000).toUTCString() };
+        },
+        identityRepository: { synchronizeExistingIdentity: async () => { persistenceCalls++; return null; } }
+      });
+      await assert.rejects(verifier('token'), scenario === 'unavailable'
+        ? /lookup-unavailable/ : { code: scenario === 'disabled' ? 'auth/user-disabled' : 'auth/id-token-revoked' });
+      assert.equal(persistenceCalls, 0);
+    }
+  });
+
   test('rejects token before reading identity or persistence', async () => {
     let getUserCalls = 0;
     let repositoryCalls = 0;

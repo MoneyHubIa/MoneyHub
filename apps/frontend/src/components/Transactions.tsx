@@ -1,4 +1,5 @@
 import { gql } from '@apollo/client';
+import { BankStatementImportButton } from './BankStatementImport';
 import { useMutation, useQuery } from '@apollo/client/react';
 import {
   ArrowDownCircle,
@@ -248,6 +249,7 @@ export function Transactions({ pageSize: customPageSize }: TransactionsProps): R
 
         </View>
 
+        <BankStatementImportButton />
         {/* 3 Metric Mini Cards */}
         <View style={[styles.metricsRow, !isDesktop && styles.metricsRowMobile]}>
           <Card style={[styles.metricCard, !isDesktop && styles.metricCardMobile]} variant="surface">

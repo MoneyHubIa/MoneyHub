@@ -38,12 +38,17 @@ O postinstall backend gera Prisma; não execute migrations no startup da funçã
 
 ### Pooling e confiança no proxy
 
-O backend reutiliza um cliente Prisma e um `pg.Pool` por instância. O padrão
-`DATABASE_POOL_MAX=2` limita cada instância, não a soma de todas as instâncias.
-O pool usa timeout de aquisição de 5000 ms, timeout ocioso de 5000 ms e vida
+O backend reutiliza um cliente Prisma e um `pg.Pool` por instância. Em produção
+ou com `VERCEL=1`, o padrão `DATABASE_POOL_MAX=2` limita cada instância, não a soma
+de todas as instâncias. Fora de produção, o padrão é `4`.
+O pool usa timeout de aquisição de 5000 ms, timeout ocioso de 5000 ms em produção
+(`60000` ms fora de produção) e vida
 máxima de conexão de 300 segundos. Na Vercel, `attachDatabasePool` mantém o
 ciclo de vida necessário para fechar conexões ociosas antes da suspensão.
 O pool não é encerrado ao final de cada requisição.
+`DATABASE_POOL_IDLE_TIMEOUT_MS` permite substituir o timeout ocioso por um inteiro
+positivo em milissegundos. Não copie os valores locais `4`/`60000` para a Vercel;
+use os padrões de produção `2`/`5000` ou dimensione-os para o limite do provedor.
 
 Estas configurações externas devem ser realizadas pelo operador antes da
 publicação; alterar o repositório não altera os painéis dos provedores:

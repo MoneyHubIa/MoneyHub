@@ -7,12 +7,19 @@ import {
   loadRootEnvironment,
   loadRuntimeConfig,
   loadDatabasePoolMax,
+  loadDatabasePoolIdleTimeoutMs,
   loadTrustProxyHops
 } from '../../../src/core/runtime-config/runtime-config.js';
 
 describe('runtime configuration', () => {
   test('uses small instance pools and trusts only the Vercel proxy by default', () => {
-    assert.equal(loadDatabasePoolMax({}), 2);
+    assert.equal(loadDatabasePoolMax({}), 4);
+    assert.equal(loadDatabasePoolMax({ NODE_ENV: 'production' }), 2);
+    assert.equal(loadDatabasePoolMax({ VERCEL: '1' }), 2);
+    assert.equal(loadDatabasePoolIdleTimeoutMs({}), 60000);
+    assert.equal(loadDatabasePoolIdleTimeoutMs({ NODE_ENV: 'production' }), 5000);
+    assert.equal(loadDatabasePoolIdleTimeoutMs({ VERCEL: '1' }), 5000);
+    assert.equal(loadDatabasePoolIdleTimeoutMs({ DATABASE_POOL_IDLE_TIMEOUT_MS: '10000' }), 10000);
     assert.equal(loadDatabasePoolMax({ DATABASE_POOL_MAX: '4' }), 4);
     assert.equal(loadTrustProxyHops({}), 0);
     assert.equal(loadTrustProxyHops({ NODE_ENV: 'production' }), 0);
@@ -24,9 +31,11 @@ describe('runtime configuration', () => {
   test('rejects unsafe or invalid pool and proxy configuration without echoing values', () => {
     for (const raw of ['', ' ', '-1', '1.5', 'true', 'Infinity', '1e2', '9007199254740992', 'secret-value']) {
       assert.throws(() => loadDatabasePoolMax({ DATABASE_POOL_MAX: raw }), { message: 'DATABASE_POOL_MAX must be an integer greater than or equal to 1.' });
+      assert.throws(() => loadDatabasePoolIdleTimeoutMs({ DATABASE_POOL_IDLE_TIMEOUT_MS: raw }));
       assert.throws(() => loadTrustProxyHops({ TRUST_PROXY_HOPS: raw }), { message: 'TRUST_PROXY_HOPS must be an integer greater than or equal to 0.' });
     }
     assert.throws(() => loadDatabasePoolMax({ DATABASE_POOL_MAX: '0' }));
+    assert.throws(() => loadDatabasePoolIdleTimeoutMs({ DATABASE_POOL_IDLE_TIMEOUT_MS: '0' }));
     assert.throws(() => loadRuntimeConfig({ APP_URL: 'https://example.test', FIREBASE_WEB_API_KEY: 'test', DATABASE_POOL_MAX: '0' }));
   });
 

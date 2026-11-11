@@ -39,10 +39,10 @@ function createRepository(
   comparisonMetrics: RawPeriodMetrics = { incomeTotal: 0, expenseTotal: 0, incomeCount: 0, expenseCount: 0 }
 ): PeriodComparisonRepository {
   return {
-    getPeriodMetrics: async (_userId, month) => {
+    getPeriodsMetrics: async (_userId, periods) => periods.map(({ month }) => {
       // If month matches base or comparison
       return month === 8 ? baseMetrics : comparisonMetrics;
-    }
+    })
   };
 }
 
@@ -62,7 +62,7 @@ describe('period comparison', () => {
 
   test('computes period comparison metrics and deltas correctly', async () => {
     const repository: PeriodComparisonRepository = {
-      getPeriodMetrics: async (_userId, month) => {
+      getPeriodsMetrics: async (_userId, periods) => periods.map(({ month }) => {
         if (month === 8) {
           // Base: Aug 2026
           return {
@@ -79,7 +79,7 @@ describe('period comparison', () => {
           incomeCount: 2,
           expenseCount: 8
         };
-      }
+      })
     };
 
     const result = await getPeriodComparison(
@@ -131,12 +131,12 @@ describe('period comparison', () => {
 
   test('handles zero division safely when comparison period has zero values', async () => {
     const repository: PeriodComparisonRepository = {
-      getPeriodMetrics: async (_userId, month) => {
+      getPeriodsMetrics: async (_userId, periods) => periods.map(({ month }) => {
         if (month === 8) {
           return { incomeTotal: 5000, expenseTotal: 2000, incomeCount: 1, expenseCount: 1 };
         }
         return { incomeTotal: 0, expenseTotal: 0, incomeCount: 0, expenseCount: 0 };
-      }
+      })
     };
 
     const result = await getPeriodComparison(

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { createTestDatabase } from '../../../helpers/pglite-prisma.js';
 import { ApolloServer } from '@apollo/server';
 import { typeDefs, resolvers } from '../../../../src/core/graphql/graphql.js';
-import { OPERATIONS } from '../../../../src/modules/ai/operations/catalog.js';
+import { MANUAL_ONLY_OPERATIONS, OPERATIONS } from '../../../../src/modules/ai/operations/catalog.js';
 import { askAiAssistant } from '../../../../src/modules/ai/service/ai-service.js';
 import { MockLlmAdapter } from '../../../../src/modules/ai/llm-adapter/ai-llm-adapter.js';
 import { operationStore } from '../../../../src/modules/ai/operations/store.js';
@@ -39,9 +39,13 @@ test('prepares two payables, requires confirmation, and replays without duplicat
 });
 
 
-test('business catalog covers every existing user mutation and excludes bootstrap and AI orchestration', () => {
+test('business catalog accounts for every user mutation and excludes manual file imports and orchestration', () => {
   const actual = Object.keys(aiOperationCatalog.graph.getMutationType()!.getFields()).filter(name => !['bootstrapProfile', 'askAiAssistant', 'confirmAiOperationPlan', 'cancelAiOperationPlan'].includes(name)).sort();
-  assert.deepEqual(Object.keys(OPERATIONS).sort(), actual);
+  assert.deepEqual([...Object.keys(OPERATIONS), ...Object.keys(MANUAL_ONLY_OPERATIONS)].sort(), actual);
+  for (const operation of Object.keys(MANUAL_ONLY_OPERATIONS)) {
+    assert.ok(!Object.hasOwn(OPERATIONS, operation));
+    assert.throws(() => aiOperationCatalog.schema(operation));
+  }
   assert.throws(() => aiOperationCatalog.schema('bootstrapProfile'));
   assert.throws(() => aiOperationCatalog.schema('dropTable'));
 });

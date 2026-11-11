@@ -1,7 +1,8 @@
 import { GraphQLError } from 'graphql';
 import type { GraphQLContext } from '../../../core/graphql/graphql.js';
 import { requireVerifiedUserId } from '../financial-categories/financial-categories.js';
-import { getPrismaClient } from '../../../core/database/database.js';
+import { aggregateCents, readPeriodTotals } from '../financial-read-model.js';
+import { money } from '../banking/rules.js';
 
 export type PeriodComparisonInput = {
   financialAccountIds?: string[];
@@ -40,14 +41,14 @@ export type PeriodComparisonResult = {
 };
 
 export type RawPeriodMetrics = {
-  incomeTotal: number;
-  expenseTotal: number;
+  incomeTotal: string | number;
+  expenseTotal: string | number;
   incomeCount: number;
   expenseCount: number;
 };
 
 export type PeriodComparisonRepository = {
-  getPeriodMetrics(userId: string, month: number, year: number): Promise<RawPeriodMetrics>;
+  getPeriodsMetrics(userId: string, periods: Array<{ month: number; year: number }>): Promise<RawPeriodMetrics[]>;
 };
 
 const MONTH_NAMES = [
@@ -64,54 +65,20 @@ const MONTH_NAMES = [
   'Novembro',
   'Dezembro'
 ];
-export function periodComparisonRepository(financialAccountIds?: string[]): PeriodComparisonRepository {
-  const prisma = getPrismaClient();
-
+export function periodComparisonRepository(financialAccountIds?: string[] | null): PeriodComparisonRepository {
   return {
-    async getPeriodMetrics(userId, month, year) {
-      const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-      const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
-      const endDate = new Date(Date.UTC(year, month - 1, daysInMonth, 23, 59, 59, 999));
-
-      const [incomes, expenses] = await Promise.all([
-        prisma.income.findMany({
-          where: {
-            userId,
-          ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}),
-            deletedAt: null,
-            occurredAt: { gte: startDate, lte: endDate }
-          },
-          select: { amount: true }
-        }),
-        prisma.expense.findMany({
-          where: {
-            userId,
-          ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}),
-            deletedAt: null,
-            occurredAt: { gte: startDate, lte: endDate }
-          },
-          select: { amount: true }
-        })
-      ]);
-
-      const incomeTotal = incomes.reduce((acc, curr) => acc + Number(curr.amount), 0);
-      const expenseTotal = expenses.reduce((acc, curr) => acc + Number(curr.amount), 0);
-
-      return {
-        incomeTotal,
-        expenseTotal,
-        incomeCount: incomes.length,
-        expenseCount: expenses.length
-      };
-    }
+    getPeriodsMetrics: (userId, periods) => readPeriodTotals(userId, periods.map(({ month, year }) => ({
+      startDate: new Date(Date.UTC(year, month - 1, 1)),
+      endDate: new Date(Date.UTC(year, month, 0, 23, 59, 59, 999))
+    })), financialAccountIds)
   };
 }
 
-function calculatePercentageChange(current: number, previous: number): number {
-  if (previous === 0) {
+function calculatePercentageChange(current: bigint, previous: bigint): number {
+  if (previous === 0n) {
     return current > 0 ? 100.0 : current < 0 ? -100.0 : 0.0;
   }
-  const change = ((current - previous) / Math.abs(previous)) * 100;
+  const change = (Number(current - previous) / Math.abs(Number(previous))) * 100;
   return Number(change.toFixed(2));
 }
 
@@ -143,31 +110,35 @@ export async function getPeriodComparison(
     });
   }
 
-  const [baseRaw, compRaw] = await Promise.all([
-    repository.getPeriodMetrics(userId, baseMonth, baseYear),
-    repository.getPeriodMetrics(userId, comparisonMonth, comparisonYear)
+  const [baseRaw, compRaw] = await repository.getPeriodsMetrics(userId, [
+    { month: baseMonth, year: baseYear }, { month: comparisonMonth, year: comparisonYear }
   ]);
+  if (!baseRaw || !compRaw) throw new Error('Missing period aggregate.');
+  const baseIncome = aggregateCents(baseRaw.incomeTotal);
+  const baseExpense = aggregateCents(baseRaw.expenseTotal);
+  const compIncome = aggregateCents(compRaw.incomeTotal);
+  const compExpense = aggregateCents(compRaw.expenseTotal);
 
-  const baseNet = baseRaw.incomeTotal - baseRaw.expenseTotal;
-  const compNet = compRaw.incomeTotal - compRaw.expenseTotal;
+  const baseNet = baseIncome - baseExpense;
+  const compNet = compIncome - compExpense;
 
   const baseSavingsRate =
-    baseRaw.incomeTotal > 0 && baseNet > 0
-      ? Number(((baseNet / baseRaw.incomeTotal) * 100).toFixed(2))
+    baseIncome > 0 && baseNet > 0
+      ? Number(((Number(baseNet) / Number(baseIncome)) * 100).toFixed(2))
       : 0;
 
   const compSavingsRate =
-    compRaw.incomeTotal > 0 && compNet > 0
-      ? Number(((compNet / compRaw.incomeTotal) * 100).toFixed(2))
+    compIncome > 0 && compNet > 0
+      ? Number(((Number(compNet) / Number(compIncome)) * 100).toFixed(2))
       : 0;
 
   const basePeriod: PeriodMetrics = {
     month: baseMonth,
     year: baseYear,
     label: `${MONTH_NAMES[baseMonth - 1]}/${baseYear}`,
-    totalIncome: baseRaw.incomeTotal.toFixed(2),
-    totalExpense: baseRaw.expenseTotal.toFixed(2),
-    netBalance: baseNet.toFixed(2),
+    totalIncome: money(baseIncome),
+    totalExpense: money(baseExpense),
+    netBalance: money(baseNet),
     savingsRate: baseSavingsRate,
     incomeCount: baseRaw.incomeCount,
     expenseCount: baseRaw.expenseCount
@@ -177,20 +148,20 @@ export async function getPeriodComparison(
     month: comparisonMonth,
     year: comparisonYear,
     label: `${MONTH_NAMES[comparisonMonth - 1]}/${comparisonYear}`,
-    totalIncome: compRaw.incomeTotal.toFixed(2),
-    totalExpense: compRaw.expenseTotal.toFixed(2),
-    netBalance: compNet.toFixed(2),
+    totalIncome: money(compIncome),
+    totalExpense: money(compExpense),
+    netBalance: money(compNet),
     savingsRate: compSavingsRate,
     incomeCount: compRaw.incomeCount,
     expenseCount: compRaw.expenseCount
   };
 
   const delta: PeriodComparisonDelta = {
-    incomeDelta: (baseRaw.incomeTotal - compRaw.incomeTotal).toFixed(2),
-    incomePercentage: calculatePercentageChange(baseRaw.incomeTotal, compRaw.incomeTotal),
-    expenseDelta: (baseRaw.expenseTotal - compRaw.expenseTotal).toFixed(2),
-    expensePercentage: calculatePercentageChange(baseRaw.expenseTotal, compRaw.expenseTotal),
-    netBalanceDelta: (baseNet - compNet).toFixed(2),
+    incomeDelta: money(baseIncome - compIncome),
+    incomePercentage: calculatePercentageChange(baseIncome, compIncome),
+    expenseDelta: money(baseExpense - compExpense),
+    expensePercentage: calculatePercentageChange(baseExpense, compExpense),
+    netBalanceDelta: money(baseNet - compNet),
     netBalancePercentage: calculatePercentageChange(baseNet, compNet),
     savingsRateDelta: Number((baseSavingsRate - compSavingsRate).toFixed(2))
   };

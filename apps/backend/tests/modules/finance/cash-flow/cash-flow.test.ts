@@ -36,8 +36,7 @@ function unverifiedContext() {
 
 function createRepository(overrides: Partial<CashFlowRepository> = {}): CashFlowRepository {
   return {
-    getIncomesBetween: async () => [],
-    getExpensesBetween: async () => [],
+    getMovementsBetween: async () => ({ incomes: [], expenses: [] }),
     ...overrides
   };
 }
@@ -69,8 +68,7 @@ describe('cash-flow chart data', () => {
     ];
 
     const repository = createRepository({
-      getIncomesBetween: async () => incomes,
-      getExpensesBetween: async () => expenses
+      getMovementsBetween: async () => ({ incomes, expenses })
     });
 
     const result = await getCashFlow(
@@ -120,8 +118,7 @@ describe('cash-flow chart data', () => {
     ];
 
     const repository = createRepository({
-      getIncomesBetween: async () => incomes,
-      getExpensesBetween: async () => expenses
+      getMovementsBetween: async () => ({ incomes, expenses })
     });
 
     const result = await getCashFlow(

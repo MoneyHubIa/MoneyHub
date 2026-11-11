@@ -7,6 +7,13 @@ import type { GraphQLContext } from '../../../core/graphql/graphql.js';
 import type { LlmToolProperty } from '../llm-adapter/ai-llm-adapter.js';
 import { badInput } from './validation.js';
 
+// File ingestion and its confirmation belong to the dedicated, human-reviewed
+// import flow. Do not send bank files to the model or let it confirm a batch.
+export const MANUAL_ONLY_OPERATIONS = {
+  previewBankStatementImport: 'Requer um arquivo bancário selecionado pelo usuário.',
+  confirmBankStatementImport: 'Requer a revisão das linhas na interface de importação.'
+} as const;
+
 // Explicit business capability registry: new API mutations require a reviewed entry.
 export const OPERATIONS: Record<string, { label: string; entity?: string }> = {
   updateMyProfile: { label: 'Atualizar perfil', entity: 'profile' },

@@ -2,6 +2,9 @@ import { GraphQLError } from 'graphql';
 import type { GraphQLContext } from '../../../core/graphql/graphql.js';
 import { requireVerifiedUserId } from '../financial-categories/financial-categories.js';
 import { getPrismaClient } from '../../../core/database/database.js';
+import { Prisma } from '../../../generated/prisma/client.js';
+import { accountSelection, aggregateCents } from '../financial-read-model.js';
+import { money } from '../banking/rules.js';
 
 export type CategoryAnalysisType = 'EXPENSE' | 'INCOME';
 
@@ -31,7 +34,8 @@ export type CategoryAnalysisResult = {
 };
 
 export type CategoryTransactionRecord = {
-  amount: number;
+  amount: string | number;
+  transactionCount?: number;
   categoryId: string;
   category: {
     id: string;
@@ -49,71 +53,24 @@ export type CategoryAnalysisRepository = {
     endDate: Date;
   }): Promise<CategoryTransactionRecord[]>;
 };
-export function categoryAnalysisRepository(financialAccountIds?: string[]): CategoryAnalysisRepository {
-  const prisma = getPrismaClient();
-
+export function categoryAnalysisRepository(financialAccountIds?: string[] | null): CategoryAnalysisRepository {
   return {
     async getCategoryTransactions({ userId, type, startDate, endDate }) {
-      if (type === 'INCOME') {
-        const rows = await prisma.income.findMany({
-          where: {
-            userId,
-          ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}),
-            deletedAt: null,
-            occurredAt: {
-              gte: startDate,
-              lte: endDate
-            }
-          },
-          select: {
-            amount: true,
-            categoryId: true,
-            category: {
-              select: {
-                id: true,
-                name: true,
-                color: true,
-                icon: true
-              }
-            }
-          }
-        });
-
-        return rows.map((r) => ({
-          amount: Number(r.amount),
-          categoryId: r.categoryId,
-          category: r.category
-        }));
-      }
-
-      const rows = await prisma.expense.findMany({
-        where: {
-          userId,
-          ...(financialAccountIds ? { financialAccountId: { in: financialAccountIds } } : {}),
-          deletedAt: null,
-          occurredAt: {
-            gte: startDate,
-            lte: endDate
-          }
-        },
-        select: {
-          amount: true,
-          categoryId: true,
-          category: {
-            select: {
-              id: true,
-              name: true,
-              color: true,
-              icon: true
-            }
-          }
-        }
-      });
-
-      return rows.map((r) => ({
-        amount: Number(r.amount),
-        categoryId: r.categoryId,
-        category: r.category
+      const table = type === 'INCOME' ? Prisma.sql`incomes` : Prisma.sql`expenses`;
+      const rows = await getPrismaClient().$queryRaw<Array<{
+        categoryId: string; amount: string; transactionCount: number;
+        id: string | null; name: string | null; color: string | null; icon: string | null;
+      }>>(Prisma.sql`
+        SELECT m.category_id AS "categoryId", SUM(m.amount)::text AS amount, COUNT(*)::int AS "transactionCount",
+          c.id, c.name, c.color, c.icon
+        FROM ${table} m LEFT JOIN financial_categories c ON c.id = m.category_id AND c.user_id = m.user_id
+        WHERE m.user_id = ${userId}::uuid AND m.deleted_at IS NULL
+          AND m.occurred_at >= ${startDate.toISOString()}::timestamptz AND m.occurred_at <= ${endDate.toISOString()}::timestamptz ${accountSelection(financialAccountIds)}
+        GROUP BY m.category_id, c.id, c.name, c.color, c.icon
+      `);
+      return rows.map(row => ({
+        categoryId: row.categoryId, amount: row.amount, transactionCount: row.transactionCount,
+        category: row.id ? { id: row.id, name: row.name!, color: row.color!, icon: row.icon! } : null
       }));
     }
   };
@@ -161,53 +118,57 @@ export async function getCategoryAnalysis(
       categoryName: string;
       categoryColor: string;
       categoryIcon: string;
-      total: number;
+      total: bigint;
       count: number;
     }
   >();
 
-  let grandTotal = 0;
+  let grandTotal = 0n;
 
   for (const item of transactions) {
-    grandTotal += item.amount;
+    const amount = aggregateCents(item.amount);
+    grandTotal += amount;
     const catId = item.categoryId;
     const existing = grouped.get(catId);
 
     if (existing) {
-      existing.total += item.amount;
-      existing.count += 1;
+      existing.total += amount;
+      existing.count += item.transactionCount ?? 1;
     } else {
       grouped.set(catId, {
         categoryId: catId,
         categoryName: item.category?.name ?? 'Sem categoria',
         categoryColor: item.category?.color ?? '#64748b',
         categoryIcon: item.category?.icon ?? 'folder',
-        total: item.amount,
-        count: 1
+        total: amount,
+        count: item.transactionCount ?? 1
       });
     }
   }
 
   const items: CategoryAnalysisItem[] = Array.from(grouped.values())
     .map((g) => {
-      const pct = grandTotal > 0 ? (g.total / grandTotal) * 100 : 0;
+      const pct = grandTotal > 0 ? (Number(g.total) / Number(grandTotal)) * 100 : 0;
       return {
         categoryId: g.categoryId,
         categoryName: g.categoryName,
         categoryColor: g.categoryColor,
         categoryIcon: g.categoryIcon,
-        totalAmount: g.total.toFixed(2),
+        totalAmount: money(g.total),
         percentage: Number(pct.toFixed(2)),
         transactionCount: g.count
       };
     })
-    .sort((a, b) => Number(b.totalAmount) - Number(a.totalAmount));
+    .sort((a, b) => {
+      const delta = aggregateCents(b.totalAmount) - aggregateCents(a.totalAmount);
+      return delta > 0n ? 1 : delta < 0n ? -1 : 0;
+    });
 
   return {
     type,
     month,
     year,
-    totalAmount: grandTotal.toFixed(2),
+    totalAmount: money(grandTotal),
     items
   };
 }

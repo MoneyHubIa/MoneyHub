@@ -20,7 +20,7 @@ import {
   Sparkles,
   WalletCards
 } from 'lucide-react-native';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -222,7 +222,7 @@ export function DashboardShell(): React.JSX.Element {
   const [quickAccountTab, setQuickAccountTab] = useState<AccountsTab | null>(null);
   const [settlingId, setSettlingId] = useState<string | null>(null);
   const [financialAccountIds, setFinancialAccountIds] = useState<string[]>([]);
-  const { data: financialAccountsData, refetch: refetchFinancialAccounts } = useQuery<{ myFinancialAccounts: FinancialAccountItem[] }>(FINANCIAL_ACCOUNTS_QUERY);
+  const { data: financialAccountsData, refetch: refetchFinancialAccounts } = useQuery<{ myFinancialAccounts: FinancialAccountItem[] }>(FINANCIAL_ACCOUNTS_QUERY, { fetchPolicy: 'cache-and-network' });
 
   const [syncAgendaNotifications] = useMutation(SYNC_AGENDA_NOTIFICATIONS);
   const [markPayablePaid] = useMutation(MARK_ACCOUNT_PAYABLE_PAID, {
@@ -238,8 +238,11 @@ export function DashboardShell(): React.JSX.Element {
       fetchPolicy: 'cache-and-network'
     });
 
+  const previousSectionId = useRef(activeSectionId);
   useEffect(() => {
-    if (activeSectionId === 'dashboard') {
+    const returningToDashboard = activeSectionId === 'dashboard' && previousSectionId.current !== 'dashboard';
+    previousSectionId.current = activeSectionId;
+    if (returningToDashboard) {
       refetchSummary?.();
       void refetchFinancialAccounts?.();
     }
